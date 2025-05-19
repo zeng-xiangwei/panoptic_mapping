@@ -7,8 +7,8 @@
   <arg name="visualize" default="true"/> 
   
   <!-- Flat Dataset args -->
-  <arg name="base_path" default="/mnt/data/3d-lidar/semantic/panoptic_mapping/flat_dataset/run1"/> 
-  <arg name="play_rate" default="5"/>  <!-- Realtime factor -->
+  <arg name="base_path" default="/mnt/data/3d-lidar/semantic/self_collect/for_panoptic_mapping"/> 
+  <arg name="play_rate" default="1"/>  <!-- Realtime factor -->
   <arg name="wait_time" default="0"/>  <!-- s -->
   <arg name="max_frames" default="1000"/> <!-- 90 -->
   
@@ -19,7 +19,7 @@
   <arg name="rio_play_rate" default="20"/>  <!-- Hz -->
     
   <!-- Mapper -->
-  <arg name="config" default="flat_detectron"/> <!-- <flat,rio>_<groundtruth,detectron>, single_tsdf -->
+  <arg name="config" default="realsense_owlvit_sam"/> <!-- <flat,rio>_<groundtruth,detectron>, single_tsdf, realsense_owlvit_sam -->
   <arg name="shutdown_when_finished" default="false"/> 
   
   <!-- Save/Load maps -->

@@ -12,7 +12,7 @@ ros_spinning_threads: 8
 
 labels:
   type: csv
-  file_name: /home/lukas/Documents/Datasets/flat_dataset/detectron_labels.csv
+  file_name: /mnt/data/3d-lidar/semantic/panoptic_mapping/flat_dataset/detectron_labels.csv
 
 camera:
   verbosity: 1
@@ -116,8 +116,8 @@ visualization:
   submaps:
     type: submaps  # submaps, single_tsdf
     verbosity: 1
-    color_mode: submaps # submaps, instances, color, normals, classes, change, classification
-    visualization_mode: active  # all, active, active_only, inactive, persistent
+    color_mode: instances # submaps, instances, color, normals, classes, change, classification
+    visualization_mode: all  # all, active, active_only, inactive, persistent
     submap_color_discretization: 20
     visualize_mesh: true
     visualize_tsdf_blocks: true

@@ -8,6 +8,7 @@
   <arg name="max_frames" default="1e9"/>
   <arg name="global_frame_name" default="world"/>
   <arg name="sensor_frame_name" default="depth_camera"/>
+  <arg name="static_transform" default="0,0,1,0,-1,0,0,0,0,-1,0,0,0,0,0,1"/>
     
    
 <!-- ============ Play Data ============ -->
@@ -19,6 +20,7 @@
     <param name="sensor_frame_name" value="$(arg sensor_frame_name)" /> 
     <param name="wait" value="$(arg wait)" /> 
     <param name="max_frames" value="$(arg max_frames)" /> 
+    <param name='static_transform' value="$(arg static_transform)" />
             
     <remap from="~color_image" to="$(arg namespace)/color_image" />  
     <remap from="~depth_image" to="$(arg namespace)/depth_image" />  

@@ -13,6 +13,8 @@
 #include <panoptic_mapping/submap_allocation/freespace_allocator_base.h>
 #include <panoptic_mapping/submap_allocation/submap_allocator_base.h>
 
+#include "panoptic_mapping_ros/conversions/conversions.h"
+
 namespace panoptic_mapping {
 
 // Modules that don't have a default type will be required to be explicitly set.
@@ -195,6 +197,10 @@ void PanopticMapper::setupRos() {
   finish_mapping_srv_ = nh_private_.advertiseService(
       "finish_mapping", &PanopticMapper::finishMappingCallback, this);
 
+  // Publishers.
+  segmented_point_cloud_pub_ = nh_private_.advertise<sensor_msgs::PointCloud2>(
+      "segmented_point_cloud", 1);
+
   // Timers.
   if (config_.visualization_interval > 0.0) {
     visualization_timer_ = nh_private_.createTimer(
@@ -249,7 +255,7 @@ void PanopticMapper::processInput(InputData* input) {
 
   // Compute and store the validity image.
   if (compute_validity_image_) {
-    Timer validity_timer("input/compute_validity_image");
+        Timer validity_timer("input/compute_validity_image");
     input->setValidityImage(
         globals_->camera()->computeValidityImage(input->depthImage()));
   }
@@ -284,6 +290,9 @@ void PanopticMapper::processInput(InputData* input) {
   if (config_.visualization_interval < 0.f) {
     Timer vis_timer("input/visualization");
     publishVisualizationCallback(ros::TimerEvent());
+    if (segmented_point_cloud_pub_.getNumSubscribers() > 0) {
+      publishSegmentedPointCloud(input);
+    }
   }
   if (config_.data_logging_interval < 0.f) {
     dataLoggingCallback(ros::TimerEvent());
@@ -328,11 +337,91 @@ void PanopticMapper::publishVisualization() {
   planning_visualizer_->visualizeAll();
 }
 
+void PanopticMapper::publishSegmentedPointCloud(InputData* input) {
+  Pointcloud segmented_pointcloud;
+  using ColorType = Eigen::Vector<uint8_t, 3>;
+  std::vector<ColorType, Eigen::aligned_allocator<ColorType>> colors;
+
+  // 获取相机内参
+  const Camera& camera = *globals_->camera();
+  float fx = camera.getConfig().fx;
+  float fy = camera.getConfig().fy;
+  float cx = camera.getConfig().vx;
+  float cy = camera.getConfig().vx;
+
+  // 获取深度图像数据
+  const cv::Mat& depth_image = input->depthImage();  // 假设输入的深度图为 CV_32FC1 类型
+  const cv::Mat& id_image = input->idImage();  // 分割 ID 图像
+  const cv::Mat& validity_image = input->validityImage();
+
+  LOG(INFO) << "start generate pointcloud";
+  // 遍历深度图并生成点云
+  for (int v = 0; v < depth_image.rows; ++v) {
+    for (int u = 0; u < depth_image.cols; ++u) {
+      float depth = depth_image.at<float>(v, u);
+      if (validity_image.at<uchar>(v, u) == 0) continue;  // 跳过无效深度值
+
+      // 计算点的空间坐标
+      float x = (u - cx) * depth / fx;
+      float y = (v - cy) * depth / fy;
+      float z = depth;
+
+      // 添加点到点云
+      segmented_pointcloud.push_back(Point(x, y, z));
+
+      // 获取对应的分割 ID
+      uint16_t instance_id = static_cast<uint16_t>(id_image.at<uint16_t>(v, u));
+
+      // 根据 instance_id 生成颜色（这里用简单的哈希方式）
+      uint8_t r = (instance_id * 797) % 255;
+      uint8_t g = (instance_id * 1499) % 255;
+      uint8_t b = (instance_id * 2333) % 255;
+
+      colors.emplace_back(ColorType(r, g, b));
+    }
+  }
+
+  LOG(INFO) << "start transform pointcloud to ros msg";
+  // 发布点云消息
+  sensor_msgs::PointCloud2 segmented_pointcloud_msg;
+  convertToPointCloud2(segmented_pointcloud, colors, segmented_pointcloud_msg);
+  segmented_pointcloud_msg.header.stamp = ros::Time::now();
+  segmented_pointcloud_msg.header.frame_id = input->sensorFrameName();
+
+  LOG(INFO) << "publish pointcloud";
+  // 发布点云话题
+  segmented_point_cloud_pub_.publish(segmented_pointcloud_msg);
+}
+
 bool PanopticMapper::saveMap(const std::string& file_path) {
   bool success = submaps_->saveToFile(file_path);
   LOG_IF(INFO, success) << "Successfully saved " << submaps_->size()
                         << " submaps to '" << file_path << "'.";
+  
+  saveIsoSurfacePoints(file_path + "point_label_cloud.csv");
   return success;
+}
+
+bool PanopticMapper::saveIsoSurfacePoints(const std::string& file_path) {
+  // 保存物体表面点云
+  std::fstream point_label_cloud_file;
+  LOG(INFO) << "save to: " << file_path;
+  point_label_cloud_file.open(file_path, std::fstream::out);
+  if (!point_label_cloud_file.is_open()) {
+    LOG(ERROR) << "Could not open file '" << file_path
+               << "' to save point label cloud.";
+    return false;
+  }
+  point_label_cloud_file << "x,y,z,id,label" << std::endl;
+  for (const auto& submap : *submaps_) {
+    const std::vector<IsoSurfacePoint>& surface_points = submap.getIsoSurfacePoints();
+    for (const IsoSurfacePoint& point : surface_points) {
+      point_label_cloud_file << point.position.x() << "," << point.position.y()
+                             << "," << point.position.z() << ","
+                             << submap.getInstanceID()  << "," << submap.getName() << std::endl;
+    }
+  }
+  point_label_cloud_file.close();
 }
 
 bool PanopticMapper::loadMap(const std::string& file_path) {

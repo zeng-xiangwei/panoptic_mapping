@@ -9,6 +9,7 @@
 #include <panoptic_mapping/common/common.h>
 #include <panoptic_mapping/common/globals.h>
 #include <panoptic_mapping/map/submap_collection.h>
+#include <panoptic_mapping/tools/coloring.h>
 #include <ros/node_handle.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <visualization_msgs/MarkerArray.h>

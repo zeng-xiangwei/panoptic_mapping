@@ -1,0 +1,12 @@
+<launch>
+
+<node pkg="panoptic_mapping_utils"
+      type="mesh_saver"
+      name="mesh_saver"
+      output="screen"
+      required="true">
+  <param name="topic" value="/panoptic_mapper/visualization/submaps/mesh" />
+  <param name="output_path" value="/mnt/data/3d-lidar/semantic/panoptic_mapping/flat_dataset/mesh.ply" />
+</node>
+
+</launch>

@@ -2,6 +2,7 @@
 #define PANOPTIC_MAPPING_TOOLS_COLORING_H_
 
 #include "panoptic_mapping/common/common.h"
+#include <array>
 
 namespace panoptic_mapping {
 /**
@@ -24,6 +25,14 @@ inline Color redToGreenGradient(const float value) {
   return color;
 }
 
-}  // namespace panoptic_mapping
+/**
+ * @brief Obtain colors with high discrimination and comfort based on the ID
+ *
+ * @param id
+ * @return Color
+ */
+Color generateColor(int id);
+
+}
 
 #endif  // PANOPTIC_MAPPING_TOOLS_COLORING_H_

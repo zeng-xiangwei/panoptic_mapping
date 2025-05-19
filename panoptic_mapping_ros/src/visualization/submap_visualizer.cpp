@@ -104,6 +104,12 @@ void SubmapVisualizer::visualizeAll(SubmapCollection* submaps) {
   visualizeFreeSpace(*submaps);
   visualizeBoundingVolume(*submaps);
   vis_infos_are_updated_ = false;
+
+  for (Submap& submap : *submaps) {
+    LOG(INFO) << "Submap id: " << submap.getID() << ", name: " << submap.getName() << ", instance id: " << submap.getInstanceID()
+      << ", label: " << panopticLabelToString(submap.getLabel()) << ", isactive: " << submap.isActive() << ", was tracked: " << submap.wasTracked() 
+      << ", change  state: " << changeStateToString(submap.getChangeState());
+  }
 }
 
 void SubmapVisualizer::visualizeMeshes(SubmapCollection* submaps) {
@@ -523,7 +529,8 @@ void SubmapVisualizer::setSubmapVisColor(const Submap& submap,
           info->color =
               globals_->labelHandler()->getColor(submap.getInstanceID());
         } else {
-          info->color = kUnknownColor_;
+          // info->color = kUnknownColor_;
+          info->color = generateColor(submap.getInstanceID());
         }
         break;
       }

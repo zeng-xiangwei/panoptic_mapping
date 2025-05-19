@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.0.2)
 project(panoptic_mapping)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 # add_definitions(-Wall)
 find_package(catkin_simple REQUIRED)
 catkin_simple(ALL_DEPS_REQUIRED)
@@ -67,6 +69,7 @@ cs_add_library(${PROJECT_NAME}
         src/tools/log_data_writer.cpp
         src/tools/evaluation_data_writer.cpp
         src/tools/serialization.cpp
+        src/tools/coloring.cpp
         )
 target_link_libraries(${PROJECT_NAME} ${PROJECT_NAME}_proto stdc++fs)
 

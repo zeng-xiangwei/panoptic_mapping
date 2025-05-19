@@ -130,6 +130,9 @@ class PanopticMapper {
   // Update the meshes and publish the all visualizations of the current map.
   void publishVisualization();
 
+  // pulish instance segmented point cloud from depth image and id_image
+  void publishSegmentedPointCloud(InputData* input);
+
   // Access.
   const SubmapCollection& getSubmapCollection() const { return *submaps_; }
   const ThreadSafeSubmapCollection& getThreadSafeSubmapCollection() const {
@@ -146,6 +149,7 @@ class PanopticMapper {
   void setupMembers();
   void setupCollectionDependentMembers();
   void setupRos();
+  bool saveIsoSurfacePoints(const std::string& file_path);
 
  private:
   // Node handles.
@@ -163,6 +167,7 @@ class PanopticMapper {
   ros::Timer data_logging_timer_;
   ros::Timer print_timing_timer_;
   ros::Timer input_timer_;
+  ros::Publisher segmented_point_cloud_pub_;
 
   // Members.
   const Config config_;

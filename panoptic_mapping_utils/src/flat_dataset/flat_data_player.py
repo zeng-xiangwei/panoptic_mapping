@@ -32,6 +32,17 @@ class FlatDataPlayer(object):
         self.max_frames = rospy.get_param('~max_frames', 1e9)
         self.refresh_rate = 100  # Hz
 
+        # ouput_pose = static_transfrom * input_pose
+        self.static_transform = rospy.get_param('~static_transform', "1, 0, 0, 0,\
+                                                                      0, 1, 0, 0,\
+                                                                      0, 0, 1, 0,\
+                                                                      0, 0, 0, 1")
+        self.static_transform = self.static_transform.replace(" ", "")
+        self.static_transform = self.static_transform.split(",")
+        self.static_transform = [float(x) for x in self.static_transform]
+        print("static_transform:{}".format(self.static_transform))
+        self.static_transform = np.array(self.static_transform).reshape(4, 4)
+
         # ROS
         self.color_pub = rospy.Publisher("~color_image", Image, queue_size=100)
         self.depth_pub = rospy.Publisher("~depth_image", Image, queue_size=100)
@@ -162,6 +173,7 @@ class FlatDataPlayer(object):
             for row in range(4):
                 for col in range(4):
                     transform[row, col] = pose_data[row * 4 + col]
+            transform = self.static_transform @ transform
             rotation = tf.transformations.quaternion_from_matrix(transform)
             self.tf_broadcaster.sendTransform(
                 (transform[0, 3], transform[1, 3], transform[2, 3]), rotation,
