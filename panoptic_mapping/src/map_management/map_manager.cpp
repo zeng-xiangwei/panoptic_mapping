@@ -234,6 +234,11 @@ bool MapManager::mergeSubmapIfPossible(SubmapCollection* submaps, int submap_id,
       continue;
     }
 
+    if (other.getChangeState() == ChangeState::kAbsent) {
+      LOG(INFO) << "in merge if possible other submap is absent";
+      continue;
+    }
+
     bool submaps_match;
     if (!tsdf_registrator_->submapsConflict(*submap, other, &submaps_match)) {
       if (submaps_match) {

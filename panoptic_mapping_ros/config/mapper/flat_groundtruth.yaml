@@ -117,6 +117,7 @@ visualization:
     verbosity: 1
     color_mode: instances # submaps, instances, color, normals, classes, change, classification
     visualization_mode: all  # all, active, active_only, inactive, persistent
+    visualize_other_mode: true
     submap_color_discretization: 20
     visualize_mesh: true
     visualize_tsdf_blocks: true

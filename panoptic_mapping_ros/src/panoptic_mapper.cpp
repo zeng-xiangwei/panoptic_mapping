@@ -347,15 +347,15 @@ void PanopticMapper::publishSegmentedPointCloud(InputData* input) {
   float fx = camera.getConfig().fx;
   float fy = camera.getConfig().fy;
   float cx = camera.getConfig().vx;
-  float cy = camera.getConfig().vx;
+  float cy = camera.getConfig().vy;
 
   // 获取深度图像数据
   const cv::Mat& depth_image = input->depthImage();  // 假设输入的深度图为 CV_32FC1 类型
   const cv::Mat& id_image = input->idImage();  // 分割 ID 图像
   const cv::Mat& validity_image = input->validityImage();
 
-  LOG(INFO) << "start generate pointcloud";
   // 遍历深度图并生成点云
+  std::unordered_map<int32_t, int> instance_id_counter;
   for (int v = 0; v < depth_image.rows; ++v) {
     for (int u = 0; u < depth_image.cols; ++u) {
       float depth = depth_image.at<float>(v, u);
@@ -370,7 +370,8 @@ void PanopticMapper::publishSegmentedPointCloud(InputData* input) {
       segmented_pointcloud.push_back(Point(x, y, z));
 
       // 获取对应的分割 ID
-      uint16_t instance_id = static_cast<uint16_t>(id_image.at<uint16_t>(v, u));
+      int32_t instance_id = id_image.at<int32_t>(v, u);
+      instance_id_counter[instance_id]++;
 
       // 根据 instance_id 生成颜色（这里用简单的哈希方式）
       uint8_t r = (instance_id * 797) % 255;
@@ -381,14 +382,17 @@ void PanopticMapper::publishSegmentedPointCloud(InputData* input) {
     }
   }
 
-  LOG(INFO) << "start transform pointcloud to ros msg";
+  LOG(INFO) << "instance count: " << instance_id_counter.size(); 
+  for (auto& pair : instance_id_counter) {
+    LOG(INFO) << "instance_id: " << pair.first << ", count: " << pair.second;
+  }
+
   // 发布点云消息
   sensor_msgs::PointCloud2 segmented_pointcloud_msg;
   convertToPointCloud2(segmented_pointcloud, colors, segmented_pointcloud_msg);
-  segmented_pointcloud_msg.header.stamp = ros::Time::now();
+  segmented_pointcloud_msg.header.stamp = ros::Time(input->timestamp());
   segmented_pointcloud_msg.header.frame_id = input->sensorFrameName();
 
-  LOG(INFO) << "publish pointcloud";
   // 发布点云话题
   segmented_point_cloud_pub_.publish(segmented_pointcloud_msg);
 }
@@ -412,16 +416,19 @@ bool PanopticMapper::saveIsoSurfacePoints(const std::string& file_path) {
                << "' to save point label cloud.";
     return false;
   }
-  point_label_cloud_file << "x,y,z,id,label" << std::endl;
+  point_label_cloud_file << "x,y,z,id,label,changeStatus,changeStatusId" << std::endl;
   for (const auto& submap : *submaps_) {
     const std::vector<IsoSurfacePoint>& surface_points = submap.getIsoSurfacePoints();
     for (const IsoSurfacePoint& point : surface_points) {
       point_label_cloud_file << point.position.x() << "," << point.position.y()
                              << "," << point.position.z() << ","
-                             << submap.getInstanceID()  << "," << submap.getName() << std::endl;
+                             << submap.getInstanceID()  << "," << submap.getName() << ","
+                             << changeStateToString(submap.getChangeState()) << ","
+                             << static_cast<int>(submap.getChangeState()) << std::endl;
     }
   }
   point_label_cloud_file.close();
+  return true;
 }
 
 bool PanopticMapper::loadMap(const std::string& file_path) {

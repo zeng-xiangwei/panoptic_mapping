@@ -33,6 +33,7 @@ class SubmapVisualizer {
     bool visualize_free_space = true;
     bool visualize_bounding_volumes = true;
     bool include_free_space = false;
+    bool visualize_other_mode = true;  // true: other visualization_mode alpha = 0.4; false: alpha = 0
     std::string ros_namespace;
 
     Config() { setConfigName("SubmapVisualizer"); }
@@ -120,6 +121,7 @@ class SubmapVisualizer {
     bool change_color = true;
     Color color = kUnknownColor_;
     float alpha = 1.0;
+    bool visible = true;
 
     // Tracking.
     ChangeState previous_change_state;        // kChange

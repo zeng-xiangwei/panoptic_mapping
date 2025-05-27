@@ -33,6 +33,7 @@ void SubmapVisualizer::Config::setupParamsAndPrinting() {
   setupParam("visualize_free_space", &visualize_free_space);
   setupParam("visualize_bounding_volumes", &visualize_bounding_volumes);
   setupParam("include_free_space", &include_free_space);
+  setupParam("visualize_other_mode", &visualize_other_mode);
 }
 
 void SubmapVisualizer::Config::printFields() const {
@@ -184,6 +185,14 @@ std::vector<voxblox_msgs::MultiMesh> SubmapVisualizer::generateMeshMsgs(
       continue;
     }
     SubmapVisInfo& info = it->second;
+    if (!info.visible) {
+      voxblox_msgs::MultiMesh msg;
+      msg.header.stamp = ros::Time::now();
+      msg.header.frame_id = global_frame_name_;
+      msg.name_space = info.name_space;
+      result.emplace_back(msg);
+      continue;
+    }
 
     // Setup message.
     voxblox_msgs::MultiMesh msg;
@@ -524,14 +533,15 @@ void SubmapVisualizer::setSubmapVisColor(const Submap& submap,
     // the mesher, so no need to set here.
     switch (color_mode_) {
       case ColorMode::kInstances: {
-        if (globals_->labelHandler()->segmentationIdExists(
-                submap.getInstanceID())) {
-          info->color =
-              globals_->labelHandler()->getColor(submap.getInstanceID());
-        } else {
-          // info->color = kUnknownColor_;
-          info->color = generateColor(submap.getInstanceID());
-        }
+        // if (globals_->labelHandler()->segmentationIdExists(
+        //         submap.getInstanceID())) {
+        //   info->color =
+        //       globals_->labelHandler()->getColor(submap.getInstanceID());
+        // } else {
+        //   info->color = kUnknownColor_;
+          // info->color = generateColor(submap.getInstanceID());
+          info->color = id_color_map_.colorLookup(submap.getInstanceID());
+        // }
         break;
       }
       case ColorMode::kSubmaps: {
@@ -597,8 +607,10 @@ void SubmapVisualizer::setSubmapVisColor(const Submap& submap,
         if (info->was_active != submap.isActive() || info->change_color) {
           if (submap.isActive()) {
             info->alpha = 1.f;
+            info->visible = true;
           } else {
             info->alpha = 0.4f;
+            info->visible = config_.visualize_other_mode ? true : false;
           }
           info->republish_everything = true;
           info->was_active = submap.isActive();
@@ -609,8 +621,10 @@ void SubmapVisualizer::setSubmapVisColor(const Submap& submap,
         if (info->was_active != submap.isActive() || info->change_color) {
           if (submap.isActive()) {
             info->alpha = 0.4f;
+            info->visible = config_.visualize_other_mode ? true : false;
           } else {
             info->alpha = 1.f;
+            info->visible = true;
           }
           info->republish_everything = true;
           info->was_active = submap.isActive();
@@ -624,8 +638,10 @@ void SubmapVisualizer::setSubmapVisColor(const Submap& submap,
         if (info->was_active != is_persistent || info->change_color) {
           if (is_persistent) {
             info->alpha = 1.0f;
+            info->visible = true;
           } else {
             info->alpha = 0.4f;
+            info->visible = config_.visualize_other_mode ? true : false;
           }
           info->republish_everything = true;
           info->was_active = is_persistent;

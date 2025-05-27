@@ -58,7 +58,7 @@ void TsdfRegistrator::checkSubmapCollectionForChange(
   std::vector<int> id_list;
   for (const Submap& submap : *submaps) {
     if (!submap.isActive() && submap.getLabel() != PanopticLabel::kFreeSpace &&
-        !submap.getIsoSurfacePoints().empty()) {
+        !submap.getIsoSurfacePoints().empty() && submap.getChangeState() != ChangeState::kAbsent) {
       id_list.emplace_back(submap.getID());
     }
   }

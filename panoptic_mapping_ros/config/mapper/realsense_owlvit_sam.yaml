@@ -22,7 +22,7 @@ camera:
   vy: 242.564
   fx: 384.281
   fy: 383.770
-  max_range: 3  # m
+  max_range: 3.0  # m
   min_range: 0.1
   
 submap_allocator:
@@ -35,7 +35,7 @@ submap_allocator:
   use_class_layer: true
   mesh:
     clear_foreign_voxels: false
-    required_belonging_corners: 1
+    required_belonging_corners: 4
   classification:
     type: moving_binary_count
   
@@ -55,12 +55,12 @@ freespace_allocator:
 
 id_tracker:
   type: detectron # ground_truth, projective, detectron, single_tsdf
-  verbosity: 1
+  verbosity: 3
   
   # Projective ID tracker
   depth_tolerance: -1  # m, negative = #vs
   tracking_metric: IoU  # IoU, overlap
-  match_acceptance_threshold: 0.3 
+  match_acceptance_threshold: 0.1 
   min_allocation_size: 500 # px, for submap allocation.
   use_class_data_for_matching: true
 
@@ -92,7 +92,7 @@ map_management:
   
   # Behavior
   merge_deactivated_submaps_if_possible: true
-  apply_class_layer_when_deactivating_submaps: false
+  apply_class_layer_when_deactivating_submaps: true
   
   activity_manager:
     required_reobservations: 1 # Consecutive observations to keep new submaps.
@@ -103,9 +103,9 @@ map_management:
     min_voxel_weight: 0.000001
     error_threshold: -1 # m, negative = #vs
     match_rejection_points: 20  
-    match_rejection_percentage: 0.02
+    match_rejection_percentage: 0.1
     match_acceptance_points: 20
-    match_acceptance_percentage: 0.02
+    match_acceptance_percentage: 0.2
     normalize_by_voxel_weight: true
     
   layer_manipulator:
