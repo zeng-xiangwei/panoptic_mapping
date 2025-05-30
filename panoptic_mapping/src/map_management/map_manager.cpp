@@ -157,6 +157,10 @@ void MapManager::manageSubmapActivity(SubmapCollection* submaps) {
         while (mergeSubmapIfPossible(submaps, current_id, &merged_id)) {
           current_id = merged_id;
         }
+
+        if (current_id != id) {
+          submaps->getSubmapPtr(current_id)->updateEverything();
+        }
         if (current_id == id) {
           LOG_IF(INFO, config_.verbosity >= 4)
               << "Submap " << id << " was deactivated, could not be matched."

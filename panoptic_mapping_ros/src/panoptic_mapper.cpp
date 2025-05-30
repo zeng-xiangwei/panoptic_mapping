@@ -403,7 +403,7 @@ bool PanopticMapper::saveMap(const std::string& file_path) {
   LOG_IF(INFO, success) << "Successfully saved " << submaps_->size()
                         << " submaps to '" << file_path << "'.";
 
-  saveIsoSurfacePoints(file_path + "point_label_cloud.csv");
+  saveIsoSurfacePoints(file_path + "_point_label_cloud.csv");
   return success;
 }
 
@@ -420,6 +420,10 @@ bool PanopticMapper::saveIsoSurfacePoints(const std::string& file_path) {
   point_label_cloud_file << "x,y,z,id,label,changeStatus,changeStatusId"
                          << std::endl;
   for (const auto& submap : *submaps_) {
+    if (submap.getChangeState() != ChangeState::kPersistent ||
+        submap.getLabel() == PanopticLabel::kFreeSpace) {
+      continue;
+    }
     const std::vector<IsoSurfacePoint>& surface_points =
         submap.getIsoSurfacePoints();
     for (const IsoSurfacePoint& point : surface_points) {
