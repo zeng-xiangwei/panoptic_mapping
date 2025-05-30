@@ -2,7 +2,8 @@
 
 namespace panoptic_mapping {
 
-config_utilities::Factory::RegistrationRos<MapManagerBase, NullMapManager>
+config_utilities::Factory::RegistrationRos<MapManagerBase, NullMapManager,
+                                           std::shared_ptr<Globals>>
     NullMapManager::registration_("null");
 
 void NullMapManager::Config::setupParamsAndPrinting() {

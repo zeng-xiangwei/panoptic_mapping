@@ -9,13 +9,15 @@
 
 namespace panoptic_mapping {
 
-config_utilities::Factory::RegistrationRos<MapManagerBase, MapManager>
+config_utilities::Factory::RegistrationRos<MapManagerBase, MapManager,
+                                           std::shared_ptr<Globals>>
     MapManager::registration_("submaps");
 
 void MapManager::Config::checkParams() const {
   checkParamConfig(activity_manager_config);
   checkParamConfig(tsdf_registrator_config);
   checkParamConfig(layer_manipulator_config);
+  checkParamConfig(change_detector_config);
 }
 
 void MapManager::Config::setupParamsAndPrinting() {
@@ -27,15 +29,20 @@ void MapManager::Config::setupParamsAndPrinting() {
              &merge_deactivated_submaps_if_possible);
   setupParam("apply_class_layer_when_deactivating_submaps",
              &apply_class_layer_when_deactivating_submaps);
+  setupParam("detect_disappear_by_sensor_data",
+             &detect_disappear_by_sensor_data);
   setupParam("activity_manager_config", &activity_manager_config,
              "activity_manager");
   setupParam("tsdf_registrator_config", &tsdf_registrator_config,
              "tsdf_registrator");
   setupParam("layer_manipulator_config", &layer_manipulator_config,
              "layer_manipulator");
+  setupParam("change_detector_config", &change_detector_config,
+             "change_detector");
 }
 
-MapManager::MapManager(const Config& config) : config_(config.checkValid()) {
+MapManager::MapManager(const Config& config, std::shared_ptr<Globals> globals)
+    : config_(config.checkValid()), globals_(std::move(globals)) {
   LOG_IF(INFO, config_.verbosity >= 1) << "\n" << config_.toString();
 
   // Setup members.
@@ -45,6 +52,8 @@ MapManager::MapManager(const Config& config) : config_(config.checkValid()) {
       std::make_shared<TsdfRegistrator>(config_.tsdf_registrator_config);
   layer_manipulator_ =
       std::make_shared<LayerManipulator>(config_.layer_manipulator_config);
+  change_detector_ = std::make_shared<ChangeDetector>(
+      config_.change_detector_config, globals_);
 
   // Add all requested tasks.
   if (config_.prune_active_blocks_frequency > 0) {
@@ -64,11 +73,13 @@ MapManager::MapManager(const Config& config) : config_(config.checkValid()) {
   }
 }
 
-void MapManager::tick(SubmapCollection* submaps) {
+void MapManager::tick(SubmapCollection* submaps, InputData* input) {
   // Increment counts for all tickers, which execute the requested actions.
+  input_ = input;
   for (Ticker& ticker : tickers_) {
     ticker.tick(submaps);
   }
+  input_ = nullptr;
 }
 
 void MapManager::pruneActiveBlocks(SubmapCollection* submaps) {
@@ -158,6 +169,9 @@ void MapManager::manageSubmapActivity(SubmapCollection* submaps) {
 
 void MapManager::performChangeDetection(SubmapCollection* submaps) {
   tsdf_registrator_->checkSubmapCollectionForChange(submaps);
+  if (config_.detect_disappear_by_sensor_data && input_ != nullptr) {
+    change_detector_->checkSubmapCollectionVisibleByInputData(submaps, input_);
+  }
 }
 
 void MapManager::finishMapping(SubmapCollection* submaps) {

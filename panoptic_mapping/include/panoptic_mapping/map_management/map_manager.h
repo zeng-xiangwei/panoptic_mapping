@@ -8,9 +8,11 @@
 
 #include "panoptic_mapping/3rd_party/config_utilities.hpp"
 #include "panoptic_mapping/common/common.h"
+#include "panoptic_mapping/common/globals.h"
 #include "panoptic_mapping/map/submap.h"
 #include "panoptic_mapping/map/submap_collection.h"
 #include "panoptic_mapping/map_management/activity_manager.h"
+#include "panoptic_mapping/map_management/change_detector.h"
 #include "panoptic_mapping/map_management/layer_manipulator.h"
 #include "panoptic_mapping/map_management/map_manager_base.h"
 #include "panoptic_mapping/map_management/tsdf_registrator.h"
@@ -39,10 +41,15 @@ class MapManager : public MapManagerBase {
     // the loss of classification information.
     bool apply_class_layer_when_deactivating_submaps = false;
 
+    // If true, compare inactivate submap with current input data to judge the
+    // submap whether disappear
+    bool detect_disappear_by_sensor_data = true;
+
     // Member configs.
     TsdfRegistrator::Config tsdf_registrator_config;
     ActivityManager::Config activity_manager_config;
     LayerManipulator::Config layer_manipulator_config;
+    ChangeDetector::Config change_detector_config;
 
     Config() { setConfigName("MapManager"); }
 
@@ -51,11 +58,11 @@ class MapManager : public MapManagerBase {
     void checkParams() const override;
   };
 
-  explicit MapManager(const Config& config);
+  MapManager(const Config& config, std::shared_ptr<Globals> globals);
   virtual ~MapManager() = default;
 
   // Perform all actions when with specified timings.
-  void tick(SubmapCollection* submaps) override;
+  void tick(SubmapCollection* submaps, InputData* input) override;
   void finishMapping(SubmapCollection* submaps) override;
 
   // Perform specific tasks.
@@ -71,7 +78,8 @@ class MapManager : public MapManagerBase {
   std::string pruneBlocks(Submap* submap) const;
 
  private:
-  static config_utilities::Factory::RegistrationRos<MapManagerBase, MapManager>
+  static config_utilities::Factory::RegistrationRos<MapManagerBase, MapManager,
+                                                    std::shared_ptr<Globals>>
       registration_;
   // Members.
   const Config config_;
@@ -79,6 +87,7 @@ class MapManager : public MapManagerBase {
   std::shared_ptr<ActivityManager> activity_manager_;
   std::shared_ptr<TsdfRegistrator> tsdf_registrator_;
   std::shared_ptr<LayerManipulator> layer_manipulator_;
+  std::shared_ptr<ChangeDetector> change_detector_;
 
   // Action tick counters.
   class Ticker {
@@ -94,6 +103,11 @@ class MapManager : public MapManagerBase {
     const std::function<void(SubmapCollection* submaps)> action_;
   };
   std::vector<Ticker> tickers_;
+
+  // Current input data, for change detection, used to detect
+  // whether a submap seen in current input.
+  InputData* input_ = nullptr;
+  const std::shared_ptr<Globals> globals_;
 };
 
 }  // namespace panoptic_mapping

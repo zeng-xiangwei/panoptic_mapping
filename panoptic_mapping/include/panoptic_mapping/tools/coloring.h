@@ -1,8 +1,9 @@
 #ifndef PANOPTIC_MAPPING_TOOLS_COLORING_H_
 #define PANOPTIC_MAPPING_TOOLS_COLORING_H_
 
-#include "panoptic_mapping/common/common.h"
 #include <array>
+
+#include "panoptic_mapping/common/common.h"
 
 namespace panoptic_mapping {
 /**
@@ -33,6 +34,6 @@ inline Color redToGreenGradient(const float value) {
  */
 Color generateColor(int id);
 
-}
+}  // namespace panoptic_mapping
 
 #endif  // PANOPTIC_MAPPING_TOOLS_COLORING_H_

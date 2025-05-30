@@ -121,7 +121,7 @@ void PanopticMapper::setupMembers() {
 
   // Map Manager.
   map_manager_ = config_utilities::FactoryRos::create<MapManagerBase>(
-      defaultNh("map_management"));
+      defaultNh("map_management"), globals_);
 
   // Visualization.
   ros::NodeHandle visualization_nh(nh_private_, "visualization");
@@ -255,7 +255,7 @@ void PanopticMapper::processInput(InputData* input) {
 
   // Compute and store the validity image.
   if (compute_validity_image_) {
-        Timer validity_timer("input/compute_validity_image");
+    Timer validity_timer("input/compute_validity_image");
     input->setValidityImage(
         globals_->camera()->computeValidityImage(input->depthImage()));
   }
@@ -282,7 +282,7 @@ void PanopticMapper::processInput(InputData* input) {
 
   // Perform all requested map management actions.
   Timer management_timer("input/map_management");
-  map_manager_->tick(submaps_.get());
+  map_manager_->tick(submaps_.get(), input);
   ros::WallTime t3 = ros::WallTime::now();
   management_timer.Stop();
 
@@ -350,7 +350,8 @@ void PanopticMapper::publishSegmentedPointCloud(InputData* input) {
   float cy = camera.getConfig().vy;
 
   // 获取深度图像数据
-  const cv::Mat& depth_image = input->depthImage();  // 假设输入的深度图为 CV_32FC1 类型
+  const cv::Mat& depth_image =
+      input->depthImage();  // 假设输入的深度图为 CV_32FC1 类型
   const cv::Mat& id_image = input->idImage();  // 分割 ID 图像
   const cv::Mat& validity_image = input->validityImage();
 
@@ -382,7 +383,7 @@ void PanopticMapper::publishSegmentedPointCloud(InputData* input) {
     }
   }
 
-  LOG(INFO) << "instance count: " << instance_id_counter.size(); 
+  LOG(INFO) << "instance count: " << instance_id_counter.size();
   for (auto& pair : instance_id_counter) {
     LOG(INFO) << "instance_id: " << pair.first << ", count: " << pair.second;
   }
@@ -401,7 +402,7 @@ bool PanopticMapper::saveMap(const std::string& file_path) {
   bool success = submaps_->saveToFile(file_path);
   LOG_IF(INFO, success) << "Successfully saved " << submaps_->size()
                         << " submaps to '" << file_path << "'.";
-  
+
   saveIsoSurfacePoints(file_path + "point_label_cloud.csv");
   return success;
 }
@@ -416,15 +417,18 @@ bool PanopticMapper::saveIsoSurfacePoints(const std::string& file_path) {
                << "' to save point label cloud.";
     return false;
   }
-  point_label_cloud_file << "x,y,z,id,label,changeStatus,changeStatusId" << std::endl;
+  point_label_cloud_file << "x,y,z,id,label,changeStatus,changeStatusId"
+                         << std::endl;
   for (const auto& submap : *submaps_) {
-    const std::vector<IsoSurfacePoint>& surface_points = submap.getIsoSurfacePoints();
+    const std::vector<IsoSurfacePoint>& surface_points =
+        submap.getIsoSurfacePoints();
     for (const IsoSurfacePoint& point : surface_points) {
-      point_label_cloud_file << point.position.x() << "," << point.position.y()
-                             << "," << point.position.z() << ","
-                             << submap.getInstanceID()  << "," << submap.getName() << ","
-                             << changeStateToString(submap.getChangeState()) << ","
-                             << static_cast<int>(submap.getChangeState()) << std::endl;
+      point_label_cloud_file
+          << point.position.x() << "," << point.position.y() << ","
+          << point.position.z() << "," << submap.getInstanceID() << ","
+          << submap.getName() << ","
+          << changeStateToString(submap.getChangeState()) << ","
+          << static_cast<int>(submap.getChangeState()) << std::endl;
     }
   }
   point_label_cloud_file.close();

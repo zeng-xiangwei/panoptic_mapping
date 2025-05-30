@@ -23,16 +23,15 @@ DetectronLabels detectronLabelsFromMsg(
   }
   return result;
 }
-     
+
 void convertToPointCloud2(
     const Pointcloud& points,
     const voxblox::AlignedVector<Eigen::Matrix<uint8_t, 3, 1>>& colors,
     sensor_msgs::PointCloud2& cloud_msg) {
-  
   if (points.empty() || colors.empty()) {
     return;
   }
-  
+
   // 检查输入是否一致
   if (points.size() != colors.size()) {
     return;
@@ -91,8 +90,7 @@ void convertToPointCloud2(
       uint8_t r = colors[i][0];
       uint8_t g = colors[i][1];
       uint8_t b = colors[i][2];
-      rgb = (static_cast<uint32_t>(r) << 16) |
-            (static_cast<uint32_t>(g) << 8)  |
+      rgb = (static_cast<uint32_t>(r) << 16) | (static_cast<uint32_t>(g) << 8) |
             static_cast<uint32_t>(b);
     } else {
       rgb = 0x00FFFFFF;  // 默认白色

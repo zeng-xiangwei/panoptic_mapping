@@ -7,7 +7,7 @@
   <arg name="visualize" default="true"/> 
   
   <!-- Flat Dataset args -->
-  <arg name="base_path" default="/mnt/data/3d-lidar/semantic/self_collect/for_panoptic_mapping"/> 
+  <arg name="base_path" default="/mnt/data/3d-lidar/semantic/self_collect/realsense_d455_640_480/realsense_orb_slam_2025-05-27-19-50-12"/> 
   <arg name="play_rate" default="1"/>  <!-- Realtime factor -->
   <arg name="wait_time" default="0"/>  <!-- s -->
   <arg name="max_frames" default="1000"/> <!-- 90 -->

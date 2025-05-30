@@ -1,6 +1,7 @@
 #ifndef PANOPTIC_MAPPING_MAP_MANAGEMENT_MAP_MANAGER_BASE_H_
 #define PANOPTIC_MAPPING_MAP_MANAGEMENT_MAP_MANAGER_BASE_H_
 
+#include "panoptic_mapping/common/input_data.h"
 #include "panoptic_mapping/map/submap_collection.h"
 
 namespace panoptic_mapping {
@@ -15,7 +16,7 @@ class MapManagerBase {
   virtual ~MapManagerBase() = default;
 
   // Perform all actions when with specified timings.
-  virtual void tick(SubmapCollection* submaps) = 0;
+  virtual void tick(SubmapCollection* submaps, InputData* input) = 0;
   virtual void finishMapping(SubmapCollection* submaps) = 0;
 };
 

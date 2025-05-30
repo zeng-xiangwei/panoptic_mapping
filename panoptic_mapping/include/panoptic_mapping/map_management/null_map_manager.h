@@ -2,6 +2,7 @@
 #define PANOPTIC_MAPPING_MAP_MANAGEMENT_NULL_MAP_MANAGER_H_
 
 #include "panoptic_mapping/3rd_party/config_utilities.hpp"
+#include "panoptic_mapping/common/globals.h"
 #include "panoptic_mapping/map/submap_collection.h"
 #include "panoptic_mapping/map_management/map_manager_base.h"
 
@@ -20,18 +21,20 @@ class NullMapManager : public MapManagerBase {
     void setupParamsAndPrinting() override;
   };
 
-  explicit NullMapManager(const Config& config) : config_(config) {}
+  NullMapManager(const Config& config, std::shared_ptr<Globals> globals)
+      : config_(config), globals_(std::move(globals)) {}
   virtual ~NullMapManager() = default;
 
   // The null map manager does not execute any actions.
-  void tick(SubmapCollection* submaps) override {}
+  void tick(SubmapCollection* submaps, InputData* input) override {}
   void finishMapping(SubmapCollection* submaps) override {}
 
  private:
-  static config_utilities::Factory::RegistrationRos<MapManagerBase,
-                                                    NullMapManager>
+  static config_utilities::Factory::RegistrationRos<
+      MapManagerBase, NullMapManager, std::shared_ptr<Globals>>
       registration_;
   const Config config_;
+  const std::shared_ptr<Globals> globals_;
 };
 
 }  // namespace panoptic_mapping

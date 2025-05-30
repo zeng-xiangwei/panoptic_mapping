@@ -20,9 +20,9 @@ camera:
   height: 480
   vx: 329.505
   vy: 242.564
-  fx: 384.281
-  fy: 383.770
-  max_range: 3.0  # m
+  fx: 385.118
+  fy: 384.607
+  max_range: 2.0  # m
   min_range: 0.1
   
 submap_allocator:
@@ -58,10 +58,10 @@ id_tracker:
   verbosity: 3
   
   # Projective ID tracker
-  depth_tolerance: -1  # m, negative = #vs
+  depth_tolerance: -2  # m, negative = #vs
   tracking_metric: IoU  # IoU, overlap
-  match_acceptance_threshold: 0.1 
-  min_allocation_size: 500 # px, for submap allocation.
+  match_acceptance_threshold: 0.3 
+  min_allocation_size: 1000 # px, for submap allocation.
   use_class_data_for_matching: true
 
 tsdf_integrator:  
@@ -88,14 +88,15 @@ map_management:
   # Frequencies
   prune_active_blocks_frequency: 1 
   activity_management_frequency: 1
-  change_detection_frequency: 0
+  change_detection_frequency: 5
   
   # Behavior
   merge_deactivated_submaps_if_possible: true
   apply_class_layer_when_deactivating_submaps: true
+  detect_disappear_by_sensor_data: true
   
   activity_manager:
-    required_reobservations: 1 # Consecutive observations to keep new submaps.
+    required_reobservations: 2 # Consecutive observations to keep new submaps.
     deactivate_after_missed_detections: 5  # Deactivate submaps when not observed for x frames.
   
   tsdf_registrator:
@@ -103,10 +104,21 @@ map_management:
     min_voxel_weight: 0.000001
     error_threshold: -1 # m, negative = #vs
     match_rejection_points: 20  
-    match_rejection_percentage: 0.1
+    match_rejection_percentage: 0.3
     match_acceptance_points: 20
-    match_acceptance_percentage: 0.2
+    match_acceptance_percentage: 0.4
     normalize_by_voxel_weight: true
+  
+  change_detector:
+    verbosity: 3
+    strong_disappear_threshold: -10 # m, negative = #vs
+    weak_disappear_threshold: -2 # m, negative = #vs
+    match_strong_disappear_points: 50
+    match_strong_disappear_percentage: 0.9
+    match_weak_disappear_points: 50
+    match_weak_disappear_percentage: 0.6
+    match_weak_average_distance: -4 # m, negative = #vs
+    detection_threads: 1
     
   layer_manipulator:
       verbosity: 3
@@ -117,7 +129,8 @@ visualization:
     type: submaps  # submaps, single_tsdf
     verbosity: 1
     color_mode: instances # submaps, instances, color, normals, classes, change, classification
-    visualization_mode: all  # all, active, active_only, inactive, persistent
+    visualization_mode: persistent  # all, active, active_only, inactive, persistent
+    visualize_other_mode: false
     submap_color_discretization: 20
     visualize_mesh: true
     visualize_tsdf_blocks: true

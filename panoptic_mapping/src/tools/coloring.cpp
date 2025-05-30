@@ -1,6 +1,6 @@
 #include "panoptic_mapping/tools/coloring.h"
 
-namespace panoptic_mapping { 
+namespace panoptic_mapping {
 namespace {
 
 constexpr float kInitialHue = 0.69f;
@@ -43,4 +43,4 @@ Color generateColor(int id) {
   return hsvToRgb(hue, kSaturation, kValue);
 }
 
-}
+}  // namespace panoptic_mapping
