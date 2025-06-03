@@ -201,8 +201,13 @@ void MapManager::finishMapping(SubmapCollection* submaps) {
   bool merged_something = true;
   while (merged_something) {
     for (Submap& submap : *submaps) {
-      merged_something = mergeSubmapIfPossible(submaps, submap.getID());
+      int merged_id = submap.getID();
+      int current_id = submap.getID();
+      merged_something = mergeSubmapIfPossible(submaps, current_id, &merged_id);
       if (merged_something) {
+        if (merged_id != current_id) {
+          submaps->getSubmapPtr(merged_id)->updateEverything();
+        }
         break;
       }
     }

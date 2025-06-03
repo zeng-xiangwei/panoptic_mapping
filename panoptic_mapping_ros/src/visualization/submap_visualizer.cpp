@@ -97,13 +97,13 @@ void SubmapVisualizer::clearMesh() {
 }
 
 void SubmapVisualizer::visualizeAll(SubmapCollection* submaps) {
-  publishTfTransforms(*submaps);
   updateVisInfos(*submaps);
   vis_infos_are_updated_ = true;  // Prevent repeated updates.
   visualizeMeshes(submaps);
   visualizeTsdfBlocks(*submaps);
   visualizeFreeSpace(*submaps);
   visualizeBoundingVolume(*submaps);
+  publishTfTransforms(*submaps);
   vis_infos_are_updated_ = false;
 
   for (Submap& submap : *submaps) {
