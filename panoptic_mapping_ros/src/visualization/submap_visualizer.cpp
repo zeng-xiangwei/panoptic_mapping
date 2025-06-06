@@ -540,7 +540,7 @@ void SubmapVisualizer::setSubmapVisColor(const Submap& submap,
         // } else {
         //   info->color = kUnknownColor_;
           // info->color = generateColor(submap.getInstanceID());
-          info->color = id_color_map_.colorLookup(submap.getInstanceID());
+          info->color = id_color_map_.colorLookup(submap.getID());
         // }
         break;
       }

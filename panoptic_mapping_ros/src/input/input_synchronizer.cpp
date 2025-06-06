@@ -38,6 +38,7 @@ void InputSynchronizer::Config::setupParamsAndPrinting() {
   setupParam("sensor_frame_name", &sensor_frame_name);
   setupParam("transform_lookup_time", &transform_lookup_time);
   setupParam("max_delay", &max_delay);
+  setupParam("depth_type", &depth_type);
 }
 
 InputSynchronizer::InputSynchronizer(const Config& config,
@@ -69,9 +70,17 @@ void InputSynchronizer::advertiseInputTopics() {
         using MsgT = sensor_msgs::ImageConstPtr;
         addQueue<MsgT>(
             type, [this](const MsgT& msg, InputSynchronizerData* data) {
-              const cv_bridge::CvImageConstPtr depth =
-                  cv_bridge::toCvCopy(msg, "32FC1");
-              data->data->depth_image_ = depth->image;
+              if (this->config_.depth_type == "32F") {
+                const cv_bridge::CvImageConstPtr depth =
+                    cv_bridge::toCvCopy(msg, "32FC1");
+                data->data->depth_image_ = depth->image;
+              } else if (this->config_.depth_type == "16U") {
+                const cv_bridge::CvImageConstPtr depth =
+                    cv_bridge::toCvCopy(msg, "16UC1");
+                cv::Mat depth_image_in_meters;
+                depth->image.convertTo(depth_image_in_meters, CV_32FC1, 0.001);
+                data->data->depth_image_ = depth_image_in_meters;
+              }
 
               // NOTE(schmluk): If the sensor frame name is not set
               // recover it from the depth image.

@@ -107,6 +107,8 @@ std::string ChangeDetector::checkSubmapVisibleByInputData(Submap* submap,
   int strong_absent_num = 0;
   int weak_absent_num = 0;
   float weak_absent_dis_sum = 0.0;
+  int valid_depth_measurement_num = 0;
+  int projected_num = 0;
 
   float strong_depth_tolerance = config_.strong_disappear_threshold > 0
                                      ? config_.strong_disappear_threshold
@@ -125,6 +127,12 @@ std::string ChangeDetector::checkSubmapVisibleByInputData(Submap* submap,
     int u, v;
     if (!camera.projectPointToImagePlane(p_C, &u, &v)) {
       continue;
+    }
+
+    projected_num++;
+    float depth_value = depth_image.at<float>(v, u);
+    if (depth_value != 0.f) {
+      valid_depth_measurement_num++;
     }
     float distance = depth_image.at<float>(v, u) - p_C.z();
     distance = std::min(distance, camera_visible_distance_max);
@@ -176,7 +184,9 @@ std::string ChangeDetector::checkSubmapVisibleByInputData(Submap* submap,
        << ") is valid with input data. Absent points: (" << strong_absent_num
        << "," << weak_absent_num << ")"
        << "/" << submap->getIsoSurfacePoints().size()
-       << ", weak distance sum: " << weak_absent_dis_sum << " m.";
+       << ", weak distance sum: " << weak_absent_dis_sum << " m. "
+       << "valid_measurement_nums / projected_nums: "
+       << valid_depth_measurement_num << " / " << projected_num;
   return info.str();
 }
 

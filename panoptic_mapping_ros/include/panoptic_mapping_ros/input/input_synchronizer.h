@@ -38,6 +38,9 @@ class InputSynchronizer : public InputSynchronizerBase {
         0.1f;  // s, Maximum time to wait for transforms.
     double max_delay = 0.0; // s, Maximum delay between Image messages that should be synced
 
+    // Depth image type. 32F: meters, 16U: millimeters. 
+    std::string depth_type = "32F";
+
     Config() { setConfigName("InputSynchronizer"); }
 
    protected:
