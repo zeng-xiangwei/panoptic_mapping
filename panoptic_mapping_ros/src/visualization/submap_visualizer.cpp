@@ -106,10 +106,12 @@ void SubmapVisualizer::visualizeAll(SubmapCollection* submaps) {
   publishTfTransforms(*submaps);
   vis_infos_are_updated_ = false;
 
-  for (Submap& submap : *submaps) {
-    LOG(INFO) << "Submap id: " << submap.getID() << ", name: " << submap.getName() << ", instance id: " << submap.getInstanceID()
-      << ", label: " << panopticLabelToString(submap.getLabel()) << ", isactive: " << submap.isActive() << ", was tracked: " << submap.wasTracked() 
-      << ", change  state: " << changeStateToString(submap.getChangeState());
+  if (config_.verbosity >= 4) {
+    for (Submap& submap : *submaps) {
+      LOG(INFO) << "Submap id: " << submap.getID() << ", name: " << submap.getName() << ", instance id: " << submap.getInstanceID()
+        << ", label: " << panopticLabelToString(submap.getLabel()) << ", isactive: " << submap.isActive() << ", was tracked: " << submap.wasTracked() 
+        << ", change  state: " << changeStateToString(submap.getChangeState());
+    }
   }
 }
 

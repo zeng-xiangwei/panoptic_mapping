@@ -8,6 +8,7 @@ message SubmapProto {
   // Submap data.
   optional int32 instance_id = 1;
   optional int32 class_id = 6;
+  optional string class_name = 16;
   optional int32 panoptic_label = 7;
   optional string name = 9;
   optional int32 change_state = 11;

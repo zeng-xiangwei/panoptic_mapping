@@ -8,6 +8,7 @@
 #include <cblox/utils/quat_transformation_protobuf_utils.h>
 #include <voxblox/io/layer_io.h>
 
+#include "panoptic_mapping/map/class_name_manager.h"
 #include "panoptic_mapping/map_management/layer_manipulator.h"
 #include "panoptic_mapping/tools/serialization.h"
 
@@ -112,6 +113,7 @@ void Submap::getProto(SubmapProto* proto) const {
   // Store Submap data.
   proto->set_instance_id(instance_id_);
   proto->set_class_id(class_id_);
+  proto->set_class_name(class_name_);
   proto->set_panoptic_label(static_cast<int>(label_));
   proto->set_name(name_);
   proto->set_change_state(static_cast<int>(change_state_));
@@ -213,7 +215,7 @@ std::unique_ptr<Submap> Submap::loadFromStream(
   submap->has_class_layer_ = submap_proto.num_class_blocks() > 0;
   submap->has_score_layer_ = submap_proto.num_score_blocks() > 0;
   submap->setInstanceID(submap_proto.instance_id());
-  submap->setClassID(submap_proto.class_id());
+  submap->setClassName(submap_proto.class_name());
   submap->setLabel(static_cast<PanopticLabel>(submap_proto.panoptic_label()));
   submap->setName(submap_proto.name());
   submap->setChangeState(static_cast<ChangeState>(submap_proto.change_state()));
@@ -255,6 +257,17 @@ std::unique_ptr<Submap> Submap::loadFromStream(
   submap->setFrameName(submap_proto.frame_name());
 
   return submap;
+}
+
+void Submap::setClassName(const std::string& class_name) {
+  if (class_name.empty()) {
+    LOG(WARNING) << "Class name is empty. This will be set to 'Unknown'.";
+    class_name_ = "Unknown";
+  } else {
+    class_name_ = class_name;
+  }
+
+  class_id_ = ClassNameManager::getGlobalInstance()->getClassID(class_name);
 }
 
 void Submap::finishActivePeriod() {
@@ -338,6 +351,7 @@ std::unique_ptr<Submap> Submap::clone(
   // Copy all members.
   result->instance_id_ = static_cast<int>(instance_id_);
   result->class_id_ = class_id_;
+  result->class_name_ = class_name_;
   result->label_ = label_;
   result->name_ = name_;
   result->is_active_ = is_active_;

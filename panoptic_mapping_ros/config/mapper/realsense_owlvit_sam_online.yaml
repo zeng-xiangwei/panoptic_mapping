@@ -12,8 +12,8 @@ ros_spinning_threads: 8
 depth_type: "16U"
 
 labels:
-  type: csv
-  file_name: /mnt/data/3d-lidar/semantic/self_collect/realsense_labels.csv
+  type: mini_csv
+  file_name: /mnt/data/3d-lidar/semantic/self_collect/realsense_labels_mini.csv
 
 camera:
   verbosity: 1
@@ -23,8 +23,8 @@ camera:
   vy: 242.564
   fx: 385.118
   fy: 384.607
-  max_range: 1.0  # m
-  min_range: 0.1
+  max_range: 3.0  # m
+  min_range: 0.5
   
 submap_allocator:
   type: semantic  # semantic
@@ -61,7 +61,7 @@ id_tracker:
   # Projective ID tracker
   depth_tolerance: -2  # m, negative = #vs
   tracking_metric: IoU  # IoU, overlap
-  match_acceptance_threshold: 0.1 
+  match_acceptance_threshold: 0.2 
   min_allocation_size: 500 # px, for submap allocation.
   use_class_data_for_matching: true
 
@@ -97,7 +97,7 @@ map_management:
   detect_disappear_by_sensor_data: true
   
   activity_manager:
-    required_reobservations: 1 # Consecutive observations to keep new submaps.
+    required_reobservations: 2 # Consecutive observations to keep new submaps.
     deactivate_after_missed_detections: 5  # Deactivate submaps when not observed for x frames.
   
   tsdf_registrator:
@@ -105,7 +105,7 @@ map_management:
     min_voxel_weight: 0.000001
     error_threshold: -1 # m, negative = #vs
     match_rejection_points: 20  
-    match_rejection_percentage: 0.1
+    match_rejection_percentage: 0.2
     match_acceptance_points: 20
     match_acceptance_percentage: 0.4
     normalize_by_voxel_weight: true
@@ -131,7 +131,7 @@ visualization:
     verbosity: 1
     color_mode: instances # submaps, instances, color, normals, classes, change, classification
     visualization_mode: persistent  # all, active, active_only, inactive, persistent
-    visualize_other_mode: true
+    visualize_other_mode: false
     submap_color_discretization: 20
     visualize_mesh: true
     visualize_tsdf_blocks: true

@@ -21,6 +21,7 @@ struct DetectronLabel {
   int id = 0;
   bool is_thing = true;
   int category_id = 0;
+  std::string category_name = "Unknown";
   int instance_id = 0;
   float score = 0.f;
 };

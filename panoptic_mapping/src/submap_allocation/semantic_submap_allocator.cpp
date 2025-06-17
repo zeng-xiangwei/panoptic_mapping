@@ -70,7 +70,7 @@ Submap* SemanticSubmapAllocator::allocateSubmap(SubmapCollection* submaps,
 
   // Create the submap.
   Submap* new_submap = submaps->createSubmap(config);
-  new_submap->setClassID(label.class_id);
+  new_submap->setClassName(label.name);
   new_submap->setLabel(label.label);
   new_submap->setName(label.name);
   return new_submap;

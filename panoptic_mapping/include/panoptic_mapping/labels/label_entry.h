@@ -40,7 +40,6 @@ struct LabelEntry {
     return ss.str();
   }
 
-  // Optional fields.
   // Human readable or interpretable class name.
   std::string name = "UninitializedName";
 

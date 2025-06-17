@@ -11,6 +11,7 @@ DetectronLabel detectronLabelFromMsg(
   result.instance_id = msg.instance_id;
   result.is_thing = msg.is_thing;
   result.category_id = msg.category_id;
+  result.category_name = msg.category_name;
   result.score = msg.score;
   return result;
 }

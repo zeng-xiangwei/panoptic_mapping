@@ -5,6 +5,7 @@
 #include <utility>
 
 #include "panoptic_mapping/common/index_getter.h"
+#include "panoptic_mapping/map/class_name_manager.h"
 
 namespace panoptic_mapping {
 
@@ -67,14 +68,13 @@ Submap* DetectronIDTracker::allocateSubmap(int input_id,
   } else {
     label.label = PanopticLabel::kBackground;
   }
+  label.name = it->second.category_name;
 
   // Allocate new submap.
   Submap* new_submap =
       submap_allocator_->allocateSubmap(submaps, input, input_id, label);
-  new_submap->setClassID(class_id);
-  if (globals_->labelHandler()->segmentationIdExists(class_id)) {
-    new_submap->setName(globals_->labelHandler()->getName(class_id));
-  }
+  new_submap->setClassName(label.name);
+  new_submap->setName(label.name);
   return new_submap;
 }
 
@@ -88,7 +88,10 @@ bool DetectronIDTracker::classesMatch(int input_id, int submap_class_id) {
     // No known input label.
     return false;
   }
-  return it->second.category_id == submap_class_id;
+
+  int input_class_id = ClassNameManager::getGlobalInstance()->getClassID(
+      it->second.category_name);
+  return input_class_id == submap_class_id;
 }
 
 }  // namespace panoptic_mapping

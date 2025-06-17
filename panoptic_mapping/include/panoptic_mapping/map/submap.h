@@ -82,6 +82,7 @@ class Submap {
   int getID() const { return id_; }
   int getInstanceID() const { return instance_id_; }
   int getClassID() const { return class_id_; }
+  const std::string& getClassName() const { return class_name_; }
   PanopticLabel getLabel() const { return label_; }
   const std::string& getName() const { return name_; }
   const std::string& getFrameName() const { return frame_name_; }
@@ -116,13 +117,19 @@ class Submap {
   // Setters.
   void setT_M_S(const Transformation& T_M_S);
   void setInstanceID(int id) { instance_id_ = id; }
-  void setClassID(int id) { class_id_ = id; }
   void setLabel(PanopticLabel label) { label_ = label; }
   void setName(const std::string& name) { name_ = name; }
   void setFrameName(const std::string& name) { frame_name_ = name; }
   void setChangeState(ChangeState state) { change_state_ = state; }
   void setIsActive(bool is_active) { is_active_ = is_active; }
   void setWasTracked(bool was_tracked) { was_tracked_ = was_tracked; }
+  
+  /**
+   * @brief Set the Class Name, auto generate unique class id
+   * 
+   * @param class_name 
+   */
+  void setClassName(const std::string& class_name);
 
   // Processing.
   /**
@@ -243,6 +250,7 @@ class Submap {
   const SubmapID id_;       // UUID
   InstanceID instance_id_;  // Per default sets up a new unique ID.
   int class_id_ = -1;
+  std::string class_name_;
   PanopticLabel label_ = PanopticLabel::kUnknown;
   std::string name_ = "Unknown";
 
