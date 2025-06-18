@@ -20,6 +20,8 @@ cs_add_library(${PROJECT_NAME}
         src/conversions/conversions.cpp
         )
 
+target_link_libraries(${PROJECT_NAME} yaml-cpp)
+
 ###############
 # Executables #
 ###############

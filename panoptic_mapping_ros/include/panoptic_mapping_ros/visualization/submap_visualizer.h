@@ -106,6 +106,9 @@ class SubmapVisualizer {
   virtual void setGlobalFrameName(const std::string& frame_name) {
     global_frame_name_ = frame_name;
   }
+  virtual void setRosNamespace(const std::string& ns) {
+    ros_namespace_ = ns;
+  }
 
  protected:
   static const Color kUnknownColor_;
@@ -139,6 +142,7 @@ class SubmapVisualizer {
   VisualizationMode visualization_mode_;
   ColorMode color_mode_;
   std::string global_frame_name_ = "mission";
+  std::string ros_namespace_ = "/panoptic_mapper/visualization/submaps";
 
   // Members.
   std::shared_ptr<Globals> globals_;

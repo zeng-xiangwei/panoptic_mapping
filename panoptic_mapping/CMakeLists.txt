@@ -74,7 +74,7 @@ cs_add_library(${PROJECT_NAME}
         src/tools/serialization.cpp
         src/tools/coloring.cpp
         )
-target_link_libraries(${PROJECT_NAME} ${PROJECT_NAME}_proto stdc++fs)
+target_link_libraries(${PROJECT_NAME} ${PROJECT_NAME}_proto stdc++fs yaml-cpp)
 
 ##########
 # Tests #

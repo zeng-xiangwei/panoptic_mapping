@@ -22,6 +22,8 @@
   <depend>protobuf_catkin</depend>
   <depend>opencv3_catkin</depend>
 
+  <depend>yaml-cpp</depend>
+  
   <export>
   </export>
 </package>

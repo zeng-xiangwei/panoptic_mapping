@@ -58,7 +58,7 @@ SubmapVisualizer::SubmapVisualizer(const Config& config,
   id_color_map_.setItemsPerRevolution(config_.submap_color_discretization);
 
   // Setup publishers.
-  nh_ = ros::NodeHandle(config_.ros_namespace);
+  nh_ = ros::NodeHandle(ros_namespace_);
   if (config_.visualize_free_space) {
     freespace_pub_ =
         nh_.advertise<pcl::PointCloud<pcl::PointXYZI>>("free_space_tsdf", 100);

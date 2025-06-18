@@ -15,19 +15,20 @@ Color hsvToRgb(const float h, const float s, const float v) {
   const uint8_t p = static_cast<uint8_t>(v * (1.f - s) * 255);
   const uint8_t q = static_cast<uint8_t>(v * (1.f - f * s) * 255);
   const uint8_t t = static_cast<uint8_t>(v * (1.f - (1.f - f) * s) * 255);
+  const uint8_t v_i = static_cast<uint8_t>(v * 255);
 
   if (h_i == 0) {
-    return {v, t, p};
+    return {v_i, t, p};
   } else if (h_i == 1) {
-    return {q, v, p};
+    return {q, v_i, p};
   } else if (h_i == 2) {
-    return {p, v, t};
+    return {p, v_i, t};
   } else if (h_i == 3) {
-    return {p, q, v};
+    return {p, q, v_i};
   } else if (h_i == 4) {
-    return {t, p, v};
+    return {t, p, v_i};
   } else if (h_i == 5) {
-    return {v, p, q};
+    return {v_i, p, q};
   } else {
     return {0, 0, 0};
   }

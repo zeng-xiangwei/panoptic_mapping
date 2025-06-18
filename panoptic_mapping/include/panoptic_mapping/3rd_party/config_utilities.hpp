@@ -73,6 +73,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <glog/logging.h>
 #include <xmlrpcpp/XmlRpcValue.h>
+#include <yaml-cpp/yaml.h>
 
 namespace config_utilities {
 
@@ -430,7 +431,7 @@ struct VariableConfigInternal : public VariableConfigVerificator {
   std::string type_ = "Not Setup";
   std::unique_ptr<ConfigInternal> config_ = nullptr;
 
-  virtual void createConfig(const ParamMap& params, bool optional){};
+  virtual void createConfig(const ParamMap& params, bool optional) {};
 };
 }  // namespace internal
 
@@ -1011,8 +1012,8 @@ struct ConfigInternal : public ConfigInternalVerificator {
       return;
     }
     if (!meta_data_->use_printing_to_get_values) {
-    meta_data_->messages->emplace_back(
-        std::string(meta_data_->indent, ' ').append(text));
+      meta_data_->messages->emplace_back(
+          std::string(meta_data_->indent, ' ').append(text));
     }
   }
 
@@ -2173,3 +2174,217 @@ class FactoryRos : protected Factory {
 }  // namespace config_utilities
 #endif  // CONFIG_UTILITIES_ROS_HPP_
 #endif  // CONFIG_UTILITIES_ROS_ENABLED
+
+#ifndef CONFIG_UTILITIES_YAML_HPP_
+#define CONFIG_UTILITIES_YAML_HPP_
+/**
+ * ==================== YAML Tools ====================
+ */
+namespace config_utilities {
+namespace internal {
+inline XmlRpc::XmlRpcValue yamlToXml(const YAML::Node& node) {
+  XmlRpc::XmlRpcValue xml;
+
+  if (node.IsNull()) {
+    return xml;
+  } else if (node.IsSequence()) {
+    std::vector<YAML::Node> contents = node.as<std::vector<YAML::Node>>();
+    xml.setSize(contents.size());
+    for (unsigned int i = 0; i < contents.size(); i++) {
+      xml[i] = yamlToXml(contents[i]);
+    }
+  } else if (node.IsScalar()) {
+    const std::string& scalar = node.Scalar();
+
+    // handle bool type
+    try {
+      xml = node.as<bool>();
+      return xml;
+    } catch (const YAML::Exception& e) {
+    }
+
+    // handle int
+    try {
+      xml = node.as<int>();
+      return xml;
+    } catch (const YAML::Exception& e) {
+    }
+
+    // handle double
+    try {
+      xml = node.as<double>();
+      return xml;
+    } catch (const YAML::Exception& e) {
+    }
+
+    // default as string
+    xml = scalar;
+  } else if (node.IsMap()) {
+    YAML::Node::const_iterator iter;
+    for (iter = node.begin(); iter != node.end(); iter++) {
+      std::string name = iter->first.as<std::string>();
+      xml[name] = yamlToXml(iter->second);
+    }
+  } else {
+    LOG(ERROR) << "Invalid YAML node type.";
+  }
+
+  return xml;
+}
+
+inline void convertYamlNodeToParamMap(const YAML::Node& node,
+                                      const std::string& path,
+                                      ParamMap& params) {
+  if (node.IsMap()) {
+    for (const auto& kv : node) {
+      std::string key = kv.first.as<std::string>();
+      std::string new_path = path.empty() ? "/" + key : path + "/" + key;
+      convertYamlNodeToParamMap(kv.second, new_path, params);
+    }
+  } else {
+    params[path] = yamlToXml(node);
+  }
+}
+
+inline std::pair<YAML::Node, bool> findNode(const YAML::Node& cur_node,
+                                            const std::string& path) {
+  if (path.empty() || path == "/") {
+    return {cur_node, true};
+  }
+
+  std::string remaining = (path[0] == '/') ? path.substr(1) : path;
+  size_t pos = remaining.find('/');
+  std::string first_token =
+      (pos == std::string::npos) ? remaining : remaining.substr(0, pos);
+
+  bool has_key = false;
+  if (cur_node && cur_node.IsMap()) {
+    for (const auto& kv : cur_node) {
+      if (kv.first && kv.first.as<std::string>() == first_token) {
+        has_key = true;
+        break;
+      }
+    }
+  }
+  if (!has_key) {
+    return {cur_node, false};
+  }
+
+  if (pos != std::string::npos) {
+    std::string next_remaining = remaining.substr(pos + 1);
+    return findNode(cur_node[first_token], next_remaining);
+  } else {
+    return {cur_node[first_token], true};
+  }
+}
+
+inline ParamMap getParamMapFromYaml(const YAML::Node& root,
+                                    const std::string& filter_path = "") {
+  ParamMap params;
+  auto found_node = findNode(root, filter_path);
+  bool found = found_node.second;
+  YAML::Node cur_node = found_node.first;
+
+  if (found && cur_node.IsDefined() && cur_node.IsMap()) {
+    convertYamlNodeToParamMap(cur_node, filter_path, params);
+  } else {
+    LOG(WARNING) << "Specified YAML path does not exist: " << filter_path;
+  }
+
+  params["_name_space"] = filter_path;
+  params["_name_space_private"] = filter_path;
+  return params;
+}
+
+}  // namespace internal
+
+/**
+ * @brief Create a config from a given yaml node and key path
+ *
+ * @tparam ConfigT The config to create. ConfigT needs to inherit from
+ * config_utilities::Config<ConfigT>.
+ * @param root The root node of the yaml file
+ * @param filter_path The key path to filter the yaml node.
+ * @return ConfigT The created config.
+ */
+template <typename ConfigT>
+ConfigT getConfigFromYaml(const YAML::Node& root,
+                          const std::string& filter_path = "") {
+  ConfigT config;
+  if (!internal::isConfig(&config)) {
+    LOG(ERROR) << "Cannot 'getConfigFromYaml()' for <ConfigT>='"
+               << typeid(ConfigT).name()
+               << "' that does not inherit from "
+                  "'config_utilities::Config<ConfigT>'.";
+    return config;
+  }
+  auto config_ptr = dynamic_cast<Config<ConfigT>*>(&config);
+  if (!config_ptr) {
+    LOG(ERROR) << "Cannot 'getConfigFromYaml()' for <ConfigT>='"
+               << typeid(ConfigT).name()
+               << "' that does not inherit from "
+                  "'config_utilities::Config<ConfigT>'.";
+    return config;
+  }
+
+  // Setup.
+  internal::ParamMap params = internal::getParamMapFromYaml(root, filter_path);
+  internal::setupConfigFromParamMap(params, config_ptr);
+  return config;
+}
+
+template <typename T>
+void addKeyValueToYaml(YAML::Node& root, const std::string& path,
+                       const std::string& key, const T& value) {
+  auto found_node = internal::findNode(root, path);
+  bool found = found_node.second;
+  YAML::Node cur_node = found_node.first;
+
+  if (found) {
+    cur_node[key] = value;
+  } else {
+    LOG(ERROR) << "Target node is not a map or invalid.";
+  }
+}
+
+inline bool hasKeyInYamlPath(const YAML::Node& root, const std::string& path,
+                             const std::string& key_to_check) {
+  auto found_node = internal::findNode(root, path);
+  bool found = found_node.second;
+  YAML::Node cur_node = found_node.first;
+
+  if (found && cur_node.IsMap()) {
+    for (const auto& kv : cur_node) {
+      if (kv.first && kv.first.as<std::string>() == key_to_check) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
+ * ==================== YAML Factory ====================
+ */
+
+class FactoryYaml : protected Factory {
+ public:
+  /**
+   * @brief Query the Yaml-factory to create a dervied type with its config
+   * from a yaml node.
+   */
+  template <class BaseT, typename... Args>
+  static std::unique_ptr<BaseT> create(const YAML::Node& root,
+                                       const std::string& filter_path = "",
+                                       Args... args) {
+    // Get the config and create the target.
+    internal::ParamMap params =
+        internal::getParamMapFromYaml(root, filter_path);
+    return Factory::create<BaseT>(params, args...);
+  }
+};
+
+}  // namespace config_utilities
+
+#endif  // CONFIG_UTILITIES_YAML_HPP_

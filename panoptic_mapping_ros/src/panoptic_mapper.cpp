@@ -62,9 +62,10 @@ PanopticMapper::PanopticMapper(const ros::NodeHandle& nh,
                                const ros::NodeHandle& nh_private)
     : nh_(nh),
       nh_private_(nh_private),
-      config_(
-          config_utilities::getConfigFromRos<PanopticMapper::Config>(nh_private)
-              .checkValid()) {
+      root_yaml_(loadYaml()),
+      config_(config_utilities::getConfigFromYaml<PanopticMapper::Config>(
+                  root_yaml_)
+                  .checkValid()) {
   // Setup printing of configs.
   // NOTE(schmluk): These settings are global so multiple panoptic mappers in
   // the same process might interfere.
@@ -75,7 +76,8 @@ PanopticMapper::PanopticMapper(const ros::NodeHandle& nh,
   LOG_IF(INFO, config_.verbosity >= 1) << "\n" << config_.toString();
 
   // Setup all components of the panoptic mapper.
-  setupMembers();
+  // setupMembers();
+  setupMembersFromYaml();
   setupRos();
 }
 
@@ -130,6 +132,8 @@ void PanopticMapper::setupMembers() {
   submap_visualizer_ = config_utilities::FactoryRos::create<SubmapVisualizer>(
       defaultNh("vis_submaps"), globals_);
   submap_visualizer_->setGlobalFrameName(config_.global_frame_name);
+  submap_visualizer_->setRosNamespace(nh_private_.getNamespace() +
+                                      "/visualization/submaps");
 
   // Tracking.
   tracking_visualizer_ = std::make_unique<TrackingVisualizer>(
@@ -168,14 +172,106 @@ void PanopticMapper::setupMembers() {
   input_synchronizer_->requestInputs(requested_inputs);
 }
 
+void PanopticMapper::setupMembersFromYaml() {
+  // Map.
+  submaps_ = std::make_shared<SubmapCollection>();
+
+  // Threadsafe wrapper for the map.
+  thread_safe_submaps_ = std::make_shared<ThreadSafeSubmapCollection>(submaps_);
+
+  // Camera.
+  auto camera = std::make_shared<Camera>(
+      config_utilities::getConfigFromYaml<Camera::Config>(
+          root_yaml_, defaultYamlKeyPath("camera")));
+
+  // Label Handler.
+  std::shared_ptr<LabelHandlerBase> label_handler =
+      config_utilities::FactoryYaml::create<LabelHandlerBase>(
+          root_yaml_, defaultYamlKeyPath("label_handler"));
+
+  // Setup the number of labels.
+  FixedCountVoxel::setNumCounts(label_handler->numberOfLabels());
+
+  // Globals.
+  globals_ = std::make_shared<Globals>(camera, label_handler);
+
+  // Submap Allocation.
+  std::shared_ptr<SubmapAllocatorBase> submap_allocator =
+      config_utilities::FactoryYaml::create<SubmapAllocatorBase>(
+          root_yaml_, defaultYamlKeyPath("submap_allocator"));
+  std::shared_ptr<FreespaceAllocatorBase> freespace_allocator =
+      config_utilities::FactoryYaml::create<FreespaceAllocatorBase>(
+          root_yaml_, defaultYamlKeyPath("freespace_allocator"));
+
+  // ID Tracking.
+  id_tracker_ = config_utilities::FactoryYaml::create<IDTrackerBase>(
+      root_yaml_, defaultYamlKeyPath("id_tracker"), globals_);
+  id_tracker_->setSubmapAllocator(submap_allocator);
+  id_tracker_->setFreespaceAllocator(freespace_allocator);
+
+  // Tsdf Integrator.
+  tsdf_integrator_ = config_utilities::FactoryYaml::create<TsdfIntegratorBase>(
+      root_yaml_, defaultYamlKeyPath("tsdf_integrator"), globals_);
+
+  // Map Manager.
+  map_manager_ = config_utilities::FactoryYaml::create<MapManagerBase>(
+      root_yaml_, defaultYamlKeyPath("map_management"), globals_);
+
+  // Visualization.
+  ros::NodeHandle visualization_nh(nh_private_, "visualization");
+
+  // Submaps.
+  submap_visualizer_ = config_utilities::FactoryYaml::create<SubmapVisualizer>(
+      root_yaml_, defaultYamlKeyPath("vis_submaps"), globals_);
+  submap_visualizer_->setGlobalFrameName(config_.global_frame_name);
+  submap_visualizer_->setRosNamespace(nh_private_.getNamespace() +
+                                      "/visualization/submaps");
+
+  // Tracking.
+  tracking_visualizer_ = std::make_unique<TrackingVisualizer>(
+      config_utilities::getConfigFromYaml<TrackingVisualizer::Config>(
+          root_yaml_, defaultYamlKeyPath("vis_tracking")));
+  tracking_visualizer_->registerIDTracker(id_tracker_.get());
+
+  // Planning.
+  setupCollectionDependentMembers();
+
+  // Data Logging.
+  data_logger_ = config_utilities::FactoryYaml::create<DataWriterBase>(
+      root_yaml_, defaultYamlKeyPath("data_writer"));
+
+  // Setup all requested inputs from all modules.
+  InputData::InputTypes requested_inputs;
+  std::vector<InputDataUser*> input_data_users = {
+      id_tracker_.get(), tsdf_integrator_.get(), submap_allocator.get(),
+      freespace_allocator.get()};
+  for (const InputDataUser* input_data_user : input_data_users) {
+    requested_inputs.insert(input_data_user->getRequiredInputs().begin(),
+                            input_data_user->getRequiredInputs().end());
+  }
+  compute_vertex_map_ =
+      requested_inputs.find(InputData::InputType::kVertexMap) !=
+      requested_inputs.end();
+  compute_validity_image_ =
+      requested_inputs.find(InputData::InputType::kValidityImage) !=
+      requested_inputs.end();
+
+  // Setup the input synchronizer.
+  input_synchronizer_ = std::make_unique<InputSynchronizer>(
+      config_utilities::getConfigFromYaml<InputSynchronizer::Config>(
+          root_yaml_),
+      nh_);
+  input_synchronizer_->requestInputs(requested_inputs);
+}
+
 void PanopticMapper::setupCollectionDependentMembers() {
   // Planning Interface.
   planning_interface_ = std::make_shared<PlanningInterface>(submaps_);
 
   // Planning Visualizer.
   planning_visualizer_ = std::make_unique<PlanningVisualizer>(
-      config_utilities::getConfigFromRos<PlanningVisualizer::Config>(
-          defaultNh("vis_planning")),
+      config_utilities::getConfigFromYaml<PlanningVisualizer::Config>(
+          root_yaml_, defaultYamlKeyPath("vis_planning")),
       planning_interface_);
   planning_visualizer_->setGlobalFrameName(config_.global_frame_name);
 }
@@ -580,6 +676,49 @@ ros::NodeHandle PanopticMapper::defaultNh(const std::string& key) const {
     nh_out.setParam("type", ns_and_type.second);
   }
   return nh_out;
+}
+
+std::string PanopticMapper::defaultYamlKeyPath(const std::string& key) {
+  const std::pair<std::string, std::string>& ns_and_type =
+      default_names_and_types_.at(key);
+  std::string yaml_key = "/" + ns_and_type.first;
+
+  bool has_key = false;
+  for (const auto& kv : root_yaml_) {
+    if (kv.first && kv.first.as<std::string>() == ns_and_type.first) {
+      has_key = true;
+      break;
+    }
+  }
+  if (!has_key) {
+    root_yaml_[ns_and_type.first] = YAML::Node();
+  }
+
+  if (!ns_and_type.second.empty() &&
+      !config_utilities::hasKeyInYamlPath(root_yaml_, yaml_key, "type")) {
+    config_utilities::addKeyValueToYaml(root_yaml_, yaml_key, "type",
+                                        ns_and_type.second);
+  }
+  return yaml_key;
+}
+
+YAML::Node PanopticMapper::loadYaml() {
+  // Yaml file
+  std::string yaml_file_path =
+      nh_private_.param("config_path", std::string(""));
+
+  CHECK_NE(yaml_file_path, "")
+      << "No yaml file path provided. Please provide a path to a yaml file "
+         "containing all parameters.";
+
+  YAML::Node result;
+  try {
+    result = YAML::LoadFile(yaml_file_path);
+  } catch (const YAML::Exception& e) {
+    CHECK(false) << "Error loading yaml file: " << e.what();
+  }
+
+  return result;
 }
 
 }  // namespace panoptic_mapping

@@ -147,6 +147,7 @@ class PanopticMapper {
  private:
   // Setup.
   void setupMembers();
+  void setupMembersFromYaml();
   void setupCollectionDependentMembers();
   void setupRos();
   bool saveIsoSurfacePoints(const std::string& file_path);
@@ -170,6 +171,7 @@ class PanopticMapper {
   ros::Publisher segmented_point_cloud_pub_;
 
   // Members.
+  YAML::Node root_yaml_;
   const Config config_;
 
   // Map.
@@ -206,6 +208,10 @@ class PanopticMapper {
   static const std::map<std::string, std::pair<std::string, std::string>>
       default_names_and_types_;
   ros::NodeHandle defaultNh(const std::string& key) const;
+
+  // Yaml
+  std::string defaultYamlKeyPath(const std::string& key);
+  YAML::Node loadYaml();
 };
 
 }  // namespace panoptic_mapping
