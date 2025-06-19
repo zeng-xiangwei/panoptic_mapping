@@ -33,7 +33,9 @@ class SubmapVisualizer {
     bool visualize_free_space = true;
     bool visualize_bounding_volumes = true;
     bool include_free_space = false;
-    bool visualize_other_mode = true;  // true: other visualization_mode alpha = 0.4; false: alpha = 0
+
+    // true: other visualization_mode alpha = 0.4; false: alpha = 0
+    bool visualize_other_mode = true;
     std::string ros_namespace;
 
     Config() { setConfigName("SubmapVisualizer"); }
@@ -46,8 +48,9 @@ class SubmapVisualizer {
   };
 
   // Constructors.
-  SubmapVisualizer(const Config& config, std::shared_ptr<Globals> globals,
-                   bool print_config = true);
+  SubmapVisualizer(
+      const Config& config, std::shared_ptr<Globals> globals,
+      bool print_config = true);
   virtual ~SubmapVisualizer() = default;
 
   // Visualization modes.
@@ -106,9 +109,6 @@ class SubmapVisualizer {
   virtual void setGlobalFrameName(const std::string& frame_name) {
     global_frame_name_ = frame_name;
   }
-  virtual void setRosNamespace(const std::string& ns) {
-    ros_namespace_ = ns;
-  }
 
  protected:
   static const Color kUnknownColor_;
@@ -142,7 +142,6 @@ class SubmapVisualizer {
   VisualizationMode visualization_mode_;
   ColorMode color_mode_;
   std::string global_frame_name_ = "mission";
-  std::string ros_namespace_ = "/panoptic_mapper/visualization/submaps";
 
   // Members.
   std::shared_ptr<Globals> globals_;

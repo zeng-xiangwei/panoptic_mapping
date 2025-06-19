@@ -18,6 +18,7 @@ from panoptic_mapping_msgs.msg import DetectronLabel, DetectronLabels
 
 
 class FlatDataPlayer(object):
+
     def __init__(self):
         """  Initialize ros node and read params """
         # params
@@ -36,12 +37,19 @@ class FlatDataPlayer(object):
         self.static_transform = rospy.get_param('~static_transform', "1, 0, 0, 0,\
                                                                       0, 1, 0, 0,\
                                                                       0, 0, 1, 0,\
-                                                                      0, 0, 0, 1")
+                                                                      0, 0, 0, 1"
+        )
         self.static_transform = self.static_transform.replace(" ", "")
         self.static_transform = self.static_transform.split(",")
         self.static_transform = [float(x) for x in self.static_transform]
         print("static_transform:{}".format(self.static_transform))
         self.static_transform = np.array(self.static_transform).reshape(4, 4)
+
+        # Patch for label name as only ID
+        self.add_labels_name = rospy.get_param('~add_labels_name', True)
+        self.labels_cvs_path = rospy.get_param(
+            '~labels_cvs_path',
+            '/mnt/data/3d-lidar/semantic/self_collect/realsense_labels.csv')
 
         # ROS
         self.color_pub = rospy.Publisher("~color_image", Image, queue_size=100)
@@ -69,6 +77,18 @@ class FlatDataPlayer(object):
                     continue
                 self.ids.append(str(row[0]))
                 self.times.append(float(row[1]) / 1e9)
+
+        # Because some detected labels file only has category_id, we need to
+        # read the csv file to get the category_name.
+        self.category_id_to_category_name = {}
+        with open(self.labels_cvs_path, 'r') as read_obj:
+            csv_reader = csv.reader(read_obj)
+            for row in csv_reader:
+                if row[0] == "InstanceID":
+                    continue
+                category_id = int(row[1])
+                category_name = row[-2]
+                self.category_id_to_category_name[category_id] = category_name
 
         self.ids = [x for _, x in sorted(zip(self.times, self.ids))]
         self.times = sorted(self.times)
@@ -156,6 +176,8 @@ class FlatDataPlayer(object):
                     label.is_thing = d['isthing']
                     label.category_id = d['category_id']
                     label.score = d['score']
+                    label.category_name = self.category_id_to_category_name[
+                        d['category_id']]
                     label_msg.labels.append(label)
             self.label_pub.publish(label_msg)
 

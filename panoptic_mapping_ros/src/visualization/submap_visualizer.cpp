@@ -58,7 +58,7 @@ SubmapVisualizer::SubmapVisualizer(const Config& config,
   id_color_map_.setItemsPerRevolution(config_.submap_color_discretization);
 
   // Setup publishers.
-  nh_ = ros::NodeHandle(ros_namespace_);
+  nh_ = ros::NodeHandle(config_.ros_namespace);
   if (config_.visualize_free_space) {
     freespace_pub_ =
         nh_.advertise<pcl::PointCloud<pcl::PointXYZI>>("free_space_tsdf", 100);
@@ -108,9 +108,14 @@ void SubmapVisualizer::visualizeAll(SubmapCollection* submaps) {
 
   if (config_.verbosity >= 4) {
     for (Submap& submap : *submaps) {
-      LOG(INFO) << "Submap id: " << submap.getID() << ", name: " << submap.getName() << ", instance id: " << submap.getInstanceID()
-        << ", label: " << panopticLabelToString(submap.getLabel()) << ", isactive: " << submap.isActive() << ", was tracked: " << submap.wasTracked() 
-        << ", change  state: " << changeStateToString(submap.getChangeState());
+      LOG(INFO) << "Submap id: " << submap.getID()
+                << ", name: " << submap.getName()
+                << ", instance id: " << submap.getInstanceID()
+                << ", label: " << panopticLabelToString(submap.getLabel())
+                << ", isactive: " << submap.isActive()
+                << ", was tracked: " << submap.wasTracked()
+                << ", change  state: "
+                << changeStateToString(submap.getChangeState());
     }
   }
 }
@@ -541,8 +546,8 @@ void SubmapVisualizer::setSubmapVisColor(const Submap& submap,
         //       globals_->labelHandler()->getColor(submap.getInstanceID());
         // } else {
         //   info->color = kUnknownColor_;
-          // info->color = generateColor(submap.getInstanceID());
-          info->color = id_color_map_.colorLookup(submap.getID());
+        // info->color = generateColor(submap.getInstanceID());
+        info->color = id_color_map_.colorLookup(submap.getID());
         // }
         break;
       }

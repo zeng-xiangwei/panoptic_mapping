@@ -9,6 +9,8 @@
   <arg name="global_frame_name" default="world"/>
   <arg name="sensor_frame_name" default="depth_camera"/>
   <arg name="static_transform" default="0,0,1,0,-1,0,0,0,0,-1,0,0,0,0,0,1"/>
+  <arg name="add_labels_name" default="true"/>
+  <arg name="labels_cvs_path" default="/mnt/data/3d-lidar/semantic/self_collect/realsense_labels.csv"/>
     
    
 <!-- ============ Play Data ============ -->
@@ -21,6 +23,8 @@
     <param name="wait" value="$(arg wait)" /> 
     <param name="max_frames" value="$(arg max_frames)" /> 
     <param name='static_transform' value="$(arg static_transform)" />
+    <param name='add_labels_name' value="$(arg add_labels_name)" />
+    <param name='labels_cvs_path' value="$(arg labels_cvs_path)" />
             
     <remap from="~color_image" to="$(arg namespace)/color_image" />  
     <remap from="~depth_image" to="$(arg namespace)/depth_image" />  

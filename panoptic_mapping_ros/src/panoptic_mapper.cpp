@@ -132,8 +132,6 @@ void PanopticMapper::setupMembers() {
   submap_visualizer_ = config_utilities::FactoryRos::create<SubmapVisualizer>(
       defaultNh("vis_submaps"), globals_);
   submap_visualizer_->setGlobalFrameName(config_.global_frame_name);
-  submap_visualizer_->setRosNamespace(nh_private_.getNamespace() +
-                                      "/visualization/submaps");
 
   // Tracking.
   tracking_visualizer_ = std::make_unique<TrackingVisualizer>(
@@ -224,8 +222,6 @@ void PanopticMapper::setupMembersFromYaml() {
   submap_visualizer_ = config_utilities::FactoryYaml::create<SubmapVisualizer>(
       root_yaml_, defaultYamlKeyPath("vis_submaps"), globals_);
   submap_visualizer_->setGlobalFrameName(config_.global_frame_name);
-  submap_visualizer_->setRosNamespace(nh_private_.getNamespace() +
-                                      "/visualization/submaps");
 
   // Tracking.
   tracking_visualizer_ = std::make_unique<TrackingVisualizer>(

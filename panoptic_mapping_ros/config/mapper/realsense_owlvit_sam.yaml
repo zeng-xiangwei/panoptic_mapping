@@ -11,8 +11,8 @@ max_input_queue_length: 1000
 ros_spinning_threads: 8
 
 labels:
-  type: csv
-  file_name: /mnt/data/3d-lidar/semantic/self_collect/realsense_labels.csv
+  type: mini_csv
+  file_name: /mnt/data/3d-lidar/semantic/self_collect/realsense_labels_mini_2.csv
 
 camera:
   verbosity: 1
