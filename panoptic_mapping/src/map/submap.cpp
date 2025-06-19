@@ -4,12 +4,13 @@
 #include <sstream>
 #include <vector>
 
-#include <cblox/QuatTransformation.pb.h>
-#include <cblox/utils/quat_transformation_protobuf_utils.h>
+#include <voxblox/interpolator/interpolator.h>
 #include <voxblox/io/layer_io.h>
 
+#include "panoptic_mapping/QuatTransformation.pb.h"
 #include "panoptic_mapping/map/class_name_manager.h"
 #include "panoptic_mapping/map_management/layer_manipulator.h"
+#include "panoptic_mapping/tools/quat_transformation_protobuf_utils.h"
 #include "panoptic_mapping/tools/serialization.h"
 
 namespace panoptic_mapping {
@@ -141,8 +142,8 @@ void Submap::getProto(SubmapProto* proto) const {
   }
 
   // Store transformation data.
-  auto transformation_proto_ptr = new cblox::QuatTransformationProto();
-  cblox::conversions::transformKindrToProto(T_M_S_, transformation_proto_ptr);
+  auto transformation_proto_ptr = new QuatTransformationProto();
+  conversions::transformKindrToProto(T_M_S_, transformation_proto_ptr);
   proto->set_allocated_transform(transformation_proto_ptr);
   proto->set_frame_name(frame_name_);
 }
@@ -250,9 +251,8 @@ std::unique_ptr<Submap> Submap::loadFromStream(
 
   // Load the transformation.
   Transformation T_M_S;
-  cblox::QuatTransformationProto transformation_proto =
-      submap_proto.transform();
-  cblox::conversions::transformProtoToKindr(transformation_proto, &T_M_S);
+  QuatTransformationProto transformation_proto = submap_proto.transform();
+  conversions::transformProtoToKindr(transformation_proto, &T_M_S);
   submap->setT_M_S(T_M_S);
   submap->setFrameName(submap_proto.frame_name());
 

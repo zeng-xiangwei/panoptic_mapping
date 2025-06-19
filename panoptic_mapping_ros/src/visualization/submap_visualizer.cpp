@@ -97,6 +97,8 @@ void SubmapVisualizer::clearMesh() {
 }
 
 void SubmapVisualizer::visualizeAll(SubmapCollection* submaps) {
+  // Publish tf transforms in begin and end, ensure that it can be used in rviz
+  publishTfTransforms(*submaps);
   updateVisInfos(*submaps);
   vis_infos_are_updated_ = true;  // Prevent repeated updates.
   visualizeMeshes(submaps);
@@ -608,6 +610,7 @@ void SubmapVisualizer::setSubmapVisColor(const Submap& submap,
     switch (visualization_mode_) {
       case VisualizationMode::kAll: {
         info->alpha = 1.f;
+        info->visible = true;
         break;
       }
       case VisualizationMode::kActive: {

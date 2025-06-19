@@ -13,7 +13,6 @@
   <buildtool_depend>catkin_simple</buildtool_depend>
 
   <depend>voxblox</depend>
-  <depend>cblox</depend>
 
   <depend>xmlrpcpp</depend>
   <depend>eigen_catkin</depend>

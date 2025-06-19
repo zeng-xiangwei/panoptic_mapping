@@ -14,6 +14,7 @@ catkin_package()
 ############
 
 set(PROTO_DEFNS
+        proto/panoptic_mapping/QuatTransformation.proto
         proto/panoptic_mapping/Submap.proto
         proto/panoptic_mapping/SubmapCollection.proto)
 set(BASE_PATH "proto")
@@ -73,6 +74,7 @@ cs_add_library(${PROJECT_NAME}
         src/tools/evaluation_data_writer.cpp
         src/tools/serialization.cpp
         src/tools/coloring.cpp
+        src/tools/quat_transformation_protobuf_utils.cpp
         )
 target_link_libraries(${PROJECT_NAME} ${PROJECT_NAME}_proto stdc++fs yaml-cpp)
 

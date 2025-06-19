@@ -25,7 +25,7 @@ Panels:
   - Class: rviz/Time
     Name: Time
     SyncMode: 0
-    SyncSource: Input
+    SyncSource: ""
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -73,34 +73,12 @@ Visualization Manager:
         - Class: voxblox_rviz_plugin/VoxbloxMultiMesh
           Enabled: true
           Name: Mesh
-          Queue Size: 10
+          Queue Size: 1000
           Toggle Visibility All: false
           Topic: /visualization/submaps/mesh
           Unreliable: false
           Value: true
-          Visible:
-            100_chair: true
-            121_chair: true
-            135_chair: true
-            13_chair: true
-            140_chair: true
-            146_chair: true
-            179_chair: true
-            18_chair: true
-            213_chair: true
-            217_laptop: true
-            218_table: true
-            231_wall: true
-            234_refrigerator: true
-            253_chair: true
-            29_chair: true
-            44_chair: true
-            4_table: true
-            61_chair: true
-            63_chair: true
-            66_chair: true
-            67_chair: true
-            Value: true
+          Visible: true
         - Alpha: 0.30000001192092896
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:

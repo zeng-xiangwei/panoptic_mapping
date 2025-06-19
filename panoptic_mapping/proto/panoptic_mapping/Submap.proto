@@ -2,7 +2,7 @@ syntax = "proto2";
 
 package panoptic_mapping;
 
-import public "cblox/QuatTransformation.proto";
+import public "panoptic_mapping/QuatTransformation.proto";
 
 message SubmapProto {
   // Submap data.
@@ -28,6 +28,6 @@ message SubmapProto {
   optional int32 score_voxel_type = 15;
 
   // Submap Transformation.
-  optional cblox.QuatTransformationProto transform = 5;
+  optional QuatTransformationProto transform = 5;
   optional string frame_name = 10;
 }
