@@ -6,6 +6,11 @@ find_package(catkin_simple REQUIRED)
 catkin_simple(ALL_DEPS_REQUIRED)
 catkin_package()
 
+find_package(OpenCV REQUIRED)
+include_directories(
+    ${OpenCV_INCLUDE_DIRS}
+)
+
 #############
 # Libraries #
 #############
@@ -20,7 +25,7 @@ cs_add_library(${PROJECT_NAME}
         src/conversions/conversions.cpp
         )
 
-target_link_libraries(${PROJECT_NAME} yaml-cpp)
+target_link_libraries(${PROJECT_NAME} yaml-cpp ${OpenCV_LIBRARY_DIRS})
 
 ###############
 # Executables #

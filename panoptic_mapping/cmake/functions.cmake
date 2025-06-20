@@ -1,3 +1,19 @@
+function(_find_protobuf_compiler)
+  set(PROTOBUF_COMPILER_CANDIDATES
+      "${PREFERRED_PROTOC_EXECUTABLE}"      # Set by preferences and exported.
+      "${PROTOBUF_PROTOC_EXECUTABLE}"       # This will be "/usr/bin/protoc" on Ubuntu if find_package succeeded.
+  )
+
+  foreach(candidate ${PROTOBUF_COMPILER_CANDIDATES})
+    if(EXISTS ${candidate})
+      message(STATUS "Found protobuf compiler: ${candidate}")
+      set(PROTOBUF_COMPILER ${candidate} PARENT_SCOPE)
+      return()
+    endif()
+  endforeach()
+  message(FATAL_ERROR "Couldn't find protobuf compiler. Please ensure that protobuf_catkin is properly installed. Checked the following paths: ${PROTOBUF_COMPILER_CANDIDATES}")
+endfunction()
+
 function(PROTOBUF_CATKIN_GENERATE_CPP2 BASE_PATH SRCS HDRS)
   if(NOT ARGN)
     message(SEND_ERROR "Error: PROTOBUF_CATKIN_GENERATE_CPP2() called without any proto files")

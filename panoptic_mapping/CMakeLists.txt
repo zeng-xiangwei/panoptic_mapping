@@ -15,6 +15,7 @@ find_package(Protobuf REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(glog REQUIRED)
+find_package(Protobuf 3.0.0 REQUIRED)
 
 catkin_package()
 
