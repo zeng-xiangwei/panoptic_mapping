@@ -15,7 +15,6 @@ find_package(Protobuf REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(glog REQUIRED)
-find_package(Protobuf 3.0.0 REQUIRED)
 
 catkin_package()
 
@@ -134,7 +133,6 @@ install(TARGETS ${${PROJECT_NAME}_TARGETS}
 
 # Headers
 set(${PROJECT_NAME}_LOCAL_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
-message(STATUS "Installing headers from ${${PROJECT_NAME}_LOCAL_INCLUDE_DIR} to ${CATKIN_GLOBAL_INCLUDE_DESTINATION}.")
 install(DIRECTORY ${PROJECT_NAME}_LOCAL_INCLUDE_DIR
     DESTINATION ${CATKIN_GLOBAL_INCLUDE_DESTINATION}
     FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"

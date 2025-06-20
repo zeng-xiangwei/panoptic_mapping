@@ -1,14 +1,35 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.0.2)
 project(panoptic_mapping_msgs)
 
 set(CMAKE_CXX_STANDARD 17)
-find_package(catkin_simple REQUIRED)
-catkin_simple(ALL_DEPS_REQUIRED)
-catkin_package()
 
-###########
-# Export #
-###########
+set(PACKAGE_DEPENDENCIES
+  std_msgs
+)
 
-cs_install()
-cs_export()
+find_package(catkin REQUIRED COMPONENTS message_generation ${PACKAGE_DEPENDENCIES})
+
+add_message_files(
+  DIRECTORY msg
+  FILES
+    DetectronLabel.msg
+    DetectronLabels.msg
+)
+
+add_service_files(
+  DIRECTORY srv
+  FILES
+    SaveLoadMap.srv
+    SetVisualizationMode.srv
+)
+
+generate_messages(
+  DEPENDENCIES
+    ${PACKAGE_DEPENDENCIES}
+)
+
+catkin_package(
+  CATKIN_DEPENDS
+    ${PACKAGE_DEPENDENCIES}
+    message_runtime
+)
