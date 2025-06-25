@@ -1,11 +1,11 @@
 #include <glog/logging.h>
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
 
 #include "panoptic_mapping_ros/panoptic_mapper.h"
 
 int main(int argc, char** argv) {
   // Start Ros.
-  ros::init(argc, argv, "panoptic_mapper", ros::init_options::NoSigintHandler);
+  rclcpp::init(argc, argv);
 
   // Always add these arguments for proper logging.
   config_utilities::RequiredArguments ra(
@@ -17,13 +17,14 @@ int main(int argc, char** argv) {
   google::ParseCommandLineFlags(&argc, &argv, false);
 
   // Setup node.
-  ros::NodeHandle nh("");
-  ros::NodeHandle nh_private("~");
-  panoptic_mapping::PanopticMapper mapper(nh, nh_private);
+  auto node = rclcpp::Node::make_shared("panoptic_mapper");
+  panoptic_mapping::PanopticMapper mapper(node);
 
   // Setup spinning.
-  ros::AsyncSpinner spinner(mapper.getConfig().ros_spinner_threads);
-  spinner.start();
-  ros::waitForShutdown();
+  rclcpp::executors::MultiThreadedExecutor executor(
+      rclcpp::ExecutorOptions(), mapper.getConfig().ros_spinner_threads);
+  executor.add_node(node);
+  executor.spin();
+  rclcpp::shutdown();
   return 0;
 }

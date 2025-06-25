@@ -7,7 +7,8 @@
 #include <panoptic_mapping/3rd_party/config_utilities.hpp>
 #include <panoptic_mapping/common/common.h>
 #include <panoptic_mapping/tracking/id_tracker_base.h>
-#include <ros/node_handle.h>
+#include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/image.hpp>
 
 namespace panoptic_mapping {
 
@@ -27,7 +28,8 @@ class TrackingVisualizer {
   };
 
   // Constructors.
-  explicit TrackingVisualizer(const Config& config);
+  explicit TrackingVisualizer(const Config& config,
+                              rclcpp::Node::SharedPtr node);
   virtual ~TrackingVisualizer() = default;
 
   // Setup.
@@ -40,8 +42,10 @@ class TrackingVisualizer {
   const Config config_;
 
   // Publishers.
-  ros::NodeHandle nh_;
-  std::unordered_map<std::string, ros::Publisher> publishers_;
+  rclcpp::Node::SharedPtr node_;
+  std::unordered_map<std::string,
+                     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr>
+      publishers_;
 };
 
 }  // namespace panoptic_mapping

@@ -72,7 +72,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <utility>
 
 #include <glog/logging.h>
-#include <xmlrpcpp/XmlRpcValue.h>
 #include <yaml-cpp/yaml.h>
 
 namespace config_utilities {
@@ -245,145 +244,21 @@ inline bool isVariableConfig(const T* candidate) {
 // namespaces, the params "_name_space" and "_name_space_private" are reserved
 // for the target namespace to look up data. Namespacing adheres to ROS
 // standards with "/" for global and "~" for private namespaces.
-using ParamMap = std::unordered_map<std::string, XmlRpc::XmlRpcValue>;
-
-// XML casts. Default is not castable.
-template <typename T>
-inline bool xmlCast(XmlRpc::XmlRpcValue xml, T*) {
-  return false;
-}
-
-// NOTE(schmluk): the copy of the xml values is required for compatibility with
-// ROS Kinetic, since the cast to value type is a non-const operation.
-inline bool xmlCast(XmlRpc::XmlRpcValue xml, bool* param = nullptr) {
-  switch (xml.getType()) {
-    case XmlRpc::XmlRpcValue::Type::TypeBoolean: {
-      if (param) {
-        *param = static_cast<bool>(xml);
-      }
-      return true;
-    }
-    case XmlRpc::XmlRpcValue::Type::TypeInt: {
-      if (param) {
-        *param = static_cast<bool>(static_cast<int>(xml));
-      }
-      return true;
-    }
-    case XmlRpc::XmlRpcValue::Type::TypeDouble: {
-      if (param) {
-        *param = static_cast<bool>(static_cast<double>(xml));
-      }
-      return true;
-    }
-    default:
-      return false;
-  }
-}
-
-inline bool xmlCast(XmlRpc::XmlRpcValue xml, int* param = nullptr) {
-  switch (xml.getType()) {
-    case XmlRpc::XmlRpcValue::Type::TypeBoolean: {
-      if (param) {
-        *param = static_cast<int>(static_cast<bool>(xml));
-      }
-      return true;
-    }
-    case XmlRpc::XmlRpcValue::Type::TypeInt: {
-      if (param) {
-        *param = static_cast<int>(xml);
-      }
-      return true;
-    }
-    case XmlRpc::XmlRpcValue::Type::TypeDouble: {
-      if (param) {
-        *param = static_cast<int>(static_cast<double>(xml));
-      }
-      return true;
-    }
-    default:
-      return false;
-  }
-}
-
-inline bool xmlCast(XmlRpc::XmlRpcValue xml, float* param = nullptr) {
-  switch (xml.getType()) {
-    case XmlRpc::XmlRpcValue::Type::TypeBoolean: {
-      if (param) {
-        *param = static_cast<float>(static_cast<bool>(xml));
-      }
-      return true;
-    }
-    case XmlRpc::XmlRpcValue::Type::TypeInt: {
-      if (param) {
-        *param = static_cast<float>(static_cast<int>(xml));
-      }
-      return true;
-    }
-    case XmlRpc::XmlRpcValue::Type::TypeDouble: {
-      if (param) {
-        *param = static_cast<float>(static_cast<double>(xml));
-      }
-      return true;
-    }
-    default:
-      return false;
-  }
-}
-
-inline bool xmlCast(XmlRpc::XmlRpcValue xml, double* param = nullptr) {
-  switch (xml.getType()) {
-    case XmlRpc::XmlRpcValue::Type::TypeBoolean: {
-      if (param) {
-        *param = static_cast<double>(static_cast<bool>(xml));
-      }
-      return true;
-    }
-    case XmlRpc::XmlRpcValue::Type::TypeInt: {
-      if (param) {
-        *param = static_cast<double>(static_cast<int>(xml));
-      }
-      return true;
-    }
-    case XmlRpc::XmlRpcValue::Type::TypeDouble: {
-      if (param) {
-        *param = static_cast<double>(xml);
-      }
-      return true;
-    }
-    default:
-      return false;
-  }
-}
-
-inline bool xmlCast(XmlRpc::XmlRpcValue xml, std::string* param = nullptr) {
-  switch (xml.getType()) {
-    case XmlRpc::XmlRpcValue::Type::TypeString: {
-      if (param) {
-        *param = static_cast<std::string>(xml);
-      }
-      return true;
-    }
-    default:
-      return false;
-  }
-}
+using ParamMap = std::unordered_map<std::string, YAML::Node>;
 
 template <typename T>
-inline bool xmlCast(XmlRpc::XmlRpcValue xml, std::vector<T>* param = nullptr) {
-  if (xml.getType() != XmlRpc::XmlRpcValue::TypeArray) {
+inline bool yamlCast(const YAML::Node& node, T* param = nullptr) {
+  if (!node.IsDefined()) {
     return false;
   }
-  if (param) {
-    param->resize(xml.size());
-    for (int i = 0; i < xml.size(); i++) {
-      T value;
-      if (!xmlCast(xml[i], &value)) {
-        return false;
-      }
-      param->at(i) = value;
+  try {
+    if (param) {
+      *param = node.as<T>();
     }
+    return true;
+  } catch (...) {
+    return false;
   }
-  return true;
 }
 
 // Forward declarations.
@@ -1170,7 +1045,7 @@ struct ConfigInternal : public ConfigInternalVerificator {
   void setupFromParamMap(const internal::ParamMap& params) {
     param_namespace_ = "/";
     if (params.find("_name_space") != params.end()) {
-      xmlCast(params.at("_name_space"), &param_namespace_);
+      yamlCast(params.at("_name_space"), &param_namespace_);
     }
 
     // Read params
@@ -1201,7 +1076,7 @@ struct ConfigInternal : public ConfigInternalVerificator {
       return;
     }
     // Set the param.
-    if (!internal::xmlCast(it->second, param)) {
+    if (!internal::yamlCast(it->second, param)) {
       LOG(WARNING) << name_ << ": param '" << name
                    << "' is set but could not be read.";
     }
@@ -1230,7 +1105,7 @@ struct ConfigInternal : public ConfigInternalVerificator {
 
       if (key.find('/') == std::string::npos) {
         T value;
-        if (!internal::xmlCast(v.second, &value)) {
+        if (!internal::yamlCast(v.second, &value)) {
           LOG(WARNING) << name_ << ": param '" << name
                        << "' is set but could not be read.";
           return;
@@ -1321,24 +1196,6 @@ struct ConfigInternal : public ConfigInternalVerificator {
     this->rosParamMapInternal(name, param);
   }
 
-  void rosParam(const std::string& name, XmlRpc::XmlRpcValue* param) {
-    CHECK_NOTNULL(param);
-    // Check scope and param map are valid.
-    if (!meta_data_->params) {
-      if (!meta_data_->merged_setup_currently_active) {
-        LOG(WARNING) << "'rosParam()' calls are only allowed within the "
-                        "'fromRosParam()' method, no param will be loaded.";
-      }
-      return;
-    }
-    // Check the param is set.
-    auto it = meta_data_->params->find(param_namespace_ + "/" + name);
-    if (it == meta_data_->params->end()) {
-      return;
-    }
-    *param = it->second;
-  }
-
   void rosParam(ConfigInternal* config, const std::string& sub_namespace = "") {
     CHECK_NOTNULL(config);
     // Check scope and param map are valid.
@@ -1353,9 +1210,9 @@ struct ConfigInternal : public ConfigInternalVerificator {
     // Update the sub-namespace. Default to same ns. Leading "/" for global ns.
     // Leading "~" for private ns.
     internal::ParamMap params = *(meta_data_->params);
-    params["_name_space"] = resolveNameSpaceROS(
-        param_namespace_, sub_namespace,
-        static_cast<std::string>(params["_name_space_private"]));
+    params["_name_space"] =
+        resolveNameSpaceROS(param_namespace_, sub_namespace,
+                            params["_name_space_private"].as<std::string>());
     setupConfigFromParamMap(params, config);
   }
 
@@ -1364,9 +1221,9 @@ struct ConfigInternal : public ConfigInternalVerificator {
     CHECK_NOTNULL(config);
     // Resolve the param namespace and get param map.
     internal::ParamMap params = *(meta_data_->params);
-    params["_name_space"] = resolveNameSpaceROS(
-        param_namespace_, sub_namespace,
-        static_cast<std::string>(params["_name_space_private"]));
+    params["_name_space"] =
+        resolveNameSpaceROS(param_namespace_, sub_namespace,
+                            params["_name_space_private"].as<std::string>());
 
     // Create the desired config.
     config->createConfig(params, optional);
@@ -1511,86 +1368,6 @@ struct ConfigInternal : public ConfigInternalVerificator {
       printField(name, *config);
     }
   }
-
-#ifdef CONFIG_UTILITIES_TRANSFORMATION_ENABLED
-  template <typename Scalar>
-  void rosParam(const std::string& name,
-                kindr::minimal::QuatTransformationTemplate<Scalar>* param) {
-    CHECK_NOTNULL(param);
-    // Check scope and param map are valid.
-    if (!meta_data_->params) {
-      if (!meta_data_->merged_setup_currently_active) {
-        LOG(WARNING) << "'rosParam()' calls are only allowed within the "
-                        "'fromRosParam()' method, no param will be loaded.";
-      }
-      return;
-    }
-    // Check the param is set.
-    auto it = meta_data_->params->find(param_namespace_ + "/" + name);
-    if (it == meta_data_->params->end()) {
-      return;
-    }
-    XmlRpc::XmlRpcValue xml = it->second;
-    // NOTE: This code was taken and adapted from minkindr_conversions:
-    // https://github.com/ethz-asl/minkindr_ros/blob/master/
-    // minkindr_conversions/include/minkindr_conversions/kindr_xml.h
-    if (xml.size() != 4) {
-      LOG(WARNING) << name_ << ": param '" << name
-                   << "' is set but could not be read.";
-      return;
-    }
-    // read raw inputs
-    typename kindr::minimal::QuatTransformationTemplate<Scalar>::RotationMatrix
-        temp_rot_matrix;
-    typename kindr::minimal::QuatTransformationTemplate<Scalar>::Position
-        temp_translation;
-    for (size_t i = 0; i < 3; ++i) {
-      if (xml[i].size() != 4) {
-        LOG(WARNING) << name_ << ": param '" << name
-                     << "' is set but could not be read.";
-        return;
-      }
-      for (size_t j = 0; j < 3; ++j) {
-        temp_rot_matrix(i, j) = static_cast<double>(xml[i][j]);
-      }
-      temp_translation(i) = static_cast<double>(xml[i][3]);
-    }
-
-    // renormalize rotation to correct for rounding error when yaml was written
-    kindr::minimal::RotationQuaternionTemplate<Scalar> temp_rot_quat =
-        kindr::minimal::RotationQuaternionTemplate<
-            Scalar>::constructAndRenormalize(temp_rot_matrix);
-
-    // recombine
-    *param = kindr::minimal::QuatTransformationTemplate<Scalar>(
-        temp_rot_quat, temp_translation);
-  }
-
-  template <typename Scalar>
-  void printField(
-      const std::string& name,
-      const kindr::minimal::QuatTransformationTemplate<Scalar>& field) const {
-    if (!meta_data_->messages) {
-      LOG(WARNING) << "'printField()' calls are only allowed within the "
-                      "'printFields()' method.";
-      return;
-    }
-    std::stringstream ss;
-    auto rot =
-        field.getEigenQuaternion().toRotationMatrix().eulerAngles(0, 1, 2);
-    rot = rot * 180.0 / M_PI;
-    ss << "t: [" << field.getPosition()[0] << ", " << field.getPosition()[1]
-       << ", " << field.getPosition()[2] << "] RPY°: [" << rot.x() << ", "
-       << rot.y() << ", " << rot.z() << "]";
-    printFieldInternal(name, ss.str());
-  }
-
-  template <typename Scalar>
-  void setupParam(const std::string& name,
-                  kindr::minimal::QuatTransformationTemplate<Scalar>* param) {
-    this->setupParamInternal(name, param);
-  }
-#endif  // CONFIG_UTILITIES_TRANSFORMATION_ENABLED
 
  private:
   friend void setupConfigFromParamMap(const internal::ParamMap& params,
@@ -1831,7 +1608,7 @@ class Factory {
           << "ROS factory creation requires the ParamMap to have a namespace.";
       return nullptr;
     }
-    const std::string ns = it->second;
+    const std::string ns = it->second.as<std::string>();
 
     // Get the type from param.
     it = params.find(ns + "/type");
@@ -1841,7 +1618,7 @@ class Factory {
                  << ns << "'.";
       return nullptr;
     }
-    const std::string type = it->second;
+    const std::string type = it->second.as<std::string>();
 
     // Check the source module exists.
     if (module.map_ros.empty()) {
@@ -1881,7 +1658,7 @@ class Factory {
           << "ROS factory creation requires the ParamMap to have a namespace.";
       return nullptr;
     }
-    const std::string ns = it->second;
+    const std::string ns = it->second.as<std::string>();
 
     // Get the type from param.
     it = params.find(ns + "/type");
@@ -1894,7 +1671,7 @@ class Factory {
       }
       return nullptr;
     }
-    const std::string type = it->second;
+    const std::string type = it->second.as<std::string>();
 
     // Check the source module exists.
     if (module.map_config.empty()) {
@@ -2069,8 +1846,9 @@ class VariableConfig : public internal::VariableConfigInternal {
   void createConfig(const internal::ParamMap& params, bool optional) override {
     config_ = Factory::createConfig<BaseT>(params, optional);
     if (config_) {
-      type_ = static_cast<std::string>(params.at(
-          static_cast<std::string>(params.at("_name_space")) + "/type"));
+      std::string type_key =
+          params.at("_name_space").as<std::string>() + "/type";
+      type_ = params.at(type_key).as<std::string>();
       params_ = params;
     }
   };
@@ -2083,98 +1861,6 @@ class VariableConfig : public internal::VariableConfigInternal {
 }  // namespace config_utilities
 #endif  // CONFIG_UTILITIES_CORE_HPP_
 
-/**
- * ==================== ROS Tools ====================
- */
-#ifdef CONFIG_UTILITIES_ROS_ENABLED
-#ifndef CONFIG_UTILITIES_ROS_HPP_
-#define CONFIG_UTILITIES_ROS_HPP_
-namespace config_utilities {
-
-namespace internal {
-inline ParamMap getParamMapFromRos(const ros::NodeHandle& nh) {
-  internal::ParamMap params;
-  std::vector<std::string> keys;
-  XmlRpc::XmlRpcValue value;
-  const std::string& ns = nh.getNamespace();
-  nh.getParamNames(keys);
-  for (std::string& key : keys) {
-    nh.getParam(key, value);
-    params[key] = value;
-  }
-  params["_name_space"] = ns;
-  params["_name_space_private"] = ns;
-  return params;
-}
-}  // namespace internal
-
-/**
- * @brief Create a config from a given ROS nodehandle.
- *
- * @tparam ConfigT The config to create. ConfigT needs to inherit from
- * config_utilities::Config<ConfigT>.
- * @param nh Nodehandle to look up parameters from.
- * @return ConfigT The created config.
- */
-template <typename ConfigT>
-ConfigT getConfigFromRos(const ros::NodeHandle& nh) {
-  ConfigT config;
-  if (!internal::isConfig(&config)) {
-    LOG(ERROR) << "Cannot 'getConfigFromRos()' for <ConfigT>='"
-               << typeid(ConfigT).name()
-               << "' that does not inherit from "
-                  "'config_utilities::Config<ConfigT>'.";
-    return config;
-  }
-  auto config_ptr = dynamic_cast<Config<ConfigT>*>(&config);
-  if (!config_ptr) {
-    LOG(ERROR) << "Cannot 'getConfigFromRos()' for <ConfigT>='"
-               << typeid(ConfigT).name()
-               << "' that does not inherit from "
-                  "'config_utilities::Config<ConfigT>'.";
-    return config;
-  }
-
-  // Setup.
-  internal::ParamMap params = internal::getParamMapFromRos(nh);
-  internal::setupConfigFromParamMap(params, config_ptr);
-  return config;
-}
-/**
- * ==================== ROS Factory ====================
- */
-
-class FactoryRos : protected Factory {
- public:
-  /**
-   * @brief Query the ROS-factory to create a dervied type with its config
-   * from a ROS nodehandle.
-   *
-   * @tparam BaseT Type of the base class to query for.
-   * @tparam Args Other constructor arguments. The first constructor argument
-   * for all derived classes is required to be a <typename DerivedT::Config>
-   * and not listed in the arguments. Notice that each unique set of
-   * constructor arguments will result in a different base-entry in the
-   * factory.
-   * @param nh Nodehandle to create the config from. The string identifier of
-   * the derived class to create is taken from ROS-parameter named 'type'.
-   * @param args Other constructor arguments.
-   * @return std::unique_ptr<BaseT> Unique pointer of type base that contains
-   * the derived object.
-   */
-  template <class BaseT, typename... Args>
-  static std::unique_ptr<BaseT> create(const ros::NodeHandle& nh,
-                                       Args... args) {
-    // Get the config and create the target.
-    internal::ParamMap params = internal::getParamMapFromRos(nh);
-    return Factory::create<BaseT>(params, args...);
-  }
-};
-
-}  // namespace config_utilities
-#endif  // CONFIG_UTILITIES_ROS_HPP_
-#endif  // CONFIG_UTILITIES_ROS_ENABLED
-
 #ifndef CONFIG_UTILITIES_YAML_HPP_
 #define CONFIG_UTILITIES_YAML_HPP_
 /**
@@ -2182,55 +1868,6 @@ class FactoryRos : protected Factory {
  */
 namespace config_utilities {
 namespace internal {
-inline XmlRpc::XmlRpcValue yamlToXml(const YAML::Node& node) {
-  XmlRpc::XmlRpcValue xml;
-
-  if (node.IsNull()) {
-    return xml;
-  } else if (node.IsSequence()) {
-    std::vector<YAML::Node> contents = node.as<std::vector<YAML::Node>>();
-    xml.setSize(contents.size());
-    for (unsigned int i = 0; i < contents.size(); i++) {
-      xml[i] = yamlToXml(contents[i]);
-    }
-  } else if (node.IsScalar()) {
-    const std::string& scalar = node.Scalar();
-
-    // handle bool type
-    try {
-      xml = node.as<bool>();
-      return xml;
-    } catch (const YAML::Exception& e) {
-    }
-
-    // handle int
-    try {
-      xml = node.as<int>();
-      return xml;
-    } catch (const YAML::Exception& e) {
-    }
-
-    // handle double
-    try {
-      xml = node.as<double>();
-      return xml;
-    } catch (const YAML::Exception& e) {
-    }
-
-    // default as string
-    xml = scalar;
-  } else if (node.IsMap()) {
-    YAML::Node::const_iterator iter;
-    for (iter = node.begin(); iter != node.end(); iter++) {
-      std::string name = iter->first.as<std::string>();
-      xml[name] = yamlToXml(iter->second);
-    }
-  } else {
-    LOG(ERROR) << "Invalid YAML node type.";
-  }
-
-  return xml;
-}
 
 inline void convertYamlNodeToParamMap(const YAML::Node& node,
                                       const std::string& path,
@@ -2242,7 +1879,11 @@ inline void convertYamlNodeToParamMap(const YAML::Node& node,
       convertYamlNodeToParamMap(kv.second, new_path, params);
     }
   } else {
-    params[path] = yamlToXml(node);
+    if (params.count(path) == 0) {
+      params[path] = node;
+    } else {
+      LOG(ERROR) << "YAML parameter '" << path << "' already exists!";
+    }
   }
 }
 

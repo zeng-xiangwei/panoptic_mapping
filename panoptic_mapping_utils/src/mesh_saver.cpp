@@ -2,19 +2,19 @@
 
 namespace panoptic_mapping {
 
-MeshSaver::MeshSaver(const ros::NodeHandle& nh) : nh_(nh) { setupRos(); }
+MeshSaver::MeshSaver(rclcpp::Node::SharedPtr node) : node_(node) { setupRos(); }
 void MeshSaver::setupRos() {
-  mesh_sub_ =
-      nh_.subscribe(nh_.param<std::string>(
-                        "topic", "/panoptic_mapper/visualization/submaps/mesh"),
-                    10, &MeshSaver::gotMeshCallback, this);
+  std::string topic_name;
+  node_->get_parameter_or("topic", topic_name,
+                          "/panoptic_mapper/visualization/submaps/mesh");
+  mesh_sub_ = nh_.subscribe(topic_name, 10, &MeshSaver::gotMeshCallback, this);
 }
 
-void MeshSaver::gotMeshCallback(const voxblox_msgs::MultiMesh& msg) {
+void MeshSaver::gotMeshCallback(const voxblox_msgs::msg::MultiMesh& msg) {
   voxblox::Mesh full_mesh;
   bool first = true;
 
-  for (const voxblox_msgs::MeshBlock& mesh_block : msg.mesh.mesh_blocks) {
+  for (const voxblox_msgs::msg::MeshBlock& mesh_block : msg.mesh.mesh_blocks) {
     const voxblox::BlockIndex index(mesh_block.index[0], mesh_block.index[1],
                                     mesh_block.index[2]);
 

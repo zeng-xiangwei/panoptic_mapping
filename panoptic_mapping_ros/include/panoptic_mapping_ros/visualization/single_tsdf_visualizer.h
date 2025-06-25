@@ -43,11 +43,11 @@ class SingleTsdfVisualizer : public SubmapVisualizer {
 
   // Constructors.
   SingleTsdfVisualizer(const Config& config, std::shared_ptr<Globals> globals,
-                       bool print_config = true);
+                       rclcpp::Node::SharedPtr node, bool print_config = true);
   ~SingleTsdfVisualizer() override = default;
 
   // Visualization message creation.
-  std::vector<voxblox_msgs::MultiMesh> generateMeshMsgs(
+  std::vector<voxblox_msgs::msg::MultiMesh> generateMeshMsgs(
       SubmapCollection* submaps) override;
 
   // Interaction.
@@ -58,9 +58,9 @@ class SingleTsdfVisualizer : public SubmapVisualizer {
 
  protected:
   void colorMeshBlockFromClass(const Submap& submap,
-                               voxblox_msgs::MeshBlock* mesh_block);
+                               voxblox_msgs::msg::MeshBlock* mesh_block);
   void colorMeshBlockFromScore(const Submap& submap,
-                               voxblox_msgs::MeshBlock* mesh_block);
+                               voxblox_msgs::msg::MeshBlock* mesh_block);
   std::function<Color(const ClassVoxel&)> getColoring() const;
   void updateVisInfos(const SubmapCollection& submaps) override;
 

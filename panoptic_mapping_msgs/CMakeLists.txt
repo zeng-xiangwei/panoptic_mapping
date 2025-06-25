@@ -1,35 +1,31 @@
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 3.5)
 project(panoptic_mapping_msgs)
 
 set(CMAKE_CXX_STANDARD 17)
 
-set(PACKAGE_DEPENDENCIES
-  std_msgs
+find_package(ament_cmake REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
+
+find_package(builtin_interfaces REQUIRED)
+find_package(std_msgs REQUIRED)
+
+set(msg_files
+  "msg/DetectronLabel.msg"
+  "msg/DetectronLabels.msg"
 )
 
-find_package(catkin REQUIRED COMPONENTS message_generation ${PACKAGE_DEPENDENCIES})
-
-add_message_files(
-  DIRECTORY msg
-  FILES
-    DetectronLabel.msg
-    DetectronLabels.msg
+set(srv_files
+  "srv/SaveLoadMap.srv"
+  "srv/SetVisualizationMode.srv"
 )
 
-add_service_files(
-  DIRECTORY srv
-  FILES
-    SaveLoadMap.srv
-    SetVisualizationMode.srv
+rosidl_generate_interfaces(${PROJECT_NAME}
+  ${msg_files}
+  ${srv_files}
+  DEPENDENCIES builtin_interfaces std_msgs
+  ADD_LINTER_TESTS
 )
 
-generate_messages(
-  DEPENDENCIES
-    ${PACKAGE_DEPENDENCIES}
-)
+ament_export_dependencies(rosidl_default_runtime)
 
-catkin_package(
-  CATKIN_DEPENDS
-    ${PACKAGE_DEPENDENCIES}
-    message_runtime
-)
+ament_package()

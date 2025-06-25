@@ -1,19 +1,23 @@
 <?xml version="1.0"?>
-<package format="2">
+<package format="3">
   <name>panoptic_mapping</name>
-  <version>0.0.0</version>
-  <description>Prototyping a panoptic metric map. </description>
+  <version>1.0.0</version>
+  <description>
+    Utilities to setup and run data for panoptic mapping.
+  </description>
+  <maintainer email="zengxiangwei@agile-robot.com">
+    The agile-robot Authors
+  </maintainer>
+  <license>Apache 2.0</license>
 
-  <author email="schmluk@mavt.ethz.ch">Lukas Schmid</author>
-  <maintainer email="schmluk@mavt.ethz.ch">Lukas Schmid</maintainer>
+  <author email="zengxiangwei@agile-robot.com">
+    The agile-robot Authors
+  </author>
 
-  <license>BSD</license>
-
-  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>voxblox</depend>
 
-  <depend>xmlrpcpp</depend>
   <depend>eigen3</depend>
   <depend>glog</depend>
   <depend>gflags</depend>
@@ -23,5 +27,6 @@
   <depend>yaml-cpp</depend>
   
   <export>
+    <build_type>ament_cmake</build_type>
   </export>
 </package>

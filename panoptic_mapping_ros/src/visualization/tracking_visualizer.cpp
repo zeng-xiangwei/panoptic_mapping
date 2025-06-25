@@ -3,7 +3,7 @@
 #include <string>
 
 #include <cv_bridge/cv_bridge.h>
-#include <sensor_msgs/Image.h>
+#include <sensor_msgs/msg/image.hpp>
 
 namespace panoptic_mapping {
 
@@ -16,13 +16,10 @@ void TrackingVisualizer::Config::fromRosParam() {
   ros_namespace = rosParamNameSpace();
 }
 
-TrackingVisualizer::TrackingVisualizer(const Config& config)
-    : config_(config.checkValid()) {
+TrackingVisualizer::TrackingVisualizer(const Config& config, rclcpp::Node::SharedPtr node)
+    : config_(config.checkValid()), node_(node) {
   // Print config after setting up the modes.
   LOG_IF(INFO, config_.verbosity >= 1) << "\n" << config_.toString();
-
-  // Setup nodehandle.
-  nh_ = ros::NodeHandle(config_.ros_namespace);
 }
 
 void TrackingVisualizer::registerIDTracker(IDTrackerBase* tracker) {
@@ -40,15 +37,17 @@ void TrackingVisualizer::publishImage(const cv::Mat& image,
   auto it = publishers_.find(name);
   if (it == publishers_.end()) {
     // Advertise a new topic if there is no publisher for the given name.
-    it = publishers_.emplace(name, nh_.advertise<sensor_msgs::Image>(name, 100))
+    it = publishers_
+             .emplace(name, node_->create_publisher<sensor_msgs::msg::Image>(
+                                name, 100))
              .first;
   }
 
   // Publish the image, expected as BGR8.
-  std_msgs::Header header;
-  header.stamp = ros::Time::now();
-  it->second.publish(
-      cv_bridge::CvImage(header, sensor_msgs::image_encodings::BGR8, image)
+  std_msgs::msg::Header header;
+  header.stamp = rclcpp::Clock().now();
+  it->second->publish(
+      cv_bridge::CvImage(header, sensor_msgs::msg::image_encodings::BGR8, image)
           .toImageMsg());
 }
 

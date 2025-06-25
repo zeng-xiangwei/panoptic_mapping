@@ -7,8 +7,8 @@
 #include <panoptic_mapping/common/common.h>
 #include <panoptic_mapping/map/submap_collection.h>
 #include <panoptic_mapping/tools/planning_interface.h>
-#include <ros/node_handle.h>
-#include <visualization_msgs/MarkerArray.h>
+#include <rclcpp/rclcpp.hpp>
+#include <visualization_msgs/msg/marker.hpp>
 
 namespace panoptic_mapping {
 
@@ -33,11 +33,12 @@ class PlanningVisualizer {
   // Constructors.
   explicit PlanningVisualizer(
       const Config& config,
-      std::shared_ptr<const PlanningInterface> planning_interface);
+      std::shared_ptr<const PlanningInterface> planning_interface,
+      rclcpp::Node::SharedPtr node);
   virtual ~PlanningVisualizer() = default;
 
   // Visualization message creation.
-  visualization_msgs::Marker generateSliceMsg();
+  visualization_msgs::msg::Marker generateSliceMsg();
 
   // Publish visualization requests.
   void visualizeAll();
@@ -58,8 +59,8 @@ class PlanningVisualizer {
   std::string global_frame_name_;
 
   // Publishers.
-  ros::NodeHandle nh_;
-  ros::Publisher slice_pub_;
+  rclcpp::Node::SharedPtr node_;
+  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr slice_pub_;
 };
 
 }  // namespace panoptic_mapping

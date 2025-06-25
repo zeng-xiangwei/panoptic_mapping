@@ -1,11 +1,11 @@
 #include "panoptic_mapping_ros/conversions/conversions.h"
 
-#include <sensor_msgs/point_cloud2_iterator.h>
+#include <sensor_msgs/msg/point_cloud2.hpp>
 
 namespace panoptic_mapping {
 
 DetectronLabel detectronLabelFromMsg(
-    const panoptic_mapping_msgs::DetectronLabel& msg) {
+    const panoptic_mapping_msgs::msg::DetectronLabel& msg) {
   DetectronLabel result;
   result.id = msg.id;
   result.instance_id = msg.instance_id;
@@ -17,9 +17,9 @@ DetectronLabel detectronLabelFromMsg(
 }
 
 DetectronLabels detectronLabelsFromMsg(
-    const panoptic_mapping_msgs::DetectronLabels& msg) {
+    const panoptic_mapping_msgs::msg::DetectronLabels& msg) {
   DetectronLabels result;
-  for (const panoptic_mapping_msgs::DetectronLabel& label : msg.labels) {
+  for (const panoptic_mapping_msgs::msg::DetectronLabel& label : msg.labels) {
     result[label.id] = detectronLabelFromMsg(label);
   }
   return result;
@@ -28,7 +28,7 @@ DetectronLabels detectronLabelsFromMsg(
 void convertToPointCloud2(
     const Pointcloud& points,
     const voxblox::AlignedVector<Eigen::Matrix<uint8_t, 3, 1>>& colors,
-    sensor_msgs::PointCloud2& cloud_msg) {
+    sensor_msgs::msg::PointCloud2& cloud_msg) {
   if (points.empty() || colors.empty()) {
     return;
   }
@@ -47,23 +47,23 @@ void convertToPointCloud2(
   // 设置 x, y, z 字段
   cloud_msg.fields[0].name = "x";
   cloud_msg.fields[0].offset = 0;
-  cloud_msg.fields[0].datatype = sensor_msgs::PointField::FLOAT32;
+  cloud_msg.fields[0].datatype = sensor_msgs::msg::PointField::FLOAT32;
   cloud_msg.fields[0].count = 1;
 
   cloud_msg.fields[1].name = "y";
   cloud_msg.fields[1].offset = 4;
-  cloud_msg.fields[1].datatype = sensor_msgs::PointField::FLOAT32;
+  cloud_msg.fields[1].datatype = sensor_msgs::msg::PointField::FLOAT32;
   cloud_msg.fields[1].count = 1;
 
   cloud_msg.fields[2].name = "z";
   cloud_msg.fields[2].offset = 8;
-  cloud_msg.fields[2].datatype = sensor_msgs::PointField::FLOAT32;
+  cloud_msg.fields[2].datatype = sensor_msgs::msg::PointField::FLOAT32;
   cloud_msg.fields[2].count = 1;
 
   // 设置 rgb 字段
   cloud_msg.fields[3].name = "rgb";
   cloud_msg.fields[3].offset = 16;
-  cloud_msg.fields[3].datatype = sensor_msgs::PointField::UINT32;
+  cloud_msg.fields[3].datatype = sensor_msgs::msg::PointField::UINT32;
   cloud_msg.fields[3].count = 1;
 
   cloud_msg.is_bigendian = false;

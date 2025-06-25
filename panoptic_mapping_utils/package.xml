@@ -1,19 +1,24 @@
 <?xml version="1.0"?>
-<package format="2">
+<package format="3">
   <name>panoptic_mapping_utils</name>
-  <version>0.0.0</version>
-  <description>Utilities to setup, run, and evaluate data for panoptic mapping. </description>
-  
-  <author email="schmluk@mavt.ethz.ch">Lukas Schmid</author>
-  <maintainer email="schmluk@mavt.ethz.ch">Lukas Schmid</maintainer>
+  <version>1.0.0</version>
+  <description>
+    Utilities to setup and run data for panoptic mapping.
+  </description>
+  <maintainer email="zengxiangwei@agile-robot.com">
+    The agile-robot Authors
+  </maintainer>
+  <license>Apache 2.0</license>
 
-  <license>BSD</license>
+  <author email="zengxiangwei@agile-robot.com">
+    The agile-robot Authors
+  </author>
 
-  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <depend>rospy</depend>
-  <depend>roscpp</depend>
+  <depend>rclcpp</depend>
 
+  <depend>builtin_interfaces</depend>
   <depend>std_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>geometry_msgs</depend>
@@ -24,8 +29,8 @@
   <depend>panoptic_mapping</depend>
   <depend>panoptic_mapping_ros</depend>
   <depend>voxblox</depend>
-  <depend>voxblox_ros</depend>
 
   <export>
+    <build_type>ament_cmake</build_type>
   </export>
 </package>

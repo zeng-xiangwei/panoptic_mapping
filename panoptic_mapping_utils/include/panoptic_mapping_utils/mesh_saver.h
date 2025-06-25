@@ -4,30 +4,29 @@
 #include <string>
 #include <vector>
 
-#include <ros/ros.h>
+#include <panoptic_mapping_ros/conversions/mesh_vis.h>
+#include <rclcpp/rclcpp.hpp>
+#include <voxblox_msgs/msg/multi_mesh.hpp>
 
 #include "voxblox/core/block_hash.h"
 #include "voxblox/core/common.h"
+#include "voxblox/io/mesh_ply.h"
 #include "voxblox/mesh/mesh.h"
 #include "voxblox/mesh/mesh_utils.h"
-#include "voxblox/io/mesh_ply.h"
-#include <voxblox_msgs/MultiMesh.h>
-#include <voxblox_ros/mesh_vis.h>
 
 namespace panoptic_mapping {
 
 class MeshSaver {
  public:
-  MeshSaver(const ros::NodeHandle& nh);
+  MeshSaver(rclcpp::Node::SharedPtr node);
   virtual ~MeshSaver() = default;
-  void gotMeshCallback(const voxblox_msgs::MultiMesh& msg);
+  void gotMeshCallback(const voxblox_msgs::msg::MultiMesh& msg);
 
  private:
   void setupRos();
 
-  ros::NodeHandle nh_;
-
-  ros::Subscriber mesh_sub_;
+  rclcpp::Node::SharedPtr node_;
+  rclcpp::Subscription<voxblox_msgs::msg::MultiMesh>::SharedPtr mesh_sub_;
 };
 
 }  // namespace panoptic_mapping

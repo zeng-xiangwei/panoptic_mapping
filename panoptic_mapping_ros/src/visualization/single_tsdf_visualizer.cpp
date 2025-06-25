@@ -28,10 +28,11 @@ void SingleTsdfVisualizer::Config::setupParamsAndPrinting() {
   setupParam("max_score", &max_score);
 }
 
-SingleTsdfVisualizer::SingleTsdfVisualizer(const Config& config,
-                                           std::shared_ptr<Globals> globals,
-                                           bool print_config)
-    : SubmapVisualizer(config.submap_visualizer, std::move(globals), false),
+SingleTsdfVisualizer::SingleTsdfVisualizer(
+    const Config& config, std::shared_ptr<Globals> globals,
+    rclcpp::Node::SharedPtr node, bool print_config)
+    : SubmapVisualizer(config.submap_visualizer, std::move(globals), node,
+                       false),
       config_(config.checkValid()) {
   // Print config after setting up the modes.
   LOG_IF(INFO, config_.verbosity >= 1 && print_config) << "\n"
@@ -51,17 +52,17 @@ void SingleTsdfVisualizer::reset() {
 void SingleTsdfVisualizer::clearMesh() {
   // Clear the current mesh from the rviz plugin.
   if (config_.submap_visualizer.visualize_mesh &&
-      mesh_pub_.getNumSubscribers() > 0) {
-    voxblox_msgs::MultiMesh msg;
-    msg.header.stamp = ros::Time::now();
+      mesh_pub_->get_subscription_count() > 0) {
+    voxblox_msgs::msg::MultiMesh msg;
+    msg.header.stamp = rclcpp::Clock().now();
     msg.name_space = map_name_space_;
-    mesh_pub_.publish(msg);
+    mesh_pub_->publish(msg);
   }
 }
 
-std::vector<voxblox_msgs::MultiMesh> SingleTsdfVisualizer::generateMeshMsgs(
-    SubmapCollection* submaps) {
-  std::vector<voxblox_msgs::MultiMesh> result;
+std::vector<voxblox_msgs::msg::MultiMesh>
+SingleTsdfVisualizer::generateMeshMsgs(SubmapCollection* submaps) {
+  std::vector<voxblox_msgs::msg::MultiMesh> result;
   if (submaps->size() == 0) {
     LOG(WARNING) << "No Map to visualize.";
     return result;
@@ -77,8 +78,8 @@ std::vector<voxblox_msgs::MultiMesh> SingleTsdfVisualizer::generateMeshMsgs(
       *submaps->getSubmapPtr(submaps->getActiveFreeSpaceSubmapID());
 
   // Setup message.
-  voxblox_msgs::MultiMesh msg;
-  msg.header.stamp = ros::Time::now();
+  voxblox_msgs::msg::MultiMesh msg;
+  msg.header.stamp = rclcpp::Clock().now();
   msg.header.frame_id = submap.getFrameName();
   msg.name_space = map_name_space_;
 
@@ -112,7 +113,7 @@ std::vector<voxblox_msgs::MultiMesh> SingleTsdfVisualizer::generateMeshMsgs(
   for (const auto& block_index : info_.previous_blocks) {
     if (std::find(block_indices.begin(), block_indices.end(), block_index) ==
         block_indices.end()) {
-      voxblox_msgs::MeshBlock mesh_block;
+      voxblox_msgs::msg::MeshBlock mesh_block;
       mesh_block.index[0] = block_index.x();
       mesh_block.index[1] = block_index.y();
       mesh_block.index[2] = block_index.z();
@@ -158,7 +159,7 @@ std::vector<voxblox_msgs::MultiMesh> SingleTsdfVisualizer::generateMeshMsgs(
 }
 
 void SingleTsdfVisualizer::colorMeshBlockFromClass(
-    const Submap& submap, voxblox_msgs::MeshBlock* mesh_block) {
+    const Submap& submap, voxblox_msgs::msg::MeshBlock* mesh_block) {
   const voxblox::BlockIndex block_index(
       mesh_block->index[0], mesh_block->index[1], mesh_block->index[2]);
   if (!submap.getClassLayer().hasBlock(block_index)) {
@@ -277,7 +278,7 @@ std::function<Color(const ClassVoxel&)> SingleTsdfVisualizer::getColoring()
   }
 }
 void SingleTsdfVisualizer::colorMeshBlockFromScore(
-    const Submap& submap, voxblox_msgs::MeshBlock* mesh_block) {
+    const Submap& submap, voxblox_msgs::msg::MeshBlock* mesh_block) {
   const voxblox::BlockIndex block_index(
       mesh_block->index[0], mesh_block->index[1], mesh_block->index[2]);
   if (!submap.getScoreLayer().hasBlock(block_index)) {

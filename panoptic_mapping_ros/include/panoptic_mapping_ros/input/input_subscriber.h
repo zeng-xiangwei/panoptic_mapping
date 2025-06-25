@@ -10,8 +10,8 @@
 #include <vector>
 
 #include <panoptic_mapping/common/input_data.h>
-#include <ros/ros.h>
-#include <sensor_msgs/Image.h>
+#include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/image.hpp>
 
 #include "panoptic_mapping_ros/input/input_synchronizer.h"
 
@@ -24,7 +24,7 @@ struct InputSynchronizerData {
   std::shared_ptr<InputData> data;
   bool valid = true;
   bool ready = false;
-  ros::Time timestamp;
+  rclcpp::Time timestamp;
   std::mutex write_mutex_;  // Lock this mutex when writing to common data
                             // structures such as the input list
 };
@@ -36,19 +36,19 @@ class InputSynchronizerBase {
  public:
   InputSynchronizerBase() = default;
   virtual ~InputSynchronizerBase() = default;
-  virtual bool getDataInQueue(const ros::Time& timestamp,
+  virtual bool getDataInQueue(const rclcpp::Time& timestamp,
                               InputSynchronizerData** data) = 0;
   virtual void checkDataIsReady(InputSynchronizerData* data) = 0;
 };
 
 // Some template specializations to lookup the timestamp of a message.
 template <typename MsgT>
-inline const ros::Time& getTimeStampFromMsg(const MsgT& msg) {
+inline const rclcpp::Time& getTimeStampFromMsg(const MsgT& msg) {
   return msg.header.stamp;
 }
 
-inline const ros::Time& getTimeStampFromMsg(
-    const sensor_msgs::ImageConstPtr& msg) {
+inline const rclcpp::Time& getTimeStampFromMsg(
+    const sensor_msgs::msg::Image::ConstSharedPtr& msg) {
   return msg->header.stamp;
 }
 
@@ -71,22 +71,25 @@ class InputSubscriberBase {
 template <typename MsgT>
 class InputSubscriber : public InputSubscriberBase {
  public:
-  InputSubscriber(const ros::NodeHandle& nh, const std::string& topic_name,
+  InputSubscriber(rclcpp::Node::SharedPtr node, const std::string& topic_name,
                   int queue_size,
                   std::function<void(const MsgT&, InputSynchronizerData*)>
                       extraction_function,
                   InputSynchronizerBase* parent)
       : extraction_function_(std::move(extraction_function)),
-        nh_(nh),
+        node_(node),
         parent_(parent) {
     // Subscribe to the topic.
-    subscriber_ = nh_.subscribe(topic_name, queue_size,
-                                &InputSubscriber<MsgT>::msgCallback, this);
+    subscriber_ = node_->create_subscription<MsgT>(
+        topic_name, queue_size,
+        [this](const typename MsgT::ConstSharedPtr msg) {
+          this->msgCallback(*msg);
+        });
   }
 
   void msgCallback(const MsgT& msg) {
     // Store the input message data in the queue.
-    const ros::Time stamp = getTimeStampFromMsg(msg);
+    const rclcpp::Time stamp = getTimeStampFromMsg(msg);
     InputSynchronizerData* data;
     if (parent_->getDataInQueue(stamp, &data)) {
       extraction_function_(msg, data);
@@ -96,8 +99,8 @@ class InputSubscriber : public InputSubscriberBase {
 
  private:
   // ROS Subscriber.
-  ros::NodeHandle nh_;
-  ros::Subscriber subscriber_;
+  rclcpp::Node::SharedPtr node_;
+  rclcpp::Subscription<MsgT>::SharedPtr subscriber_;
 
   // Tells the queue how to store its data in the input data.
   std::function<void(const MsgT& msg, InputSynchronizerData* data)>

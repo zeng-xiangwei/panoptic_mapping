@@ -1,11 +1,11 @@
 #include <glog/logging.h>
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
 
 #include "panoptic_mapping_utils/mesh_saver.h"
 
 int main(int argc, char** argv) {
   // Start Ros.
-  ros::init(argc, argv, "mesh_saver", ros::init_options::NoSigintHandler);
+  rclcpp::init(argc, argv);
 
 
   // Setup logging.
@@ -14,9 +14,9 @@ int main(int argc, char** argv) {
   google::ParseCommandLineFlags(&argc, &argv, false);
 
   // Setup node.
-  ros::NodeHandle nh_private("~");
-  panoptic_mapping::MeshSaver mesh_saver(nh_private);
-  ros::spin();
-  ros::waitForShutdown();
+  auto node = rclcpp::Node::make_shared("mesh_saver");
+  panoptic_mapping::MeshSaver mesh_saver(node);
+  rclcpp::spin(node);
+  rclcpp::shutdown();
   return 0;
 }

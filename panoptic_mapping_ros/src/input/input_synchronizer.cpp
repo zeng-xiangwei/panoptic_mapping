@@ -8,9 +8,8 @@
 #include <unordered_set>
 
 #include <cv_bridge/cv_bridge.h>
-#include <minkindr_conversions/kindr_tf.h>
-#include <panoptic_mapping_msgs/DetectronLabels.h>
-#include <sensor_msgs/Image.h>
+#include <panoptic_mapping_msgs/msg/DetectronLabels.hpp>
+#include <sensor_msgs/msg/Image.hpp>
 
 #include "panoptic_mapping_ros/conversions/conversions.h"
 
@@ -42,12 +41,15 @@ void InputSynchronizer::Config::setupParamsAndPrinting() {
 }
 
 InputSynchronizer::InputSynchronizer(const Config& config,
-                                     const ros::NodeHandle& nh)
-    : config_(config.checkValid()), nh_(nh), data_is_ready_(false) {
+                                     rclcpp::Node::SharedPtr node)
+    : config_(config.checkValid()), node_(node), data_is_ready_(false) {
   LOG_IF(INFO, config_.verbosity >= 1) << "\n" << config_.toString();
   if (!config_.sensor_frame_name.empty()) {
     used_sensor_frame_name_ = config_.sensor_frame_name;
   }
+
+  tf_buffer_ = std::make_shared<tf2_ros::Buffer>(node_->get_clock());
+  tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 }
 
 void InputSynchronizer::requestInputs(const InputData::InputTypes& types) {
@@ -67,7 +69,7 @@ void InputSynchronizer::advertiseInputTopics() {
   for (const InputData::InputType type : requested_inputs_) {
     switch (type) {
       case InputData::InputType::kDepthImage: {
-        using MsgT = sensor_msgs::ImageConstPtr;
+        using MsgT = sensor_msgs::msg::Image::ConstSharedPtr;
         addQueue<MsgT>(
             type, [this](const MsgT& msg, InputSynchronizerData* data) {
               if (this->config_.depth_type == "32F") {
@@ -96,7 +98,7 @@ void InputSynchronizer::advertiseInputTopics() {
         break;
       }
       case InputData::InputType::kColorImage: {
-        using MsgT = sensor_msgs::ImageConstPtr;
+        using MsgT = sensor_msgs::msg::Image::ConstSharedPtr;
         addQueue<MsgT>(type, [](const MsgT& msg, InputSynchronizerData* data) {
           const cv_bridge::CvImageConstPtr color =
               cv_bridge::toCvCopy(msg, "bgr8");
@@ -109,7 +111,7 @@ void InputSynchronizer::advertiseInputTopics() {
         break;
       }
       case InputData::InputType::kSegmentationImage: {
-        using MsgT = sensor_msgs::ImageConstPtr;
+        using MsgT = sensor_msgs::msg::Image::ConstSharedPtr;
         addQueue<MsgT>(type, [](const MsgT& msg, InputSynchronizerData* data) {
           const cv_bridge::CvImageConstPtr seg =
               cv_bridge::toCvCopy(msg, "32SC1");
@@ -122,7 +124,7 @@ void InputSynchronizer::advertiseInputTopics() {
         break;
       }
       case InputData::InputType::kDetectronLabels: {
-        using MsgT = panoptic_mapping_msgs::DetectronLabels;
+        using MsgT = panoptic_mapping_msgs::msg::DetectronLabels;
         addQueue<MsgT>(type, [](const MsgT& msg, InputSynchronizerData* data) {
           data->data->detectron_labels_ = detectronLabelsFromMsg(msg);
           const std::lock_guard<std::mutex> lock(data->write_mutex_);
@@ -133,7 +135,7 @@ void InputSynchronizer::advertiseInputTopics() {
         break;
       }
       case InputData::InputType::kUncertaintyImage: {
-        using MsgT = sensor_msgs::ImageConstPtr;
+        using MsgT = sensor_msgs::msg::Image::ConstSharedPtr;
         addQueue<MsgT>(
             type, [this](const MsgT& msg, InputSynchronizerData* data) {
               const cv_bridge::CvImageConstPtr uncertainty =
@@ -150,7 +152,7 @@ void InputSynchronizer::advertiseInputTopics() {
   }
 }
 
-bool InputSynchronizer::getDataInQueue(const ros::Time& timestamp,
+bool InputSynchronizer::getDataInQueue(const rclcpp::Time& timestamp,
                                        InputSynchronizerData** data) {
   // These are common operations for all subscribers so mutex them to avoid race
   // conditions.
@@ -183,7 +185,7 @@ bool InputSynchronizer::getDataInQueue(const ros::Time& timestamp,
   return false;
 }
 
-bool InputSynchronizer::allocateDataInQueue(const ros::Time& timestamp) {
+bool InputSynchronizer::allocateDataInQueue(const rclcpp::Time& timestamp) {
   // NOTE(schmluk): This obviously modifies the queue but the data_mutex_ should
   // already be locked from the calling getDataInQueue().
   // Check max queue size.
@@ -242,7 +244,7 @@ bool InputSynchronizer::allocateDataInQueue(const ros::Time& timestamp) {
 
   // Allocate new data.
   data.data = std::make_shared<InputData>();
-  data.data->setTimeStamp(timestamp.toSec());
+  data.data->setTimeStamp(timestamp.seconds());
   data.data->setT_M_C(T_M_C);
   data.data->setFrameName(used_sensor_frame_name_);
   data.timestamp = timestamp;
@@ -302,16 +304,16 @@ std::shared_ptr<InputData> InputSynchronizer::getInputData() {
   return result;
 }
 
-bool InputSynchronizer::lookupTransform(const ros::Time& timestamp,
+bool InputSynchronizer::lookupTransform(const rclcpp::Time& timestamp,
                                         const std::string& base_frame,
                                         const std::string& child_frame,
                                         Transformation* transformation) const {
   // Try to lookup the transform for the maximum wait time.
   tf::StampedTransform transform;
   try {
-    tf_listener_.waitForTransform(base_frame, child_frame, timestamp,
-                                  ros::Duration(config_.transform_lookup_time));
-    tf_listener_.lookupTransform(base_frame, child_frame, timestamp, transform);
+    transform = tf_buffer_->lookupTransform(
+        base_frame, child_frame, timestamp,
+        tf2::durationFromSec(config_.transform_lookup_time));
   } catch (tf::TransformException& ex) {
     LOG_IF(WARNING, config_.verbosity >= 2)
         << "Unable to lookup transform between '" << base_frame << "' and '"
@@ -321,9 +323,16 @@ bool InputSynchronizer::lookupTransform(const ros::Time& timestamp,
     return false;
   }
   CHECK_NOTNULL(transformation);
-  Transformation T_M_C;
-  tf::transformTFToKindr(transform, &T_M_C);
-  *transformation = T_M_C;
+  Eigen::Vector3f pos;
+  pos.x() = transform.getOrigin().x();
+  pos.y() = transform.getOrigin().y();
+  pos.z() = transform.getOrigin().z();
+  Eigen::Quaternionf quat;
+  quat.x() = transform.getRotation().x();
+  quat.y() = transform.getRotation().y();
+  quat.z() = transform.getRotation().z();
+  quat.w() = transform.getRotation().w();
+  *transformation = Transformation(rotation, position);
   return true;
 }
 

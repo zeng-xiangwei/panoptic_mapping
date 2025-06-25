@@ -10,13 +10,14 @@
 #include <panoptic_mapping/common/globals.h>
 #include <panoptic_mapping/map/submap_collection.h>
 #include <panoptic_mapping/tools/coloring.h>
-#include <ros/node_handle.h>
+#include <rclcpp/rclcpp.hpp>
 #include <tf2_ros/transform_broadcaster.h>
-#include <visualization_msgs/MarkerArray.h>
+#include <visualization_msgs/msg/marker_array.hpp>
 #include <voxblox/mesh/mesh_integrator.h>
 #include <voxblox/utils/color_maps.h>
-#include <voxblox_msgs/MultiMesh.h>
-#include <voxblox_ros/mesh_vis.h>
+#include <voxblox_msgs/msg/multi_mesh.hpp>
+
+#include "panoptic_mapping_ros/conversions/mesh_vis.h"
 
 namespace panoptic_mapping {
 
@@ -48,9 +49,8 @@ class SubmapVisualizer {
   };
 
   // Constructors.
-  SubmapVisualizer(
-      const Config& config, std::shared_ptr<Globals> globals,
-      bool print_config = true);
+  SubmapVisualizer(const Config& config, std::shared_ptr<Globals> globals,
+                   rclcpp::Node::SharedPtr node, bool print_config = true);
   virtual ~SubmapVisualizer() = default;
 
   // Visualization modes.
@@ -84,13 +84,13 @@ class SubmapVisualizer {
       VisualizationMode visualization_mode);
 
   // Visualization message creation.
-  virtual std::vector<voxblox_msgs::MultiMesh> generateMeshMsgs(
+  virtual std::vector<voxblox_msgs::msg::MultiMesh> generateMeshMsgs(
       SubmapCollection* submaps);
-  virtual visualization_msgs::MarkerArray generateBlockMsgs(
+  virtual visualization_msgs::msg::MarkerArray generateBlockMsgs(
       const SubmapCollection& submaps);
   virtual pcl::PointCloud<pcl::PointXYZI> generateFreeSpaceMsg(
       const SubmapCollection& submaps);
-  virtual visualization_msgs::MarkerArray generateBoundingVolumeMsgs(
+  virtual visualization_msgs::msg::MarkerArray generateBoundingVolumeMsgs(
       const SubmapCollection& submaps);
 
   // Publish visualization requests.
@@ -135,7 +135,7 @@ class SubmapVisualizer {
   virtual void updateVisInfos(const SubmapCollection& submaps);
   virtual void setSubmapVisColor(const Submap& submap, SubmapVisInfo* info);
   virtual void generateClassificationMesh(Submap* submap,
-                                          voxblox_msgs::Mesh* mesh);
+                                          voxblox_msgs::msg::Mesh* mesh);
 
  protected:
   // Settings.
@@ -155,11 +155,13 @@ class SubmapVisualizer {
       nullptr;  // Only for tracking, not for use!
 
   // ROS.
-  ros::NodeHandle nh_;
-  ros::Publisher freespace_pub_;
-  ros::Publisher mesh_pub_;
-  ros::Publisher tsdf_blocks_pub_;
-  ros::Publisher bounding_volume_pub_;
+  rclcpp::Node::SharedPtr node_;
+  rclcpp::Publisher < pcl::PointCloud<pcl::PointXYZI>::SharedPtr freespace_pub_;
+  rclcpp::Publisher<voxblox_msgs::msg::MultiMesh>::SharedPtr mesh_pub_;
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr
+      tsdf_blocks_pub_;
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr
+      bounding_volume_pub_;
 
  private:
   const Config config_;

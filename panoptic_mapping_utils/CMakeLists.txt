@@ -1,11 +1,24 @@
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 3.5)
 project(panoptic_mapping_utils)
 
 set(CMAKE_CXX_STANDARD 17)
 
-find_package(catkin REQUIRED COMPONENTS
-  rospy
-  roscpp
+find_package(ament_cmake REQUIRED)
+
+find_package(rclcpp REQUIRED)
+find_package(builtin_interfaces REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(rosgraph_msgs REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(voxblox REQUIRED)
+find_package(panoptic_mapping REQUIRED)
+find_package(panoptic_mapping_msgs REQUIRED)
+
+set(DEPENDENCIES_COMBINE
+  rclcpp
+  builtin_interfaces
   std_msgs
   sensor_msgs
   geometry_msgs
@@ -15,37 +28,23 @@ find_package(catkin REQUIRED COMPONENTS
   panoptic_mapping
   panoptic_mapping_ros
   voxblox
-  voxblox_ros
 )
-catkin_package()
 
 #############
 # Libraries #
 #############
 
 add_library(${PROJECT_NAME}
-        src/evaluation/map_evaluator.cpp
         src/mesh_saver.cpp
         )
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
 target_include_directories(${PROJECT_NAME} PUBLIC
         ${PROJECT_SOURCE_DIR}/include 
-        ${catkin_INCLUDE_DIRS}
         )
+ament_target_dependencies(${PROJECT_NAME} ${DEPENDENCIES_COMBINE})
 
 ###############
 # Executables #
 ###############
-
-add_executable(single_map_evaluation
-        app/single_map_evaluation.cpp
-        )
-target_link_libraries(single_map_evaluation ${PROJECT_NAME})
-
-add_executable(multi_map_evaluation
-        app/multi_map_evaluation.cpp
-        )
-target_link_libraries(multi_map_evaluation ${PROJECT_NAME})
 
 add_executable(mesh_saver
         app/mesh_saver_node.cpp
@@ -58,32 +57,31 @@ target_link_libraries(mesh_saver ${PROJECT_NAME})
 
 set(${PROJECT_NAME}_TARGETS)
 list(APPEND ${PROJECT_NAME}_TARGETS ${PROJECT_NAME})
-list(APPEND ${PROJECT_NAME}_TARGETS single_map_evaluation)
-list(APPEND ${PROJECT_NAME}_TARGETS multi_map_evaluation)
 list(APPEND ${PROJECT_NAME}_TARGETS mesh_saver)
 install(TARGETS ${${PROJECT_NAME}_TARGETS}
-    ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-    RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
 )
 
 # Headers
 set(${PROJECT_NAME}_LOCAL_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 install(DIRECTORY ${PROJECT_NAME}_LOCAL_INCLUDE_DIR
-    DESTINATION ${CATKIN_GLOBAL_INCLUDE_DESTINATION}
+    DESTINATION include
     FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
     PATTERN ".svn" EXCLUDE
 )
 
 # Dependencies
-set(${PROJECT_NAME}_RUN_DEPENDS)
+set(${PROJECT_NAME}_RUN_DEPENDS ${DEPENDENCIES_COMBINE})
 
 set(${PROJECT_NAME}_LIBRARIES)
 list(APPEND ${PROJECT_NAME}_LIBRARIES ${PROJECT_NAME})
-catkin_package(
-    INCLUDE_DIRS ${${PROJECT_NAME}_LOCAL_INCLUDE_DIR}
-    LIBRARIES ${${PROJECT_NAME}_LIBRARIES}
-    CATKIN_DEPENDS ${${PROJECT_NAME}_RUN_DEPENDS}
-)
+
+ament_export_include_directories(${${PROJECT_NAME}_LOCAL_INCLUDE_DIR})
+ament_export_libraries(${${PROJECT_NAME}_LIBRARIES})
+ament_export_dependencies(${${PROJECT_NAME}_RUN_DEPENDS})
+
+ament_package()
 
 

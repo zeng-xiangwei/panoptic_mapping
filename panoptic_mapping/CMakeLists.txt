@@ -1,45 +1,36 @@
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 3.5)
 project(panoptic_mapping)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # add_definitions(-Wall)
-find_package(catkin REQUIRED COMPONENTS
-    voxblox
-    xmlrpcpp
-)
+find_package(ament_cmake REQUIRED)
 
 find_package(Eigen3 REQUIRED)
+find_package(voxblox REQUIRED)
 find_package(Protobuf REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(glog REQUIRED)
 
-catkin_package()
-
-include_directories(
-    ${catkin_INCLUDE_DIRS}
-    ${EIGEN3_INCLUDE_DIR}
-    ${OpenCV_INCLUDE_DIRS}
-    ${PROJECT_SOURCE_DIR}/include
-)
+message("voxblox include: ${voxblox_INCLUDE_DIRS}")
 
 ############
 # PROTOBUF #
 ############
 
-# This functions.cmake need use catkin to compile
 include(${PROJECT_SOURCE_DIR}/cmake/functions.cmake)
 set(PROTO_DEFNS
         proto/panoptic_mapping/QuatTransformation.proto
         proto/panoptic_mapping/Submap.proto
         proto/panoptic_mapping/SubmapCollection.proto)
 set(BASE_PATH "proto")
-PROTOBUF_CATKIN_GENERATE_CPP2(${BASE_PATH} PROTO_SRCS PROTO_HDRS ${PROTO_DEFNS})
+PROTOBUF_GENERATE_CPP2(${BASE_PATH} PROTO_SRCS PROTO_HDRS ${PROTO_DEFNS})
 
 add_library(${PROJECT_NAME}_proto ${PROTO_SRCS})
 target_link_libraries(${PROJECT_NAME}_proto ${PROTOBUF_LIBRARIES})
+target_include_directories(${PROJECT_NAME}_proto PUBLIC ${PROTO_GENERATED_HEADERS_INSTALL_DIR})
 
 #############
 # Libraries #
@@ -96,7 +87,8 @@ add_library(${PROJECT_NAME}
         )
 target_link_libraries(${PROJECT_NAME}
     ${PROJECT_NAME}_proto
-    ${catkin_LIBRARIES}
+    ${voxblox_LIBRARIES}
+    ${xmlrpcpp_LIBRARIES}
     ${OpenCV_LIBRARY_DIRS}
     stdc++fs
     yaml-cpp
@@ -104,18 +96,13 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC
-    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+    ${EIGEN3_INCLUDE_DIR}
+    ${voxblox_INCLUDE_DIRS}
+    ${xmlrpcpp_INCLUDE_DIRS}
+    ${OpenCV_INCLUDE_DIRS}
+    ${PROJECT_SOURCE_DIR}/include
     $<INSTALL_INTERFACE:include>
 )
-
-##########
-# Tests #
-##########
-
-if (CATKIN_ENABLE_TESTING)
-    catkin_add_gtest(serialization-test test/serialization.cpp)
-    target_link_libraries(serialization-test ${catkin_LIBRARIES} ${PROJECT_NAME})
-endif()
 
 ##########
 # Export #
@@ -126,15 +113,15 @@ set(${PROJECT_NAME}_TARGETS)
 list(APPEND ${PROJECT_NAME}_TARGETS ${PROJECT_NAME})
 list(APPEND ${PROJECT_NAME}_TARGETS ${PROJECT_NAME}_proto)
 install(TARGETS ${${PROJECT_NAME}_TARGETS}
-    ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-    RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
 )
 
 # Headers
 set(${PROJECT_NAME}_LOCAL_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 install(DIRECTORY ${PROJECT_NAME}_LOCAL_INCLUDE_DIR
-    DESTINATION ${CATKIN_GLOBAL_INCLUDE_DESTINATION}
+    DESTINATION include
     FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
     PATTERN ".svn" EXCLUDE
 )
@@ -145,8 +132,10 @@ list(APPEND ${PROJECT_NAME}_RUN_DEPENDS voxblox)
 
 set(${PROJECT_NAME}_LIBRARIES)
 list(APPEND ${PROJECT_NAME}_LIBRARIES ${PROJECT_NAME} ${PROJECT_NAME}_proto)
-catkin_package(
-    INCLUDE_DIRS ${${PROJECT_NAME}_LOCAL_INCLUDE_DIR}
-    LIBRARIES ${${PROJECT_NAME}_LIBRARIES}
-    CATKIN_DEPENDS ${${PROJECT_NAME}_RUN_DEPENDS}
-)
+
+ament_export_include_directories(${${PROJECT_NAME}_LOCAL_INCLUDE_DIR})
+ament_export_include_directories(${PROTO_GENERATED_HEADERS_INSTALL_DIR})
+ament_export_libraries(${${PROJECT_NAME}_LIBRARIES})
+ament_export_dependencies(${${PROJECT_NAME}_RUN_DEPENDS})
+
+ament_package()

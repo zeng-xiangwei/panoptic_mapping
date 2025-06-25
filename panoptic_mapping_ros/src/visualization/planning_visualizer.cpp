@@ -27,37 +27,38 @@ void PlanningVisualizer::Config::fromRosParam() {
 
 PlanningVisualizer::PlanningVisualizer(
     const Config& config,
-    std::shared_ptr<const PlanningInterface> planning_interface)
+    std::shared_ptr<const PlanningInterface> planning_interface, rclcpp::Node::SharedPtr node)
     : config_(config.checkValid()),
       planning_interface_(std::move(planning_interface)),
-      global_frame_name_("mission") {
+      global_frame_name_("mission"),
+      node_(node) {
   // Print config after setting up the modes.
   LOG_IF(INFO, config_.verbosity >= 1) << "\n" << config_.toString();
 
   // Setup publishers.
-  nh_ = ros::NodeHandle(config_.ros_namespace);
   if (config_.visualize_planning_slice) {
     slice_pub_ =
-        nh_.advertise<visualization_msgs::Marker>("planning_slice", 100);
+        nh_.advertise<visualization_msgs::msg::Marker>("visualization/planning/planning_slice", 100);
   }
 }
 
 void PlanningVisualizer::visualizeAll() { visualizePlanningSlice(); }
 
 void PlanningVisualizer::visualizePlanningSlice() {
-  if (config_.visualize_planning_slice && slice_pub_.getNumSubscribers() > 0) {
-    visualization_msgs::Marker msg = generateSliceMsg();
-    slice_pub_.publish(msg);
+  if (config_.visualize_planning_slice &&
+      slice_pub_->get_subscription_count() > 0) {
+    visualization_msgs::msg::Marker msg = generateSliceMsg();
+    slice_pub_->publish(msg);
   }
 }
 
-visualization_msgs::Marker PlanningVisualizer::generateSliceMsg() {
+visualization_msgs::msg::Marker PlanningVisualizer::generateSliceMsg() {
   // Setup the message.
-  visualization_msgs::Marker marker;
+  visualization_msgs::msg::Marker marker;
   marker.header.frame_id = global_frame_name_;
-  marker.header.stamp = ros::Time::now();
-  marker.action = visualization_msgs::Marker::ADD;
-  marker.type = visualization_msgs::Marker::CUBE_LIST;
+  marker.header.stamp = rclcpp::Clock().now();
+  marker.action = visualization_msgs::msg::Marker::ADD;
+  marker.type = visualization_msgs::msg::Marker::CUBE_LIST;
   marker.id = 0;
   marker.scale.x = config_.slice_resolution;
   marker.scale.y = config_.slice_resolution;
@@ -113,12 +114,12 @@ visualization_msgs::Marker PlanningVisualizer::generateSliceMsg() {
       Point position(x_min + static_cast<float>(x) * config_.slice_resolution,
                      y_min + static_cast<float>(y) * config_.slice_resolution,
                      config_.slice_height);
-      geometry_msgs::Point point;
+      geometry_msgs::msg::Point point;
       point.x = position.x();
       point.y = position.y();
       point.z = position.z();
       marker.points.emplace_back(point);
-      std_msgs::ColorRGBA color;
+      std_msgs::msg::ColorRGBA color;
       color.a = 0.6;
       PlanningInterface::VoxelState state;
       if (config_.verbosity >= 3) {

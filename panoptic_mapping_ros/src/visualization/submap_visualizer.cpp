@@ -5,9 +5,7 @@
 #include <utility>
 #include <vector>
 
-#include <minkindr_conversions/kindr_msg.h>
-#include <ros/time.h>
-#include <voxblox_ros/ptcloud_vis.h>
+#include "panoptic_mapping_ros/conversions/ptcloud_vis.h"
 
 namespace panoptic_mapping {
 
@@ -46,8 +44,9 @@ void SubmapVisualizer::Config::fromRosParam() {
 
 SubmapVisualizer::SubmapVisualizer(const Config& config,
                                    std::shared_ptr<Globals> globals,
+                                   rclcpp::Node::SharedPtr node,
                                    bool print_config)
-    : config_(config.checkValid()), globals_(std::move(globals)) {
+    : config_(config.checkValid()), globals_(std::move(globals)), node_(node) {
   // Print config after setting up the modes.
   LOG_IF(INFO, config_.verbosity >= 1 && print_config) << "\n"
                                                        << config_.toString();
@@ -58,21 +57,23 @@ SubmapVisualizer::SubmapVisualizer(const Config& config,
   id_color_map_.setItemsPerRevolution(config_.submap_color_discretization);
 
   // Setup publishers.
-  nh_ = ros::NodeHandle(config_.ros_namespace);
   if (config_.visualize_free_space) {
-    freespace_pub_ =
-        nh_.advertise<pcl::PointCloud<pcl::PointXYZI>>("free_space_tsdf", 100);
+    freespace_pub_ = node_->create_publisher<pcl::PointCloud<pcl::PointXYZI>>(
+        "visualization/submaps/free_space_tsdf", 100);
   }
   if (config_.visualize_mesh) {
-    mesh_pub_ = nh_.advertise<voxblox_msgs::MultiMesh>("mesh", 1000);
+    mesh_pub_ = node_->create_publisher<voxblox_msgs::msg::MultiMesh>(
+        "visualization/submaps/mesh", 1000);
   }
   if (config_.visualize_tsdf_blocks) {
     tsdf_blocks_pub_ =
-        nh_.advertise<visualization_msgs::MarkerArray>("tsdf_blocks", 100);
+        node_->create_publisher<visualization_msgs::msg::MarkerArray>(
+            "visualization/submaps/tsdf_blocks", 100);
   }
   if (config_.visualize_bounding_volumes) {
     bounding_volume_pub_ =
-        nh_.advertise<visualization_msgs::MarkerArray>("bounding_volumes", 100);
+        node_->create_publisher<visualization_msgs::msg::MarkerArray>(
+            "visualization/submaps/bounding_volumes", 100);
   }
 }
 
@@ -88,10 +89,10 @@ void SubmapVisualizer::clearMesh() {
   // non-incremental they will anyways be overwritten.
   if (config_.visualize_mesh && mesh_pub_.getNumSubscribers() > 0) {
     for (auto& info : vis_infos_) {
-      voxblox_msgs::MultiMesh msg;
-      msg.header.stamp = ros::Time::now();
+      voxblox_msgs::msg::MultiMesh msg;
+      msg.header.stamp = rclcpp::Clock().now();
       msg.name_space = info.second.name_space;
-      mesh_pub_.publish(msg);
+      mesh_pub_->publish(msg);
     }
   }
 }
@@ -124,9 +125,9 @@ void SubmapVisualizer::visualizeAll(SubmapCollection* submaps) {
 
 void SubmapVisualizer::visualizeMeshes(SubmapCollection* submaps) {
   if (config_.visualize_mesh && mesh_pub_.getNumSubscribers() > 0) {
-    std::vector<voxblox_msgs::MultiMesh> msgs = generateMeshMsgs(submaps);
+    std::vector<voxblox_msgs::msg::MultiMesh> msgs = generateMeshMsgs(submaps);
     for (auto& msg : msgs) {
-      mesh_pub_.publish(msg);
+      mesh_pub_->publish(msg);
     }
   }
 }
@@ -134,8 +135,8 @@ void SubmapVisualizer::visualizeMeshes(SubmapCollection* submaps) {
 void SubmapVisualizer::visualizeTsdfBlocks(const SubmapCollection& submaps) {
   if (config_.visualize_tsdf_blocks &&
       tsdf_blocks_pub_.getNumSubscribers() > 0) {
-    visualization_msgs::MarkerArray markers = generateBlockMsgs(submaps);
-    tsdf_blocks_pub_.publish(markers);
+    visualization_msgs::msg::MarkerArray markers = generateBlockMsgs(submaps);
+    tsdf_blocks_pub_ > publish(markers);
   }
 }
 
@@ -143,7 +144,7 @@ void SubmapVisualizer::visualizeFreeSpace(const SubmapCollection& submaps) {
   if (config_.visualize_free_space && freespace_pub_.getNumSubscribers() > 0) {
     pcl::PointCloud<pcl::PointXYZI> msg = generateFreeSpaceMsg(submaps);
     msg.header.frame_id = global_frame_name_;
-    freespace_pub_.publish(msg);
+    freespace_pub_->publish(msg);
   }
 }
 
@@ -151,15 +152,15 @@ void SubmapVisualizer::visualizeBoundingVolume(
     const SubmapCollection& submaps) {
   if (config_.visualize_bounding_volumes &&
       bounding_volume_pub_.getNumSubscribers() > 0) {
-    visualization_msgs::MarkerArray markers =
+    visualization_msgs::msg::MarkerArray markers =
         generateBoundingVolumeMsgs(submaps);
     bounding_volume_pub_.publish(markers);
   }
 }
 
-std::vector<voxblox_msgs::MultiMesh> SubmapVisualizer::generateMeshMsgs(
+std::vector<voxblox_msgs::msg::MultiMesh> SubmapVisualizer::generateMeshMsgs(
     SubmapCollection* submaps) {
-  std::vector<voxblox_msgs::MultiMesh> result;
+  std::vector<voxblox_msgs::msg::MultiMesh> result;
 
   // Update the visualization infos.
   if (!vis_infos_are_updated_) {
@@ -169,8 +170,8 @@ std::vector<voxblox_msgs::MultiMesh> SubmapVisualizer::generateMeshMsgs(
   // If the submap was deleted we send an empty message to delete the visual.
   for (auto it = vis_infos_.begin(); it != vis_infos_.end();) {
     if (it->second.was_deleted) {
-      voxblox_msgs::MultiMesh msg;
-      msg.header.stamp = ros::Time::now();
+      voxblox_msgs::msg::MultiMesh msg;
+      msg.header.stamp = rclcpp::Clock().now();
       msg.header.frame_id = global_frame_name_;
       msg.name_space = it->second.name_space;
       result.emplace_back(msg);
@@ -195,8 +196,8 @@ std::vector<voxblox_msgs::MultiMesh> SubmapVisualizer::generateMeshMsgs(
     }
     SubmapVisInfo& info = it->second;
     if (!info.visible) {
-      voxblox_msgs::MultiMesh msg;
-      msg.header.stamp = ros::Time::now();
+      voxblox_msgs::msg::MultiMesh msg;
+      msg.header.stamp = rclcpp::Clock().now();
       msg.header.frame_id = global_frame_name_;
       msg.name_space = info.name_space;
       result.emplace_back(msg);
@@ -204,8 +205,8 @@ std::vector<voxblox_msgs::MultiMesh> SubmapVisualizer::generateMeshMsgs(
     }
 
     // Setup message.
-    voxblox_msgs::MultiMesh msg;
-    msg.header.stamp = ros::Time::now();
+    voxblox_msgs::msg::MultiMesh msg;
+    msg.header.stamp = rclcpp::Clock().now();
     msg.header.frame_id = submap.getFrameName();
     msg.name_space = info.name_space;
 
@@ -248,7 +249,7 @@ std::vector<voxblox_msgs::MultiMesh> SubmapVisualizer::generateMeshMsgs(
     for (const auto& block_index : info.previous_blocks) {
       if (std::find(block_indices.begin(), block_indices.end(), block_index) ==
           block_indices.end()) {
-        voxblox_msgs::MeshBlock mesh_block;
+        voxblox_msgs::msg::MeshBlock mesh_block;
         mesh_block.index[0] = block_index.x();
         mesh_block.index[1] = block_index.y();
         mesh_block.index[2] = block_index.z();
@@ -284,8 +285,8 @@ std::vector<voxblox_msgs::MultiMesh> SubmapVisualizer::generateMeshMsgs(
   return result;
 }
 
-void SubmapVisualizer::generateClassificationMesh(Submap* submap,
-                                                  voxblox_msgs::Mesh* mesh) {
+void SubmapVisualizer::generateClassificationMesh(
+    Submap* submap, voxblox_msgs::msg::Mesh* mesh) {
   if (!submap->hasClassLayer()) {
     return;
   }
@@ -342,9 +343,9 @@ void SubmapVisualizer::generateClassificationMesh(Submap* submap,
                                   mesh);
 }
 
-visualization_msgs::MarkerArray SubmapVisualizer::generateBlockMsgs(
+visualization_msgs::msg::MarkerArray SubmapVisualizer::generateBlockMsgs(
     const SubmapCollection& submaps) {
-  visualization_msgs::MarkerArray result;
+  visualization_msgs::msg::MarkerArray result;
   // Update the visualization infos.
   if (!vis_infos_are_updated_) {
     updateVisInfos(submaps);
@@ -375,15 +376,15 @@ visualization_msgs::MarkerArray SubmapVisualizer::generateBlockMsgs(
     color = Color(0, 0, 255);
 
     for (auto& block_index : blocks) {
-      visualization_msgs::Marker marker;
+      visualization_msgs::msg::Marker marker;
       marker.header.frame_id = submap.getFrameName();
-      marker.header.stamp = ros::Time::now();
+      marker.header.stamp = rclcpp::Clock().now();
       marker.color.r = color.r;
       marker.color.g = color.g;
       marker.color.b = color.b;
       marker.color.a = alpha;
-      marker.action = visualization_msgs::Marker::ADD;
-      marker.type = visualization_msgs::Marker::CUBE;
+      marker.action = visualization_msgs::msg::Marker::ADD;
+      marker.type = visualization_msgs::msg::Marker::CUBE;
       marker.id = counter++;
       marker.ns = "tsdf_blocks_" + std::to_string(submap.getID());
       marker.scale.x = block_size;
@@ -417,9 +418,9 @@ pcl::PointCloud<pcl::PointXYZI> SubmapVisualizer::generateFreeSpaceMsg(
   return result;
 }
 
-visualization_msgs::MarkerArray SubmapVisualizer::generateBoundingVolumeMsgs(
-    const SubmapCollection& submaps) {
-  visualization_msgs::MarkerArray result;
+visualization_msgs::msg::MarkerArray
+SubmapVisualizer::generateBoundingVolumeMsgs(const SubmapCollection& submaps) {
+  visualization_msgs::msg::MarkerArray result;
   // Update the visualization infos.
   if (!vis_infos_are_updated_) {
     updateVisInfos(submaps);
@@ -439,15 +440,15 @@ visualization_msgs::MarkerArray SubmapVisualizer::generateBoundingVolumeMsgs(
       color = vis_it->second.color;
     }
 
-    visualization_msgs::Marker marker;
+    visualization_msgs::msg::Marker marker;
     marker.header.frame_id = submap.getFrameName();
-    marker.header.stamp = ros::Time::now();
+    marker.header.stamp = rclcpp::Clock().now();
     marker.color.r = color.r;
     marker.color.g = color.g;
     marker.color.b = color.b;
     marker.color.a = alpha;
-    marker.action = visualization_msgs::Marker::ADD;
-    marker.type = visualization_msgs::Marker::SPHERE;
+    marker.action = visualization_msgs::msg::Marker::ADD;
+    marker.type = visualization_msgs::msg::Marker::SPHERE;
     marker.ns = "bounding_volume_" + std::to_string(submap.getID());
     marker.scale.x = submap.getBoundingVolume().getRadius() * 2.f;
     marker.scale.y = marker.scale.x;
@@ -666,14 +667,22 @@ void SubmapVisualizer::setSubmapVisColor(const Submap& submap,
 
 void SubmapVisualizer::publishTfTransforms(const SubmapCollection& submaps) {
   // Setup common message.
-  geometry_msgs::TransformStamped msg;
-  msg.header.stamp = ros::Time::now();
+  geometry_msgs::msg::TransformStamped msg;
+  msg.header.stamp = node_->get_clock()->now();
   msg.header.frame_id = global_frame_name_;
 
   // Send transforms of submaps.
   for (const Submap& submap : submaps) {
     msg.child_frame_id = submap.getFrameName();
-    tf::transformKindrToMsg(submap.getT_S_M().cast<double>(), &msg.transform);
+    Eigen::Vector3f pos = submap.getT_S_M().getPosition().cast<float>();
+    Eigen::Quaternionf rot = submap.getT_S_M().getRotation().cast<float>();
+    msg.transform.translation.x = pos.x();
+    msg.transform.translation.y = pos.y();
+    msg.transform.translation.z = pos.z();
+    msg.transform.rotation.x = rot.x();
+    msg.transform.rotation.y = rot.y();
+    msg.transform.rotation.z = rot.z();
+    msg.transform.rotation.w = rot.w();
     tf_broadcaster_.sendTransform(msg);
   }
 }

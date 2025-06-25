@@ -14,8 +14,9 @@
 
 #include <panoptic_mapping/3rd_party/config_utilities.hpp>
 #include <panoptic_mapping/common/input_data.h>
-#include <ros/ros.h>
-#include <tf/transform_listener.h>
+#include <rclcpp/rclcpp.hpp>
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_listener.h>
 
 #include "panoptic_mapping_ros/input/input_subscriber.h"
 
@@ -36,9 +37,10 @@ class InputSynchronizer : public InputSynchronizerBase {
         "";  // Empty (default) take the frame of the depth message header.
     float transform_lookup_time =
         0.1f;  // s, Maximum time to wait for transforms.
-    double max_delay = 0.0; // s, Maximum delay between Image messages that should be synced
+    double max_delay =
+        0.0;  // s, Maximum delay between Image messages that should be synced
 
-    // Depth image type. 32F: meters, 16U: millimeters. 
+    // Depth image type. 32F: meters, 16U: millimeters.
     std::string depth_type = "32F";
 
     Config() { setConfigName("InputSynchronizer"); }
@@ -48,7 +50,7 @@ class InputSynchronizer : public InputSynchronizerBase {
     void checkParams() const override;
   };
 
-  InputSynchronizer(const Config& config, const ros::NodeHandle& nh);
+  InputSynchronizer(const Config& config, rclcpp::Node::sharedPtr nh);
   ~InputSynchronizer() override = default;
 
   // Access.
@@ -104,7 +106,7 @@ class InputSynchronizer : public InputSynchronizerBase {
                 std::function<void(const MsgT&, InputSynchronizerData*)>
                     extraction_function) {
     subscribers_.emplace_back(std::make_unique<InputSubscriber<MsgT>>(
-        nh_, kDefaultTopicNames_.at(type), config_.max_input_queue_length,
+        node_, kDefaultTopicNames_.at(type), config_.max_input_queue_length,
         extraction_function, this));
   }
 
@@ -117,15 +119,15 @@ class InputSynchronizer : public InputSynchronizerBase {
    * @param transformation Output transform if it could be looked up.
    * @return True if the transform could be looked up.
    */
-  bool lookupTransform(const ros::Time& timestamp,
+  bool lookupTransform(const rclcpp::Time& timestamp,
                        const std::string& base_frame,
                        const std::string& child_frame,
                        Transformation* transformation) const;
 
-  bool getDataInQueue(const ros::Time& timestamp,
+  bool getDataInQueue(const rclcpp::Time& timestamp,
                       InputSynchronizerData** data) override;
 
-  bool allocateDataInQueue(const ros::Time& timestamp);
+  bool allocateDataInQueue(const rclcpp::Time& timestamp);
 
   void checkDataIsReady(InputSynchronizerData* data) override;
 
@@ -135,8 +137,9 @@ class InputSynchronizer : public InputSynchronizerBase {
   const Config config_;
 
   // ROS.
-  ros::NodeHandle nh_;
-  tf::TransformListener tf_listener_;
+  rclcpp::Node::SharedPtr node_;
+  std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
+  std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
 
   // Inputs.
   InputData::InputTypes requested_inputs_;
@@ -152,7 +155,7 @@ class InputSynchronizer : public InputSynchronizerBase {
 
   // Variables.
   std::atomic<bool> data_is_ready_;
-  ros::Time oldest_time_ = ros::Time(0);
+  rclcpp::Time oldest_time_ = rclcpp::Time(0);
   std::string used_sensor_frame_name_;
   std::mutex data_mutex_;
 };

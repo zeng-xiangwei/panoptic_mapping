@@ -19,10 +19,10 @@
 #include <panoptic_mapping/tools/planning_interface.h>
 #include <panoptic_mapping/tools/thread_safe_submap_collection.h>
 #include <panoptic_mapping/tracking/id_tracker_base.h>
-#include <panoptic_mapping_msgs/SaveLoadMap.h>
-#include <panoptic_mapping_msgs/SetVisualizationMode.h>
-#include <ros/ros.h>
-#include <std_srvs/Empty.h>
+#include <panoptic_mapping_msgs/srv/save_load_map.hpp>
+#include <panoptic_mapping_msgs/srv/set_visualization_mode.hpp>
+#include <rclcpp/rclcpp.hpp>
+#include <std_srvs/srv/empty.hpp>
 
 #include "panoptic_mapping_ros/input/input_synchronizer.h"
 #include "panoptic_mapping_ros/visualization/planning_visualizer.h"
@@ -84,31 +84,39 @@ class PanopticMapper {
   };
 
   // Construction.
-  PanopticMapper(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private);
+  PanopticMapper(rclcpp::Node::SharedPtr node);
   virtual ~PanopticMapper() = default;
 
   // ROS callbacks.
   // Timers.
-  void publishVisualizationCallback(const ros::TimerEvent&);
-  void dataLoggingCallback(const ros::TimerEvent&);
-  void printTimingsCallback(const ros::TimerEvent&);
-  void inputCallback(const ros::TimerEvent&);
+  void publishVisualizationCallback();
+  void dataLoggingCallback();
+  void printTimingsCallback();
+  void inputCallback();
 
   // Services.
   bool saveMapCallback(
-      panoptic_mapping_msgs::SaveLoadMap::Request& request,     // NOLINT
-      panoptic_mapping_msgs::SaveLoadMap::Response& response);  // NOLINT
+      const panoptic_mapping_msgs::srv::SaveLoadMap::Request::SharedPtr
+          request,  // NOLINT
+      panoptic_mapping_msgs::srv::SaveLoadMap::Response::SharedPtr
+          response);  // NOLINT
   bool loadMapCallback(
-      panoptic_mapping_msgs::SaveLoadMap::Request& request,     // NOLINT
-      panoptic_mapping_msgs::SaveLoadMap::Response& response);  // NOLINT
+      const panoptic_mapping_msgs::srv::SaveLoadMap::Request::SharedPtr
+          request,  // NOLINT
+      panoptic_mapping_msgs::msg::SaveLoadMap::Response::SharedPtr
+          response);  // NOLINT
   bool setVisualizationModeCallback(
-      panoptic_mapping_msgs::SetVisualizationMode::Request& request,  // NOLINT
-      panoptic_mapping_msgs::SetVisualizationMode::Response&          // NOLINT
-          response);
-  bool printTimingsCallback(std_srvs::Empty::Request& request,      // NOLINT
-                            std_srvs::Empty::Response& response);   // NOLINT
-  bool finishMappingCallback(std_srvs::Empty::Request& request,     // NOLINT
-                             std_srvs::Empty::Response& response);  // NOLINT
+      const panoptic_mapping_msgs::msg::SetVisualizationMode::Request::SharedPtr
+          request,  // NOLINT
+      panoptic_mapping_msgs::msg::SetVisualizationMode::Response::
+          SharedPtr  // NOLINT
+              response);
+  bool printTimingsCallback(
+      const std_srvs::srv::Empty::Request::SharedPtr request,  // NOLINT
+      std_srvs::srv::Empty::Response::SharedPtr response);     // NOLINT
+  bool finishMappingCallback(
+      const std_srvs::srv::Empty::Request::SharedPtr request,  // NOLINT
+      std_srvs::srv::Empty::Response::SharedPtr response);     // NOLINT
 
   // Processing.
   // Integrate a set of input images. The input is usually gathered from ROS
@@ -154,21 +162,24 @@ class PanopticMapper {
 
  private:
   // Node handles.
-  ros::NodeHandle nh_;
-  ros::NodeHandle nh_private_;
+  rclcpp::Node::SharedPtr node_;
 
   // Subscribers, Publishers, Services, Timers.
-  ros::ServiceServer load_map_srv_;
-  ros::ServiceServer save_map_srv_;
-  ros::ServiceServer set_visualization_mode_srv_;
-  ros::ServiceServer set_color_mode_srv_;
-  ros::ServiceServer print_timings_srv_;
-  ros::ServiceServer finish_mapping_srv_;
-  ros::Timer visualization_timer_;
-  ros::Timer data_logging_timer_;
-  ros::Timer print_timing_timer_;
-  ros::Timer input_timer_;
-  ros::Publisher segmented_point_cloud_pub_;
+  rclcpp::Service<panoptic_mapping_msgs::srv::SaveLoadMap>::SharedPtr
+      load_map_srv_;
+  rclcpp::Service<panoptic_mapping_msgs::srv::SaveLoadMap>::SharedPtr
+      save_map_srv_;
+  rclcpp::Service<panoptic_mapping_msgs::srv::SetVisualizationMode>::SharedPtr
+      set_visualization_mode_srv_;
+  rclcpp::Service<std_srvs::srv::Empty>::SharedPtr set_color_mode_srv_;
+  rclcpp::Service<std_srvs::srv::Empty>::SharedPtr print_timings_srv_;
+  rclcpp::Service<std_srvs::srv::Empty>::SharedPtr finish_mapping_srv_;
+  rclcpp::TimerBase::SharedPtr visualization_timer_;
+  rclcpp::TimerBase::SharedPtr data_logging_timer_;
+  rclcpp::TimerBase::SharedPtr print_timing_timer_;
+  rclcpp::TimerBase::SharedPtr input_timer_;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
+      segmented_point_cloud_pub_;
 
   // Members.
   YAML::Node root_yaml_;
@@ -199,15 +210,15 @@ class PanopticMapper {
   bool compute_validity_image_ = false;
 
   // Tracking variables.
-  ros::WallTime previous_frame_time_ = ros::WallTime::now();
+  std::chrono::system_clock previous_frame_time_ =
+      std::chrono::system_clock::now();
   std::unique_ptr<Timer> frame_timer_;
-  ros::Time last_input_;
+  rclcpp::Time last_input_;
   bool got_a_frame_ = false;
 
   // Default namespaces and types for modules are defined here.
   static const std::map<std::string, std::pair<std::string, std::string>>
       default_names_and_types_;
-  ros::NodeHandle defaultNh(const std::string& key) const;
 
   // Yaml
   std::string defaultYamlKeyPath(const std::string& key);
