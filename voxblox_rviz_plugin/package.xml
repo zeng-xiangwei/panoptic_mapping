@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>voxblox_rviz_plugin</name>
+  <version>1.0.0</version>
+  <description>
+    Utilities to setup and run data for panoptic mapping.
+  </description>
+  <maintainer email="zengxiangwei@agile-robot.com">
+    The agile-robot Authors
+  </maintainer>
+  <license>Apache 2.0</license>
+
+  <author email="zengxiangwei@agile-robot.com">
+    The agile-robot Authors
+  </author>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>rviz_common</depend>
+  <depend>pluginlib</depend>
+  <depend>voxblox</depend>
+  <depend>voxblox_msgs</depend>
+  <export>
+      <build_type>ament_cmake</build_type>
+      <rviz plugin="${prefix}/plugin_description.xml"/>
+  </export>
+</package>
