@@ -2,8 +2,6 @@ cmake_minimum_required(VERSION 3.5)
 project(minkindr)
 
 find_package(ament_cmake REQUIRED)
-find_package(Eigen3 REQUIRED)
-include_directories(${EIGEN3_INCLUDE_DIR})
 # Add all files to show up in QtCreator.
 FILE(GLOB_RECURSE LibFiles "include/*")
 add_custom_target(headers SOURCES ${LibFiles})

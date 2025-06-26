@@ -30,7 +30,6 @@ PROTOBUF_GENERATE_CPP2(${BASE_PATH} PROTO_SRCS PROTO_HDRS ${PROTO_DEFNS})
 
 add_library(${PROJECT_NAME}_proto ${PROTO_SRCS})
 target_link_libraries(${PROJECT_NAME}_proto ${PROTOBUF_LIBRARIES})
-target_include_directories(${PROJECT_NAME}_proto PUBLIC ${PROTO_GENERATED_HEADERS_INSTALL_DIR})
 
 #############
 # Libraries #
@@ -128,13 +127,14 @@ install(DIRECTORY ${PROJECT_NAME}_LOCAL_INCLUDE_DIR
 
 # Dependencies
 set(${PROJECT_NAME}_RUN_DEPENDS)
-list(APPEND ${PROJECT_NAME}_RUN_DEPENDS voxblox)
+list(APPEND ${PROJECT_NAME}_RUN_DEPENDS voxblox Protobuf)
 
 set(${PROJECT_NAME}_LIBRARIES)
 list(APPEND ${PROJECT_NAME}_LIBRARIES ${PROJECT_NAME} ${PROJECT_NAME}_proto)
 
+set(${PROJECT_NAME}_proto_include ${CMAKE_INSTALL_PREFIX}/include)
 ament_export_include_directories(${${PROJECT_NAME}_LOCAL_INCLUDE_DIR})
-ament_export_include_directories(${PROTO_GENERATED_HEADERS_INSTALL_DIR})
+ament_export_include_directories(${${PROJECT_NAME}_proto_include})
 ament_export_libraries(${${PROJECT_NAME}_LIBRARIES})
 ament_export_dependencies(${${PROJECT_NAME}_RUN_DEPENDS})
 

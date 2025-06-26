@@ -5,6 +5,8 @@
 #include <utility>
 #include <vector>
 
+#include <pcl_conversions/pcl_conversions.h>
+
 #include "panoptic_mapping_ros/conversions/ptcloud_vis.h"
 
 namespace panoptic_mapping {
@@ -12,7 +14,8 @@ namespace panoptic_mapping {
 const Color SubmapVisualizer::kUnknownColor_(50, 50, 50);
 
 config_utilities::Factory::RegistrationRos<SubmapVisualizer, SubmapVisualizer,
-                                           std::shared_ptr<Globals>>
+                                           std::shared_ptr<Globals>,
+                                           rclcpp::Node::SharedPtr>
     SubmapVisualizer::registration_("submaps");
 
 void SubmapVisualizer::Config::checkParams() const {
@@ -46,7 +49,10 @@ SubmapVisualizer::SubmapVisualizer(const Config& config,
                                    std::shared_ptr<Globals> globals,
                                    rclcpp::Node::SharedPtr node,
                                    bool print_config)
-    : config_(config.checkValid()), globals_(std::move(globals)), node_(node) {
+    : config_(config.checkValid()),
+      globals_(std::move(globals)),
+      node_(node),
+      tf_broadcaster_(node_) {
   // Print config after setting up the modes.
   LOG_IF(INFO, config_.verbosity >= 1 && print_config) << "\n"
                                                        << config_.toString();
@@ -58,7 +64,7 @@ SubmapVisualizer::SubmapVisualizer(const Config& config,
 
   // Setup publishers.
   if (config_.visualize_free_space) {
-    freespace_pub_ = node_->create_publisher<pcl::PointCloud<pcl::PointXYZI>>(
+    freespace_pub_ = node_->create_publisher<sensor_msgs::msg::PointCloud2>(
         "visualization/submaps/free_space_tsdf", 100);
   }
   if (config_.visualize_mesh) {
@@ -87,7 +93,7 @@ void SubmapVisualizer::clearMesh() {
   // Clear the current mesh from the rviz plugin.
   // NOTE(schmluk): Other visuals could also be cleared but since they are
   // non-incremental they will anyways be overwritten.
-  if (config_.visualize_mesh && mesh_pub_.getNumSubscribers() > 0) {
+  if (config_.visualize_mesh && mesh_pub_->get_subscription_count() > 0) {
     for (auto& info : vis_infos_) {
       voxblox_msgs::msg::MultiMesh msg;
       msg.header.stamp = rclcpp::Clock().now();
@@ -124,7 +130,7 @@ void SubmapVisualizer::visualizeAll(SubmapCollection* submaps) {
 }
 
 void SubmapVisualizer::visualizeMeshes(SubmapCollection* submaps) {
-  if (config_.visualize_mesh && mesh_pub_.getNumSubscribers() > 0) {
+  if (config_.visualize_mesh && mesh_pub_->get_subscription_count() > 0) {
     std::vector<voxblox_msgs::msg::MultiMesh> msgs = generateMeshMsgs(submaps);
     for (auto& msg : msgs) {
       mesh_pub_->publish(msg);
@@ -134,15 +140,19 @@ void SubmapVisualizer::visualizeMeshes(SubmapCollection* submaps) {
 
 void SubmapVisualizer::visualizeTsdfBlocks(const SubmapCollection& submaps) {
   if (config_.visualize_tsdf_blocks &&
-      tsdf_blocks_pub_.getNumSubscribers() > 0) {
+      tsdf_blocks_pub_->get_subscription_count() > 0) {
     visualization_msgs::msg::MarkerArray markers = generateBlockMsgs(submaps);
-    tsdf_blocks_pub_ > publish(markers);
+    tsdf_blocks_pub_->publish(markers);
   }
 }
 
 void SubmapVisualizer::visualizeFreeSpace(const SubmapCollection& submaps) {
-  if (config_.visualize_free_space && freespace_pub_.getNumSubscribers() > 0) {
-    pcl::PointCloud<pcl::PointXYZI> msg = generateFreeSpaceMsg(submaps);
+  if (config_.visualize_free_space &&
+      freespace_pub_->get_subscription_count() > 0) {
+    pcl::PointCloud<pcl::PointXYZI> freespace_cloud =
+        generateFreeSpaceMsg(submaps);
+    sensor_msgs::msg::PointCloud2 msg;
+    pcl::toROSMsg(freespace_cloud, msg);
     msg.header.frame_id = global_frame_name_;
     freespace_pub_->publish(msg);
   }
@@ -151,10 +161,10 @@ void SubmapVisualizer::visualizeFreeSpace(const SubmapCollection& submaps) {
 void SubmapVisualizer::visualizeBoundingVolume(
     const SubmapCollection& submaps) {
   if (config_.visualize_bounding_volumes &&
-      bounding_volume_pub_.getNumSubscribers() > 0) {
+      bounding_volume_pub_->get_subscription_count() > 0) {
     visualization_msgs::msg::MarkerArray markers =
         generateBoundingVolumeMsgs(submaps);
-    bounding_volume_pub_.publish(markers);
+    bounding_volume_pub_->publish(markers);
   }
 }
 
@@ -675,7 +685,7 @@ void SubmapVisualizer::publishTfTransforms(const SubmapCollection& submaps) {
   for (const Submap& submap : submaps) {
     msg.child_frame_id = submap.getFrameName();
     Eigen::Vector3f pos = submap.getT_S_M().getPosition().cast<float>();
-    Eigen::Quaternionf rot = submap.getT_S_M().getRotation().cast<float>();
+    Eigen::Quaternionf rot = submap.getT_S_M().getEigenQuaternion();
     msg.transform.translation.x = pos.x();
     msg.transform.translation.y = pos.y();
     msg.transform.translation.z = pos.z();

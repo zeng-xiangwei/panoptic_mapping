@@ -8,27 +8,37 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(builtin_interfaces REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(rosgraph_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
+find_package(pcl_conversions REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(voxblox REQUIRED)
+find_package(voxblox_msgs REQUIRED)
 find_package(panoptic_mapping REQUIRED)
 find_package(panoptic_mapping_msgs REQUIRED)
 
 find_package(OpenCV REQUIRED)
+find_package(PCL REQUIRED)
+find_package(glog REQUIRED)
 
 set(DEPENDENCIES_COMBINE
     rclcpp
     builtin_interfaces
     std_msgs
+    std_srvs
     sensor_msgs
     geometry_msgs
     rosgraph_msgs
+    visualization_msgs
     tf2_ros
+    pcl_conversions
     cv_bridge
     voxblox
+    voxblox_msgs
     panoptic_mapping
     panoptic_mapping_msgs
 )
@@ -51,11 +61,13 @@ add_library(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
     yaml-cpp 
     ${OpenCV_LIBRARIES}
+    ${PCL_LIBRARIES}
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC
     ${PROJECT_SOURCE_DIR}/include
     ${OpenCV_INCLUDE_DIRS}
+    ${PCL_INCLUDE_DIRS}
 )
 
 # ament_target_dependencies could add libraries and includes
@@ -68,7 +80,11 @@ ament_target_dependencies(${PROJECT_NAME} ${DEPENDENCIES_COMBINE})
 add_executable(panoptic_mapper_node
         app/panoptic_mapper_node.cpp
         )
-target_link_libraries(panoptic_mapper_node ${PROJECT_NAME})
+target_link_libraries(panoptic_mapper_node 
+    ${PROJECT_NAME} 
+    ${rclcpp_LIBRARIES}
+    glog::glog
+)
 
 ###########
 # Export #
@@ -90,6 +106,17 @@ install(DIRECTORY ${PROJECT_NAME}_LOCAL_INCLUDE_DIR
     FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
     PATTERN ".svn" EXCLUDE
 )
+
+# resources
+set(_shared_content_folders config launch rviz urdf meshes maps worlds Media param)
+foreach(_folder ${_shared_content_folders})
+if(IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${_folder})
+    message(STATUS "Marking SHARED CONTENT FOLDER \"${_folder}\" of package \"${PROJECT_NAME}\" for installation")
+    install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${_folder}/
+        DESTINATION share/${_folder}
+        )
+endif()
+endforeach()
 
 # Dependencies
 set(${PROJECT_NAME}_RUN_DEPENDS ${DEPENDENCIES_COMBINE})

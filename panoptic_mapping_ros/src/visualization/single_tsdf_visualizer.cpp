@@ -13,7 +13,8 @@
 namespace panoptic_mapping {
 
 config_utilities::Factory::RegistrationRos<
-    SubmapVisualizer, SingleTsdfVisualizer, std::shared_ptr<Globals>>
+    SubmapVisualizer, SingleTsdfVisualizer, std::shared_ptr<Globals>,
+    rclcpp::Node::SharedPtr>
     SingleTsdfVisualizer::registration_("single_tsdf");
 
 void SingleTsdfVisualizer::Config::checkParams() const {
@@ -28,9 +29,10 @@ void SingleTsdfVisualizer::Config::setupParamsAndPrinting() {
   setupParam("max_score", &max_score);
 }
 
-SingleTsdfVisualizer::SingleTsdfVisualizer(
-    const Config& config, std::shared_ptr<Globals> globals,
-    rclcpp::Node::SharedPtr node, bool print_config)
+SingleTsdfVisualizer::SingleTsdfVisualizer(const Config& config,
+                                           std::shared_ptr<Globals> globals,
+                                           rclcpp::Node::SharedPtr node,
+                                           bool print_config)
     : SubmapVisualizer(config.submap_visualizer, std::move(globals), node,
                        false),
       config_(config.checkValid()) {

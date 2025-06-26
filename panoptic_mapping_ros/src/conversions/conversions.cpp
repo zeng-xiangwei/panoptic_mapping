@@ -17,7 +17,8 @@ DetectronLabel detectronLabelFromMsg(
 }
 
 DetectronLabels detectronLabelsFromMsg(
-    const panoptic_mapping_msgs::msg::DetectronLabels& msg) {
+    const panoptic_mapping_msgs::msg::DetectronLabels::SharedPtr msg_ptr) {
+  const panoptic_mapping_msgs::msg::DetectronLabels& msg = *msg_ptr;
   DetectronLabels result;
   for (const panoptic_mapping_msgs::msg::DetectronLabel& label : msg.labels) {
     result[label.id] = detectronLabelFromMsg(label);

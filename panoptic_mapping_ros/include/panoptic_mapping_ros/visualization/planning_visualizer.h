@@ -31,7 +31,7 @@ class PlanningVisualizer {
   };
 
   // Constructors.
-  explicit PlanningVisualizer(
+  PlanningVisualizer(
       const Config& config,
       std::shared_ptr<const PlanningInterface> planning_interface,
       rclcpp::Node::SharedPtr node);

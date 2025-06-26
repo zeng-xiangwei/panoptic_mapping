@@ -103,14 +103,13 @@ class PanopticMapper {
   bool loadMapCallback(
       const panoptic_mapping_msgs::srv::SaveLoadMap::Request::SharedPtr
           request,  // NOLINT
-      panoptic_mapping_msgs::msg::SaveLoadMap::Response::SharedPtr
+      panoptic_mapping_msgs::srv::SaveLoadMap::Response::SharedPtr
           response);  // NOLINT
   bool setVisualizationModeCallback(
-      const panoptic_mapping_msgs::msg::SetVisualizationMode::Request::SharedPtr
+      const panoptic_mapping_msgs::srv::SetVisualizationMode::Request::SharedPtr
           request,  // NOLINT
-      panoptic_mapping_msgs::msg::SetVisualizationMode::Response::
-          SharedPtr  // NOLINT
-              response);
+      panoptic_mapping_msgs::srv::SetVisualizationMode::Response::SharedPtr
+          response);  // NOLINT
   bool printTimingsCallback(
       const std_srvs::srv::Empty::Request::SharedPtr request,  // NOLINT
       std_srvs::srv::Empty::Response::SharedPtr response);     // NOLINT
@@ -210,7 +209,7 @@ class PanopticMapper {
   bool compute_validity_image_ = false;
 
   // Tracking variables.
-  std::chrono::system_clock previous_frame_time_ =
+  std::chrono::system_clock::time_point previous_frame_time_ =
       std::chrono::system_clock::now();
   std::unique_ptr<Timer> frame_timer_;
   rclcpp::Time last_input_;

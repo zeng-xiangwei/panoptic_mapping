@@ -50,7 +50,7 @@ class InputSynchronizer : public InputSynchronizerBase {
     void checkParams() const override;
   };
 
-  InputSynchronizer(const Config& config, rclcpp::Node::sharedPtr nh);
+  InputSynchronizer(const Config& config, rclcpp::Node::SharedPtr nh);
   ~InputSynchronizer() override = default;
 
   // Access.
@@ -103,7 +103,8 @@ class InputSynchronizer : public InputSynchronizerBase {
    */
   template <typename MsgT>
   void addQueue(InputData::InputType type,
-                std::function<void(const MsgT&, InputSynchronizerData*)>
+                std::function<void(const typename MsgT::SharedPtr,
+                                   InputSynchronizerData*)>
                     extraction_function) {
     subscribers_.emplace_back(std::make_unique<InputSubscriber<MsgT>>(
         node_, kDefaultTopicNames_.at(type), config_.max_input_queue_length,

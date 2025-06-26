@@ -67,7 +67,8 @@ class SingleTsdfVisualizer : public SubmapVisualizer {
  private:
   const Config config_;
   static config_utilities::Factory::RegistrationRos<
-      SubmapVisualizer, SingleTsdfVisualizer, std::shared_ptr<Globals>>
+      SubmapVisualizer, SingleTsdfVisualizer, std::shared_ptr<Globals>,
+      rclcpp::Node::SharedPtr>
       registration_;
 
   // NOTE(schmluk): This namespace could also be unique per visualizer to allow

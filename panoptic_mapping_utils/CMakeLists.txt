@@ -14,7 +14,10 @@ find_package(rosgraph_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(voxblox REQUIRED)
 find_package(panoptic_mapping REQUIRED)
+find_package(panoptic_mapping_ros REQUIRED)
 find_package(panoptic_mapping_msgs REQUIRED)
+
+find_package(glog REQUIRED)
 
 set(DEPENDENCIES_COMBINE
   rclcpp
@@ -40,6 +43,7 @@ add_library(${PROJECT_NAME}
 target_include_directories(${PROJECT_NAME} PUBLIC
         ${PROJECT_SOURCE_DIR}/include 
         )
+target_link_libraries(${PROJECT_NAME} glog::glog)
 ament_target_dependencies(${PROJECT_NAME} ${DEPENDENCIES_COMBINE})
 
 ###############
@@ -49,7 +53,7 @@ ament_target_dependencies(${PROJECT_NAME} ${DEPENDENCIES_COMBINE})
 add_executable(mesh_saver
         app/mesh_saver_node.cpp
         )
-target_link_libraries(mesh_saver ${PROJECT_NAME})
+target_link_libraries(mesh_saver ${PROJECT_NAME} glog::glog)
 
 ##########
 # Export #
@@ -71,6 +75,17 @@ install(DIRECTORY ${PROJECT_NAME}_LOCAL_INCLUDE_DIR
     FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
     PATTERN ".svn" EXCLUDE
 )
+
+# resources
+set(_shared_content_folders config launch rviz urdf meshes maps worlds Media param)
+foreach(_folder ${_shared_content_folders})
+if(IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${_folder})
+    message(STATUS "Marking SHARED CONTENT FOLDER \"${_folder}\" of package \"${PROJECT_NAME}\" for installation")
+    install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${_folder}/
+        DESTINATION share/${_folder}
+        )
+endif()
+endforeach()
 
 # Dependencies
 set(${PROJECT_NAME}_RUN_DEPENDS ${DEPENDENCIES_COMBINE})

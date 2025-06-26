@@ -145,7 +145,6 @@ class SubmapVisualizer {
 
   // Members.
   std::shared_ptr<Globals> globals_;
-  tf2_ros::TransformBroadcaster tf_broadcaster_;
   voxblox::ExponentialOffsetIdColorMap id_color_map_;
 
   // Cached / tracked data.
@@ -156,17 +155,19 @@ class SubmapVisualizer {
 
   // ROS.
   rclcpp::Node::SharedPtr node_;
-  rclcpp::Publisher < pcl::PointCloud<pcl::PointXYZI>::SharedPtr freespace_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr freespace_pub_;
   rclcpp::Publisher<voxblox_msgs::msg::MultiMesh>::SharedPtr mesh_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr
       tsdf_blocks_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr
       bounding_volume_pub_;
+  tf2_ros::TransformBroadcaster tf_broadcaster_;
 
  private:
   const Config config_;
   static config_utilities::Factory::RegistrationRos<
-      SubmapVisualizer, SubmapVisualizer, std::shared_ptr<Globals>>
+      SubmapVisualizer, SubmapVisualizer, std::shared_ptr<Globals>,
+      rclcpp::Node::SharedPtr>
       registration_;
 };
 

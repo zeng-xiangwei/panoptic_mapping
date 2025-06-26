@@ -43,11 +43,11 @@ class InputSynchronizerBase {
 
 // Some template specializations to lookup the timestamp of a message.
 template <typename MsgT>
-inline const rclcpp::Time& getTimeStampFromMsg(const MsgT& msg) {
+inline rclcpp::Time getTimeStampFromMsg(const MsgT& msg) {
   return msg.header.stamp;
 }
 
-inline const rclcpp::Time& getTimeStampFromMsg(
+inline rclcpp::Time getTimeStampFromMsg(
     const sensor_msgs::msg::Image::ConstSharedPtr& msg) {
   return msg->header.stamp;
 }
@@ -73,7 +73,8 @@ class InputSubscriber : public InputSubscriberBase {
  public:
   InputSubscriber(rclcpp::Node::SharedPtr node, const std::string& topic_name,
                   int queue_size,
-                  std::function<void(const MsgT&, InputSynchronizerData*)>
+                  std::function<void(const typename MsgT::SharedPtr,
+                                     InputSynchronizerData*)>
                       extraction_function,
                   InputSynchronizerBase* parent)
       : extraction_function_(std::move(extraction_function)),
@@ -82,14 +83,12 @@ class InputSubscriber : public InputSubscriberBase {
     // Subscribe to the topic.
     subscriber_ = node_->create_subscription<MsgT>(
         topic_name, queue_size,
-        [this](const typename MsgT::ConstSharedPtr msg) {
-          this->msgCallback(*msg);
-        });
+        [this](const typename MsgT::SharedPtr msg) { this->msgCallback(msg); });
   }
 
-  void msgCallback(const MsgT& msg) {
+  void msgCallback(const typename MsgT::SharedPtr msg) {
     // Store the input message data in the queue.
-    const rclcpp::Time stamp = getTimeStampFromMsg(msg);
+    const rclcpp::Time stamp = getTimeStampFromMsg(*msg);
     InputSynchronizerData* data;
     if (parent_->getDataInQueue(stamp, &data)) {
       extraction_function_(msg, data);
@@ -100,10 +99,10 @@ class InputSubscriber : public InputSubscriberBase {
  private:
   // ROS Subscriber.
   rclcpp::Node::SharedPtr node_;
-  rclcpp::Subscription<MsgT>::SharedPtr subscriber_;
+  typename rclcpp::Subscription<MsgT>::SharedPtr subscriber_;
 
   // Tells the queue how to store its data in the input data.
-  std::function<void(const MsgT& msg, InputSynchronizerData* data)>
+  std::function<void(const typename MsgT::SharedPtr msg, InputSynchronizerData* data)>
       extraction_function_;
 
   // Reference to the parent.

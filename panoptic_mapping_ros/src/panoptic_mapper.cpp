@@ -125,13 +125,14 @@ void PanopticMapper::setupMembersFromYaml() {
 
   // Submaps.
   submap_visualizer_ = config_utilities::FactoryYaml::create<SubmapVisualizer>(
-      root_yaml_, defaultYamlKeyPath("vis_submaps"), globals_);
+      root_yaml_, defaultYamlKeyPath("vis_submaps"), globals_, node_);
   submap_visualizer_->setGlobalFrameName(config_.global_frame_name);
 
   // Tracking.
   tracking_visualizer_ = std::make_unique<TrackingVisualizer>(
       config_utilities::getConfigFromYaml<TrackingVisualizer::Config>(
-          root_yaml_, defaultYamlKeyPath("vis_tracking")));
+          root_yaml_, defaultYamlKeyPath("vis_tracking")),
+      node_);
   tracking_visualizer_->registerIDTracker(id_tracker_.get());
 
   // Planning.
@@ -173,7 +174,7 @@ void PanopticMapper::setupCollectionDependentMembers() {
   planning_visualizer_ = std::make_unique<PlanningVisualizer>(
       config_utilities::getConfigFromYaml<PlanningVisualizer::Config>(
           root_yaml_, defaultYamlKeyPath("vis_planning")),
-      planning_interface_);
+      planning_interface_, node_);
   planning_visualizer_->setGlobalFrameName(config_.global_frame_name);
 }
 
@@ -196,8 +197,11 @@ void PanopticMapper::setupRos() {
           std::bind(&PanopticMapper::setVisualizationModeCallback, this,
                     std::placeholders::_1, std::placeholders::_2));
   print_timings_srv_ = node_->create_service<std_srvs::srv::Empty>(
-      "print_timings", std::bind(&PanopticMapper::printTimingsCallback, this,
-                                 std::placeholders::_1, std::placeholders::_2));
+      "print_timings",
+      [this](const std_srvs::srv::Empty::Request::SharedPtr req,
+             std_srvs::srv::Empty::Response::SharedPtr res) -> bool {
+        return printTimingsCallback(req, res);
+      });
   finish_mapping_srv_ = node_->create_service<std_srvs::srv::Empty>(
       "finish_mapping",
       std::bind(&PanopticMapper::finishMappingCallback, this,
@@ -205,27 +209,27 @@ void PanopticMapper::setupRos() {
 
   // Publishers.
   segmented_point_cloud_pub_ =
-      node_->create_publisher<sensor_msgs::PointCloud2>("segmented_point_cloud",
-                                                        1);
+      node_->create_publisher<sensor_msgs::msg::PointCloud2>(
+          "segmented_point_cloud", 1);
 
   // Timers.
   if (config_.visualization_interval > 0.0) {
     visualization_timer_ = node_->create_wall_timer(
-        std::chrono::seconds(config_.visualization_interval),
+        std::chrono::duration<double>(config_.visualization_interval),
         [this]() { publishVisualizationCallback(); });
   }
   if (config_.data_logging_interval > 0.0) {
     data_logging_timer_ = node_->create_wall_timer(
-        std::chrono::seconds(config_.data_logging_interval),
+        std::chrono::duration<double>(config_.data_logging_interval),
         [this]() { dataLoggingCallback(); });
   }
   if (config_.print_timing_interval > 0.0) {
     print_timing_timer_ = node_->create_wall_timer(
-        std::chrono::seconds(config_.print_timing_interval),
+        std::chrono::duration<double>(config_.print_timing_interval),
         [this]() { dataLoggingCallback(); });
   }
   input_timer_ = node_->create_wall_timer(
-      std::chrono::seconds(config_.check_input_interval),
+      std::chrono::duration<double>(config_.check_input_interval),
       [this]() { inputCallback(); });
 }
 
@@ -241,7 +245,7 @@ void PanopticMapper::inputCallback() {
     }
   } else {
     if (config_.shutdown_when_finished && got_a_frame_ &&
-        (rclcpp::Clock().now() - last_input_).toSec() >= 3.0) {
+        (rclcpp::Clock().now() - last_input_).seconds() >= 3.0) {
       // No more frames, finish up.
       LOG_IF(INFO, config_.verbosity >= 1)
           << "No more frames received for 3 seconds, shutting down.";
@@ -273,38 +277,38 @@ void PanopticMapper::processInput(InputData* input) {
     input->setVertexMap(
         globals_->camera()->computeVertexMap(input->depthImage()));
   }
-  std::chrono::system_clock t0 = std::chrono::system_clock::now();
+  std::chrono::system_clock::time_point t0 = std::chrono::system_clock::now();
 
   // Track the segmentation images and allocate new submaps.
   Timer id_timer("input/id_tracking");
   id_tracker_->processInput(submaps_.get(), input);
-  std::chrono::system_clock t1 = std::chrono::system_clock::now();
+  std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
   id_timer.Stop();
 
   // Integrate the images.
   Timer tsdf_timer("input/tsdf_integration");
   tsdf_integrator_->processInput(submaps_.get(), input);
-  std::chrono::system_clock t2 = std::chrono::system_clock::now();
+  std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
   tsdf_timer.Stop();
 
   // Perform all requested map management actions.
   Timer management_timer("input/map_management");
   map_manager_->tick(submaps_.get(), input);
-  std::chrono::system_clock t3 = std::chrono::system_clock::now();
+  std::chrono::system_clock::time_point t3 = std::chrono::system_clock::now();
   management_timer.Stop();
 
   // If requested perform visualization and logging.
   if (config_.visualization_interval < 0.f) {
     Timer vis_timer("input/visualization");
-    publishVisualizationCallback(ros::TimerEvent());
-    if (segmented_point_cloud_pub_.getNumSubscribers() > 0) {
+    publishVisualizationCallback();
+    if (segmented_point_cloud_pub_->get_subscription_count() > 0) {
       publishSegmentedPointCloud(input);
     }
   }
   if (config_.data_logging_interval < 0.f) {
-    dataLoggingCallback(ros::TimerEvent());
+    dataLoggingCallback();
   }
-  std::chrono::system_clock t4 = std::chrono::system_clock::now();
+  std::chrono::system_clock::time_point t4 = std::chrono::system_clock::now();
 
   // If requested update the thread_safe_submaps.
   if (config_.use_threadsafe_submap_collection) {
@@ -405,7 +409,7 @@ void PanopticMapper::publishSegmentedPointCloud(InputData* input) {
   segmented_pointcloud_msg.header.frame_id = input->sensorFrameName();
 
   // 发布点云话题
-  segmented_point_cloud_pub_.publish(segmented_pointcloud_msg);
+  segmented_point_cloud_pub_->publish(segmented_pointcloud_msg);
 }
 
 bool PanopticMapper::saveMap(const std::string& file_path) {
@@ -497,7 +501,7 @@ bool PanopticMapper::loadMap(const std::string& file_path) {
 }
 
 void PanopticMapper::dataLoggingCallback() {
-  data_logger_->writeData(rclcpp::Clock().now().toSec(), *submaps_);
+  data_logger_->writeData(rclcpp::Clock().now().seconds(), *submaps_);
 }
 
 void PanopticMapper::publishVisualizationCallback() { publishVisualization(); }
@@ -507,37 +511,37 @@ bool PanopticMapper::setVisualizationModeCallback(
         request,
     panoptic_mapping_msgs::srv::SetVisualizationMode::Response::SharedPtr
         response) {
-  response.visualization_mode_set = false;
-  response.color_mode_set = false;
+  response->visualization_mode_set = false;
+  response->color_mode_set = false;
   bool success = true;
 
   // Set the visualization mode if requested.
-  if (!request.visualization_mode.empty()) {
+  if (!request->visualization_mode.empty()) {
     SubmapVisualizer::VisualizationMode visualization_mode =
         SubmapVisualizer::visualizationModeFromString(
-            request.visualization_mode);
+            request->visualization_mode);
     submap_visualizer_->setVisualizationMode(visualization_mode);
     std::string visualization_mode_is =
         SubmapVisualizer::visualizationModeToString(visualization_mode);
     LOG_IF(INFO, config_.verbosity >= 2)
         << "Set visualization mode to '" << visualization_mode_is << "'.";
-    response.visualization_mode_set =
-        visualization_mode_is == request.visualization_mode;
-    if (!response.visualization_mode_set) {
+    response->visualization_mode_set =
+        visualization_mode_is == request->visualization_mode;
+    if (!response->visualization_mode_set) {
       success = false;
     }
   }
 
   // Set the color mode if requested.
-  if (!request.color_mode.empty()) {
+  if (!request->color_mode.empty()) {
     SubmapVisualizer::ColorMode color_mode =
-        SubmapVisualizer::colorModeFromString(request.color_mode);
+        SubmapVisualizer::colorModeFromString(request->color_mode);
     submap_visualizer_->setColorMode(color_mode);
     std::string color_mode_is = SubmapVisualizer::colorModeToString(color_mode);
     LOG_IF(INFO, config_.verbosity >= 2)
         << "Set color mode to '" << color_mode_is << "'.";
-    response.color_mode_set = color_mode_is == request.color_mode;
-    if (!response.color_mode_set) {
+    response->color_mode_set = color_mode_is == request->color_mode;
+    if (!response->color_mode_set) {
       success = false;
     }
   }
@@ -550,15 +554,15 @@ bool PanopticMapper::setVisualizationModeCallback(
 bool PanopticMapper::saveMapCallback(
     const panoptic_mapping_msgs::srv::SaveLoadMap::Request::SharedPtr request,
     panoptic_mapping_msgs::srv::SaveLoadMap::Response::SharedPtr response) {
-  response.success = saveMap(request.file_path);
-  return response.success;
+  response->success = saveMap(request->file_path);
+  return response->success;
 }
 
 bool PanopticMapper::loadMapCallback(
     const panoptic_mapping_msgs::srv::SaveLoadMap::Request::SharedPtr request,
     panoptic_mapping_msgs::srv::SaveLoadMap::Response::SharedPtr response) {
-  response.success = loadMap(request.file_path);
-  return response.success;
+  response->success = loadMap(request->file_path);
+  return response->success;
 }
 
 bool PanopticMapper::printTimingsCallback(

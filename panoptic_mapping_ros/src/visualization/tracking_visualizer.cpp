@@ -16,7 +16,8 @@ void TrackingVisualizer::Config::fromRosParam() {
   ros_namespace = rosParamNameSpace();
 }
 
-TrackingVisualizer::TrackingVisualizer(const Config& config, rclcpp::Node::SharedPtr node)
+TrackingVisualizer::TrackingVisualizer(const Config& config,
+                                       rclcpp::Node::SharedPtr node)
     : config_(config.checkValid()), node_(node) {
   // Print config after setting up the modes.
   LOG_IF(INFO, config_.verbosity >= 1) << "\n" << config_.toString();
@@ -46,9 +47,10 @@ void TrackingVisualizer::publishImage(const cv::Mat& image,
   // Publish the image, expected as BGR8.
   std_msgs::msg::Header header;
   header.stamp = rclcpp::Clock().now();
-  it->second->publish(
-      cv_bridge::CvImage(header, sensor_msgs::msg::image_encodings::BGR8, image)
-          .toImageMsg());
+  auto image_msg_ptr =
+      cv_bridge::CvImage(header, sensor_msgs::image_encodings::BGR8, image)
+          .toImageMsg();
+  it->second->publish(*image_msg_ptr);
 }
 
 }  // namespace panoptic_mapping

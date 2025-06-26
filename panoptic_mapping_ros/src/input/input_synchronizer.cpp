@@ -8,8 +8,8 @@
 #include <unordered_set>
 
 #include <cv_bridge/cv_bridge.h>
-#include <panoptic_mapping_msgs/msg/DetectronLabels.hpp>
-#include <sensor_msgs/msg/Image.hpp>
+#include <panoptic_mapping_msgs/msg/detectron_labels.hpp>
+#include <sensor_msgs/msg/image.hpp>
 
 #include "panoptic_mapping_ros/conversions/conversions.h"
 
@@ -69,82 +69,85 @@ void InputSynchronizer::advertiseInputTopics() {
   for (const InputData::InputType type : requested_inputs_) {
     switch (type) {
       case InputData::InputType::kDepthImage: {
-        using MsgT = sensor_msgs::msg::Image::ConstSharedPtr;
-        addQueue<MsgT>(
-            type, [this](const MsgT& msg, InputSynchronizerData* data) {
-              if (this->config_.depth_type == "32F") {
-                const cv_bridge::CvImageConstPtr depth =
-                    cv_bridge::toCvCopy(msg, "32FC1");
-                data->data->depth_image_ = depth->image;
-              } else if (this->config_.depth_type == "16U") {
-                const cv_bridge::CvImageConstPtr depth =
-                    cv_bridge::toCvCopy(msg, "16UC1");
-                cv::Mat depth_image_in_meters;
-                depth->image.convertTo(depth_image_in_meters, CV_32FC1, 0.001);
-                data->data->depth_image_ = depth_image_in_meters;
-              }
+        using MsgT = sensor_msgs::msg::Image;
+        addQueue<MsgT>(type, [this](const MsgT::SharedPtr msg,
+                                    InputSynchronizerData* data) {
+          if (this->config_.depth_type == "32F") {
+            const cv_bridge::CvImageConstPtr depth =
+                cv_bridge::toCvCopy(msg, "32FC1");
+            data->data->depth_image_ = depth->image;
+          } else if (this->config_.depth_type == "16U") {
+            const cv_bridge::CvImageConstPtr depth =
+                cv_bridge::toCvCopy(msg, "16UC1");
+            cv::Mat depth_image_in_meters;
+            depth->image.convertTo(depth_image_in_meters, CV_32FC1, 0.001);
+            data->data->depth_image_ = depth_image_in_meters;
+          }
 
-              // NOTE(schmluk): If the sensor frame name is not set
-              // recover it from the depth image.
-              if (this->used_sensor_frame_name_.empty()) {
-                this->used_sensor_frame_name_ = msg->header.frame_id;
-              }
+          // NOTE(schmluk): If the sensor frame name is not set
+          // recover it from the depth image.
+          if (this->used_sensor_frame_name_.empty()) {
+            this->used_sensor_frame_name_ = msg->header.frame_id;
+          }
 
-              const std::lock_guard<std::mutex> lock(data->write_mutex_);
-              data->data->contained_inputs_.insert(
-                  InputData::InputType::kDepthImage);
-            });
+          const std::lock_guard<std::mutex> lock(data->write_mutex_);
+          data->data->contained_inputs_.insert(
+              InputData::InputType::kDepthImage);
+        });
         subscribed_inputs_.insert(InputData::InputType::kDepthImage);
         break;
       }
       case InputData::InputType::kColorImage: {
-        using MsgT = sensor_msgs::msg::Image::ConstSharedPtr;
-        addQueue<MsgT>(type, [](const MsgT& msg, InputSynchronizerData* data) {
-          const cv_bridge::CvImageConstPtr color =
-              cv_bridge::toCvCopy(msg, "bgr8");
-          data->data->color_image_ = color->image;
-          const std::lock_guard<std::mutex> lock(data->write_mutex_);
-          data->data->contained_inputs_.insert(
-              InputData::InputType::kColorImage);
-        });
+        using MsgT = sensor_msgs::msg::Image;
+        addQueue<MsgT>(
+            type, [](const MsgT::SharedPtr msg, InputSynchronizerData* data) {
+              const cv_bridge::CvImageConstPtr color =
+                  cv_bridge::toCvCopy(msg, "bgr8");
+              data->data->color_image_ = color->image;
+              const std::lock_guard<std::mutex> lock(data->write_mutex_);
+              data->data->contained_inputs_.insert(
+                  InputData::InputType::kColorImage);
+            });
         subscribed_inputs_.insert(InputData::InputType::kColorImage);
         break;
       }
       case InputData::InputType::kSegmentationImage: {
-        using MsgT = sensor_msgs::msg::Image::ConstSharedPtr;
-        addQueue<MsgT>(type, [](const MsgT& msg, InputSynchronizerData* data) {
-          const cv_bridge::CvImageConstPtr seg =
-              cv_bridge::toCvCopy(msg, "32SC1");
-          data->data->id_image_ = seg->image;
-          const std::lock_guard<std::mutex> lock(data->write_mutex_);
-          data->data->contained_inputs_.insert(
-              InputData::InputType::kSegmentationImage);
-        });
+        using MsgT = sensor_msgs::msg::Image;
+        addQueue<MsgT>(
+            type, [](const MsgT::SharedPtr msg, InputSynchronizerData* data) {
+              const cv_bridge::CvImageConstPtr seg =
+                  cv_bridge::toCvCopy(msg, "32SC1");
+              data->data->id_image_ = seg->image;
+              const std::lock_guard<std::mutex> lock(data->write_mutex_);
+              data->data->contained_inputs_.insert(
+                  InputData::InputType::kSegmentationImage);
+            });
         subscribed_inputs_.insert(InputData::InputType::kSegmentationImage);
         break;
       }
       case InputData::InputType::kDetectronLabels: {
         using MsgT = panoptic_mapping_msgs::msg::DetectronLabels;
-        addQueue<MsgT>(type, [](const MsgT& msg, InputSynchronizerData* data) {
-          data->data->detectron_labels_ = detectronLabelsFromMsg(msg);
-          const std::lock_guard<std::mutex> lock(data->write_mutex_);
-          data->data->contained_inputs_.insert(
-              InputData::InputType::kDetectronLabels);
-        });
+        addQueue<MsgT>(
+            type, [](const MsgT::SharedPtr msg, InputSynchronizerData* data) {
+              data->data->detectron_labels_ = detectronLabelsFromMsg(msg);
+              const std::lock_guard<std::mutex> lock(data->write_mutex_);
+              data->data->contained_inputs_.insert(
+                  InputData::InputType::kDetectronLabels);
+            });
         subscribed_inputs_.insert(InputData::InputType::kDetectronLabels);
         break;
       }
       case InputData::InputType::kUncertaintyImage: {
-        using MsgT = sensor_msgs::msg::Image::ConstSharedPtr;
-        addQueue<MsgT>(
-            type, [this](const MsgT& msg, InputSynchronizerData* data) {
-              const cv_bridge::CvImageConstPtr uncertainty =
-                  cv_bridge::toCvCopy(msg, "32FC1");
-              data->data->uncertainty_image_ = uncertainty->image;
-              const std::lock_guard<std::mutex> lock(data->write_mutex_);
-              data->data->contained_inputs_.insert(
-                  InputData::InputType::kUncertaintyImage);
-            });
+        using MsgT = sensor_msgs::msg::Image;
+        addQueue<MsgT>(type, [this](const MsgT::SharedPtr msg,
+                                    InputSynchronizerData* data) {
+          const cv_bridge::CvImageConstPtr uncertainty =
+              cv_bridge::toCvCopy(msg, "32FC1");
+          data->data->uncertainty_image_ = uncertainty->image;
+          const std::lock_guard<std::mutex> lock(data->write_mutex_);
+          data->data->contained_inputs_.insert(
+              InputData::InputType::kUncertaintyImage);
+        });
         subscribed_inputs_.insert(InputData::InputType::kUncertaintyImage);
         break;
       }
@@ -163,11 +166,11 @@ bool InputSynchronizer::getDataInQueue(const rclcpp::Time& timestamp,
     return false;
   }
   double max_delay = config_.max_delay;
-  auto it = find_if(data_queue_.begin(), data_queue_.end(),
-                    [&timestamp, &max_delay](const auto& arg) {
-                      return abs(arg->timestamp.toSec() - timestamp.toSec()) <=
-                             max_delay;
-                    });
+  auto it = find_if(
+      data_queue_.begin(), data_queue_.end(),
+      [&timestamp, &max_delay](const auto& arg) {
+        return abs(arg->timestamp.seconds() - timestamp.seconds()) <= max_delay;
+      });
   if (it != data_queue_.end()) {
     // There already exists a data point.
     if (!it->get()->valid) {
@@ -309,30 +312,30 @@ bool InputSynchronizer::lookupTransform(const rclcpp::Time& timestamp,
                                         const std::string& child_frame,
                                         Transformation* transformation) const {
   // Try to lookup the transform for the maximum wait time.
-  tf::StampedTransform transform;
+  geometry_msgs::msg::TransformStamped transform;
   try {
     transform = tf_buffer_->lookupTransform(
         base_frame, child_frame, timestamp,
         tf2::durationFromSec(config_.transform_lookup_time));
-  } catch (tf::TransformException& ex) {
+  } catch (tf2::TransformException& ex) {
     LOG_IF(WARNING, config_.verbosity >= 2)
         << "Unable to lookup transform between '" << base_frame << "' and '"
-        << child_frame << "' at time '" << timestamp << "' over '"
+        << child_frame << "' at time '" << timestamp.seconds() << "' over '"
         << config_.transform_lookup_time << "s', skipping inputs. Exception: '"
         << ex.what() << "'.";
     return false;
   }
   CHECK_NOTNULL(transformation);
   Eigen::Vector3f pos;
-  pos.x() = transform.getOrigin().x();
-  pos.y() = transform.getOrigin().y();
-  pos.z() = transform.getOrigin().z();
+  pos.x() = transform.transform.translation.x;
+  pos.y() = transform.transform.translation.y;
+  pos.z() = transform.transform.translation.z;
   Eigen::Quaternionf quat;
-  quat.x() = transform.getRotation().x();
-  quat.y() = transform.getRotation().y();
-  quat.z() = transform.getRotation().z();
-  quat.w() = transform.getRotation().w();
-  *transformation = Transformation(rotation, position);
+  quat.x() = transform.transform.rotation.x;
+  quat.y() = transform.transform.rotation.y;
+  quat.z() = transform.transform.rotation.z;
+  quat.w() = transform.transform.rotation.w;
+  *transformation = Transformation(quat, pos);
   return true;
 }
 

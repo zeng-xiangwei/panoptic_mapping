@@ -27,7 +27,8 @@ void PlanningVisualizer::Config::fromRosParam() {
 
 PlanningVisualizer::PlanningVisualizer(
     const Config& config,
-    std::shared_ptr<const PlanningInterface> planning_interface, rclcpp::Node::SharedPtr node)
+    std::shared_ptr<const PlanningInterface> planning_interface,
+    rclcpp::Node::SharedPtr node)
     : config_(config.checkValid()),
       planning_interface_(std::move(planning_interface)),
       global_frame_name_("mission"),
@@ -37,8 +38,8 @@ PlanningVisualizer::PlanningVisualizer(
 
   // Setup publishers.
   if (config_.visualize_planning_slice) {
-    slice_pub_ =
-        nh_.advertise<visualization_msgs::msg::Marker>("visualization/planning/planning_slice", 100);
+    slice_pub_ = node_->create_publisher<visualization_msgs::msg::Marker>(
+        "visualization/planning/planning_slice", 100);
   }
 }
 

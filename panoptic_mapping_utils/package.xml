@@ -26,6 +26,8 @@
   <depend>panoptic_mapping_msgs</depend>
   <depend>tf2_ros</depend>
 
+  <depend>glog</depend>
+  
   <depend>panoptic_mapping</depend>
   <depend>panoptic_mapping_ros</depend>
   <depend>voxblox</depend>

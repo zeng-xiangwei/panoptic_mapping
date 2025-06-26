@@ -5,9 +5,13 @@ namespace panoptic_mapping {
 MeshSaver::MeshSaver(rclcpp::Node::SharedPtr node) : node_(node) { setupRos(); }
 void MeshSaver::setupRos() {
   std::string topic_name;
-  node_->get_parameter_or("topic", topic_name,
-                          "/panoptic_mapper/visualization/submaps/mesh");
-  mesh_sub_ = nh_.subscribe(topic_name, 10, &MeshSaver::gotMeshCallback, this);
+  node_->get_parameter_or(
+      "topic", topic_name,
+      std::string("/panoptic_mapper/visualization/submaps/mesh"));
+  mesh_sub_ = node_->create_subscription<voxblox_msgs::msg::MultiMesh>(
+      topic_name, 10, [this](const voxblox_msgs::msg::MultiMesh& msg) {
+        gotMeshCallback(msg);
+      });
 }
 
 void MeshSaver::gotMeshCallback(const voxblox_msgs::msg::MultiMesh& msg) {
@@ -98,8 +102,9 @@ void MeshSaver::gotMeshCallback(const voxblox_msgs::msg::MultiMesh& msg) {
     }
   }
   // save mesh
-  std::string output_path =
-      nh_.param<std::string>("output_path", "/tmp/map_mesh.ply");
+  std::string output_path;
+  node_->get_parameter_or("output_path", output_path,
+                          std::string("/tmp/map_mesh.ply"));
   voxblox::outputMeshAsPly(output_path, full_mesh);
   std::cout << "mesh saved to " << output_path << std::endl;
 }

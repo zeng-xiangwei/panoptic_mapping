@@ -11,10 +11,6 @@
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <std_msgs/msg/color_rgba.hpp>
 #include <voxblox/core/common.h>
-#include <voxblox/core/layer.h>
-#include <voxblox/mesh/mesh.h>
-#include <voxblox/utils/color_maps.h>
-#include <voxblox_msgs/msg/layer.hpp>
 
 namespace panoptic_mapping {
 
@@ -22,7 +18,7 @@ DetectronLabel detectronLabelFromMsg(
     const panoptic_mapping_msgs::msg::DetectronLabel& msg);
 
 DetectronLabels detectronLabelsFromMsg(
-    const panoptic_mapping_msgs::msg::DetectronLabels& msg);
+    const panoptic_mapping_msgs::msg::DetectronLabels::SharedPtr msg);
 
 void convertToPointCloud2(
     const Pointcloud& points,
@@ -40,7 +36,7 @@ enum class MapDerializationAction : uint8_t {
 };
 
 inline void colorVoxbloxToMsg(const Color& color,
-                              std_msgs::ColorRGBA* color_msg) {
+                              std_msgs::msg::ColorRGBA* color_msg) {
   CHECK_NOTNULL(color_msg);
   color_msg->r = color.r / 255.0;
   color_msg->g = color.g / 255.0;
@@ -48,7 +44,7 @@ inline void colorVoxbloxToMsg(const Color& color,
   color_msg->a = color.a / 255.0;
 }
 
-inline void colorMsgToVoxblox(const std_msgs::ColorRGBA& color_msg,
+inline void colorMsgToVoxblox(const std_msgs::msg::ColorRGBA& color_msg,
                               Color* color) {
   CHECK_NOTNULL(color);
   color->r = static_cast<uint8_t>(color_msg.r * 255.0);

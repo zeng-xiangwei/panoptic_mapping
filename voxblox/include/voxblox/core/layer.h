@@ -29,7 +29,7 @@ class Layer {
   typedef Block<VoxelType> BlockType;
   typedef
       typename AnyIndexHashMapType<typename BlockType::Ptr>::type BlockHashMap;
-  typedef typename std::pair<BlockIndex, typename BlockType::Ptr> BlockMapPair;
+  typedef typename std::pair<const BlockIndex, typename BlockType::Ptr> BlockMapPair;
 
   explicit Layer(FloatingPoint voxel_size, size_t voxels_per_side)
       : voxel_size_(voxel_size), voxels_per_side_(voxels_per_side) {
