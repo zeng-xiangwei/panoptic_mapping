@@ -227,6 +227,13 @@ inline bool isVariableConfig(const T* candidate) {
 // for the target namespace to look up data. Namespacing adheres to ROS
 // standards with "/" for global and "~" for private namespaces.
 using ParamMap = std::unordered_map<std::string, YAML::Node>;
+inline ParamMap deepClone(const ParamMap& yaml_node_map) {
+  ParamMap result;
+  for (const auto& [key, node] : yaml_node_map) {
+    result[key] = YAML::Clone(node);
+  }
+  return result;
+}
 
 template <typename T>
 inline bool yamlCast(const YAML::Node& node, T* param = nullptr) {
@@ -1191,7 +1198,8 @@ struct ConfigInternal : public ConfigInternalVerificator {
 
     // Update the sub-namespace. Default to same ns. Leading "/" for global ns.
     // Leading "~" for private ns.
-    internal::ParamMap params = *(meta_data_->params);
+    internal::ParamMap params = internal::deepClone(*(meta_data_->params));
+
     params["_name_space"] =
         resolveNameSpaceROS(param_namespace_, sub_namespace,
                             params["_name_space_private"].as<std::string>());
@@ -1202,7 +1210,8 @@ struct ConfigInternal : public ConfigInternalVerificator {
                 const std::string& sub_namespace = "", bool optional = true) {
     CHECK_NOTNULL(config);
     // Resolve the param namespace and get param map.
-    internal::ParamMap params = *(meta_data_->params);
+    internal::ParamMap params = internal::deepClone(*(meta_data_->params));
+
     params["_name_space"] =
         resolveNameSpaceROS(param_namespace_, sub_namespace,
                             params["_name_space_private"].as<std::string>());
@@ -1832,7 +1841,7 @@ class VariableConfig : public internal::VariableConfigInternal {
       std::string type_key =
           params.at("_name_space").as<std::string>() + "/type";
       type_ = params.at(type_key).as<std::string>();
-      params_ = params;
+      params_ = internal::deepClone(params);
     }
   };
 
@@ -1863,7 +1872,7 @@ inline void convertYamlNodeToParamMap(const YAML::Node& node,
     }
   } else {
     if (params.count(path) == 0) {
-      params[path] = node;
+      params[path] = YAML::Clone(node);
     } else {
       LOG(ERROR) << "YAML parameter '" << path << "' already exists!";
     }

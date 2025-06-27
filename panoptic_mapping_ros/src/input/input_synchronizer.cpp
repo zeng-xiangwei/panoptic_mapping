@@ -276,14 +276,8 @@ std::shared_ptr<InputData> InputSynchronizer::getInputData() {
             [](const auto& lhs, const auto& rhs) -> bool {
               return lhs->timestamp < rhs->timestamp;
             });
-
-  LOG(INFO) << "data_queue_.size(): " << data_queue_.size();
-  for (size_t i = 0; i < data_queue_.size(); ++i) {
-    LOG(INFO) << "data_queue_[" << i << "] " << (data_queue_[i] != nullptr);
-  }
   for (size_t i = 0; i < data_queue_.size(); ++i) {
     if (data_queue_[i]->ready) {
-      LOG(INFO) << i << " is ready";
       // In case the sensor frame name is taken from the depth message check it
       // was written. This only happens for the first message.
       if (data_queue_[i]->data->sensorFrameName().empty()) {

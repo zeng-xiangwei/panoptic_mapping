@@ -38,9 +38,10 @@ void TrackingVisualizer::publishImage(const cv::Mat& image,
   auto it = publishers_.find(name);
   if (it == publishers_.end()) {
     // Advertise a new topic if there is no publisher for the given name.
+    std::string topic_name = "visualization/tracking/" + name;
     it = publishers_
              .emplace(name, node_->create_publisher<sensor_msgs::msg::Image>(
-                                name, 100))
+                                topic_name, 100))
              .first;
   }
 

@@ -3,7 +3,7 @@ project(panoptic_mapping_ros)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_BUILD_TYPE Release)
 
 find_package(ament_cmake REQUIRED)
 
@@ -50,7 +50,7 @@ set(DEPENDENCIES_COMBINE
 # Libraries #
 #############
 
-add_library(${PROJECT_NAME}
+add_library(${PROJECT_NAME} SHARED
         src/panoptic_mapper.cpp
         src/input/input_synchronizer.cpp
         src/visualization/submap_visualizer.cpp

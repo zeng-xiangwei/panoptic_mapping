@@ -3,6 +3,7 @@ project(panoptic_mapping)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_BUILD_TYPE Release)
 
 # add_definitions(-Wall)
 find_package(ament_cmake REQUIRED)
@@ -28,14 +29,14 @@ set(PROTO_DEFNS
 set(BASE_PATH "proto")
 PROTOBUF_GENERATE_CPP2(${BASE_PATH} PROTO_SRCS PROTO_HDRS ${PROTO_DEFNS})
 
-add_library(${PROJECT_NAME}_proto ${PROTO_SRCS})
+add_library(${PROJECT_NAME}_proto SHARED ${PROTO_SRCS})
 target_link_libraries(${PROJECT_NAME}_proto ${PROTOBUF_LIBRARIES})
 
 #############
 # Libraries #
 #############
 
-add_library(${PROJECT_NAME}
+add_library(${PROJECT_NAME} SHARED
         src/common/camera.cpp
         src/common/input_data_user.cpp
         src/map/submap.cpp

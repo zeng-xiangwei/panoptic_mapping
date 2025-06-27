@@ -320,17 +320,33 @@ void PanopticMapper::processInput(InputData* input) {
   std::stringstream info;
   info << "Processed input data.";
   if (config_.verbosity >= 3) {
-    info << "\n(tracking: " << int((t1 - t0).count() * 1000)
-         << " + integration: " << int((t2 - t1).count() * 1000)
-         << " + management: " << int((t3 - t2).count() * 1000);
+    info << "\n(tracking: "
+         << static_cast<double>(
+                std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0)
+                    .count())
+         << " + integration: "
+         << static_cast<double>(
+                std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1)
+                    .count())
+         << " + management: "
+         << static_cast<double>(
+                std::chrono::duration_cast<std::chrono::milliseconds>(t3 - t2)
+                    .count());
     if (config_.visualization_interval <= 0.f) {
-      info << " + visual: " << int((t4 - t3).count() * 1000);
+      info << " + visual: "
+           << static_cast<double>(
+                  std::chrono::duration_cast<std::chrono::milliseconds>(t4 - t3)
+                      .count());
     }
-    info << " = " << int((t4 - t0).count() * 1000) << ", frame: "
-         << static_cast<int>(
-                (std::chrono::system_clock::now() - previous_frame_time_)
-                    .count() *
-                1000)
+    info << " = "
+         << static_cast<double>(
+                std::chrono::duration_cast<std::chrono::milliseconds>(t4 - t0)
+                    .count())
+         << ", frame: "
+         << static_cast<double>(
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::system_clock::now() - previous_frame_time_)
+                    .count())
          << "ms)";
   }
   previous_frame_time_ = std::chrono::system_clock::now();

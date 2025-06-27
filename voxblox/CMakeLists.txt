@@ -3,6 +3,7 @@ project(voxblox)
 
 set(CMAKE_MACOSX_RPATH 0)
 add_definitions(-std=c++14 -Wall -Wextra)
+set(CMAKE_BUILD_TYPE Release)
 
 find_package(ament_cmake REQUIRED)
 
@@ -53,7 +54,7 @@ set("${PROJECT_NAME}_SRCS"
 #############
 # LIBRARIES #
 #############
-add_library(${PROJECT_NAME}_proto
+add_library(${PROJECT_NAME}_proto SHARED
   ${PROTO_SRCS}
 )
 target_include_directories(${PROJECT_NAME}_proto SYSTEM PUBLIC
@@ -62,7 +63,7 @@ target_link_libraries(${PROJECT_NAME}_proto
   ${PROTOBUF_LIBRARIES}
 )
 
-add_library(${PROJECT_NAME}
+add_library(${PROJECT_NAME} SHARED
   ${${PROJECT_NAME}_SRCS}
 )
 target_include_directories(${PROJECT_NAME} PUBLIC 
