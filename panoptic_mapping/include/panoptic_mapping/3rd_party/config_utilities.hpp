@@ -36,25 +36,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // Raises a redefined warning if different versions are used. v=MMmmPP.
 #define CONFIG_UTILITIES_VERSION 010202
 
-/**
- * Depending on which headers are available, ROS dependencies are included in
- * the library. Make sure to include config_utilities.hpp after these headers.
- */
-
-// <ros/node_handle.h>
-#ifdef ROSCPP_NODE_HANDLE_H
-#ifndef CONFIG_UTILITIES_ROS_ENABLED
-#define CONFIG_UTILITIES_ROS_ENABLED
-#endif  // CONFIG_UTILITIES_ROS_ENABLED
-#endif  // ROSCPP_NODE_HANDLE_H
-
-// <kindr/minimal/quat-transformation.h>
-#ifdef KINDR_MINIMAL_QUAT_TRANSFORMATION_H_
-#ifndef CONFIG_UTILITIES_TRANSFORMATION_ENABLED
-#define CONFIG_UTILITIES_TRANSFORMATION_ENABLED
-#endif  // CONFIG_UTILITIES_TRANSFORMATION_ENABLED
-#endif  // KINDR_MINIMAL_QUAT_TRANSFORMATION_H_
-
 #ifndef CONFIG_UTILITIES_CORE_HPP_
 #define CONFIG_UTILITIES_CORE_HPP_
 
@@ -62,6 +43,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <cstring>
 #include <functional>
 #include <iomanip>
+#include <iostream>
 #include <map>
 #include <memory>
 #include <sstream>
@@ -1524,6 +1506,7 @@ class Factory {
   template <class BaseT, class DerivedT, typename... Args>
   struct RegistrationRos {
     explicit RegistrationRos(const std::string& type) {
+      std::cout << "Registering " << type << std::endl;
       ModuleMap<BaseT, Args...>::instance().template addEntryRos<DerivedT>(
           type);
     }

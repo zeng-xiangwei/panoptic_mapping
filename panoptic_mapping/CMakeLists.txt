@@ -87,7 +87,6 @@ add_library(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
     ${PROJECT_NAME}_proto
     ${voxblox_LIBRARIES}
-    ${xmlrpcpp_LIBRARIES}
     ${OpenCV_LIBRARY_DIRS}
     stdc++fs
     yaml-cpp
@@ -97,7 +96,6 @@ target_link_libraries(${PROJECT_NAME}
 target_include_directories(${PROJECT_NAME} PUBLIC
     ${EIGEN3_INCLUDE_DIR}
     ${voxblox_INCLUDE_DIRS}
-    ${xmlrpcpp_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIRS}
     ${PROJECT_SOURCE_DIR}/include
     $<INSTALL_INTERFACE:include>
@@ -119,7 +117,8 @@ install(TARGETS ${${PROJECT_NAME}_TARGETS}
 
 # Headers
 set(${PROJECT_NAME}_LOCAL_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
-install(DIRECTORY ${PROJECT_NAME}_LOCAL_INCLUDE_DIR
+message("${PROJECT_NAME}_LOCAL_INCLUDE_DIR: ${${PROJECT_NAME}_LOCAL_INCLUDE_DIR}")
+install(DIRECTORY ${${PROJECT_NAME}_LOCAL_INCLUDE_DIR}/
     DESTINATION include
     FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
     PATTERN ".svn" EXCLUDE

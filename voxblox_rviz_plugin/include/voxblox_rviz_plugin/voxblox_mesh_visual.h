@@ -5,7 +5,7 @@
 #include <map>
 #include <string>
 
-#include <OGRE/OgreManualObject.h>
+#include <OgreManualObject.h>
 
 #include <voxblox/core/block_hash.h>
 #include <voxblox_msgs/msg/mesh.hpp>

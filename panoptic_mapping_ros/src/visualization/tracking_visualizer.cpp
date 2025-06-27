@@ -46,7 +46,7 @@ void TrackingVisualizer::publishImage(const cv::Mat& image,
 
   // Publish the image, expected as BGR8.
   std_msgs::msg::Header header;
-  header.stamp = rclcpp::Clock().now();
+  header.stamp = node_->get_clock()->now();
   auto image_msg_ptr =
       cv_bridge::CvImage(header, sensor_msgs::image_encodings::BGR8, image)
           .toImageMsg();

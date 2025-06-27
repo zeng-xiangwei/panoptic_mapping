@@ -239,13 +239,13 @@ void PanopticMapper::inputCallback() {
     if (data) {
       processInput(data.get());
       if (config_.shutdown_when_finished) {
-        last_input_ = rclcpp::Clock().now();
+        last_input_ = node_->get_clock()->now();
         got_a_frame_ = true;
       }
     }
   } else {
     if (config_.shutdown_when_finished && got_a_frame_ &&
-        (rclcpp::Clock().now() - last_input_).seconds() >= 3.0) {
+        (node_->get_clock()->now() - last_input_).seconds() >= 3.0) {
       // No more frames, finish up.
       LOG_IF(INFO, config_.verbosity >= 1)
           << "No more frames received for 3 seconds, shutting down.";
@@ -501,7 +501,7 @@ bool PanopticMapper::loadMap(const std::string& file_path) {
 }
 
 void PanopticMapper::dataLoggingCallback() {
-  data_logger_->writeData(rclcpp::Clock().now().seconds(), *submaps_);
+  data_logger_->writeData(node_->get_clock()->now().seconds(), *submaps_);
 }
 
 void PanopticMapper::publishVisualizationCallback() { publishVisualization(); }

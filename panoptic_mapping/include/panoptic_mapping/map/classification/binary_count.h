@@ -56,6 +56,8 @@ class BinaryCountLayer : public ClassLayerImpl<BinaryCountVoxel> {
 
  protected:
   const Config config_;
+  
+ public:
   static config_utilities::Factory::RegistrationRos<
       ClassLayer, BinaryCountLayer, float, int>
       registration_;

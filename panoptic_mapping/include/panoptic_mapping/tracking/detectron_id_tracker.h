@@ -36,10 +36,12 @@ class DetectronIDTracker : public ProjectiveIDTracker {
                          InputData* input) override;
   bool classesMatch(int input_id, int submap_class_id) override;
 
- private:
+ public:
   static config_utilities::Factory::RegistrationRos<
       IDTrackerBase, DetectronIDTracker, std::shared_ptr<Globals>>
       registration_;
+      
+ private:
 
   // Members.
   const Config config_;

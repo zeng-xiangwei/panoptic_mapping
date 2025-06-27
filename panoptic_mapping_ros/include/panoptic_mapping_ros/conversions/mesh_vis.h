@@ -157,8 +157,6 @@ inline void generateVoxbloxMeshMsg(MeshLayer* mesh_layer, ColorMode color_mode,
   CHECK_NOTNULL(mesh_msg);
   CHECK_NOTNULL(mesh_layer);
 
-  mesh_msg->header.stamp = rclcpp::Clock().now();
-
   BlockIndexList mesh_indices;
   mesh_layer->getAllUpdatedMeshes(&mesh_indices);
 
@@ -243,7 +241,6 @@ inline void fillMarkerWithMesh(const MeshLayer::ConstPtr& mesh_layer,
                                ColorMode color_mode,
                                visualization_msgs::msg::Marker* marker) {
   CHECK_NOTNULL(marker);
-  marker->header.stamp = rclcpp::Clock().now();
   marker->ns = "mesh";
   marker->scale.x = 1;
   marker->scale.y = 1;

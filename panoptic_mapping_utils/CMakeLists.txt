@@ -36,7 +36,6 @@ set(DEPENDENCIES_COMBINE
 #############
 # Libraries #
 #############
-
 add_library(${PROJECT_NAME}
         src/mesh_saver.cpp
         )
@@ -61,11 +60,14 @@ target_link_libraries(mesh_saver ${PROJECT_NAME} glog::glog)
 
 set(${PROJECT_NAME}_TARGETS)
 list(APPEND ${PROJECT_NAME}_TARGETS ${PROJECT_NAME})
-list(APPEND ${PROJECT_NAME}_TARGETS mesh_saver)
 install(TARGETS ${${PROJECT_NAME}_TARGETS}
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin
+)
+
+install(TARGETS mesh_saver
+    RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
 # Headers
@@ -79,12 +81,23 @@ install(DIRECTORY ${PROJECT_NAME}_LOCAL_INCLUDE_DIR
 # resources
 set(_shared_content_folders config launch rviz urdf meshes maps worlds Media param)
 foreach(_folder ${_shared_content_folders})
-if(IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${_folder})
-    message(STATUS "Marking SHARED CONTENT FOLDER \"${_folder}\" of package \"${PROJECT_NAME}\" for installation")
-    install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${_folder}/
-        DESTINATION share/${_folder}
-        )
-endif()
+  if(IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${_folder})
+      message(STATUS "Marking SHARED CONTENT FOLDER \"${_folder}\" of package \"${PROJECT_NAME}\" for installation")
+      install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${_folder}/
+          DESTINATION share/${PROJECT_NAME}/${_folder}
+          )
+  endif()
+endforeach()
+
+# python scripts
+set(_python_scripts_folders flat_dataset)
+foreach(_folder ${_python_scripts_folders})
+  if(IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${_folder})
+      message(STATUS "Marking PYTHON SCRIPTS FOLDER \"${_folder}\" of package \"${PROJECT_NAME}\" for installation")
+      install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${_folder}/
+          DESTINATION lib/${PROJECT_NAME}/
+      )
+  endif()
 endforeach()
 
 # Dependencies

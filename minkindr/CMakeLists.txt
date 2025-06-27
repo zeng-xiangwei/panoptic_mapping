@@ -11,7 +11,7 @@ add_custom_target(headers SOURCES ${LibFiles})
 ##########
 # Headers
 set(${PROJECT_NAME}_LOCAL_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
-install(DIRECTORY ${PROJECT_NAME}_LOCAL_INCLUDE_DIR
+install(DIRECTORY ${${PROJECT_NAME}_LOCAL_INCLUDE_DIR}/
     DESTINATION include
     FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
     PATTERN ".svn" EXCLUDE

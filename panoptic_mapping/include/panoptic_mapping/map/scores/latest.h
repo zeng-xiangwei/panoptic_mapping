@@ -53,6 +53,8 @@ class LatestScoreLayer : public ScoreLayerImpl<LatestScoreVoxel> {
 
  protected:
   const Config config_;
+
+ public:
   static config_utilities::Factory::RegistrationRos<
       ScoreLayer, LatestScoreLayer, float, int>
       registration_;

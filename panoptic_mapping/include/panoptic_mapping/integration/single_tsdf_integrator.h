@@ -73,9 +73,6 @@ class SingleTsdfIntegrator : public ProjectiveIntegrator {
 
  private:
   const Config config_;
-  static config_utilities::Factory::RegistrationRos<
-      TsdfIntegratorBase, SingleTsdfIntegrator, std::shared_ptr<Globals>>
-      registration_;
 
   void updateClassVoxel(InterpolatorBase* interpolator, const InputData& input,
                         ClassVoxel* class_voxel) const;
@@ -85,6 +82,11 @@ class SingleTsdfIntegrator : public ProjectiveIntegrator {
   void updateUncertaintyVoxel(InterpolatorBase* interpolator,
                               const InputData& input,
                               UncertaintyVoxel* class_voxel) const;
+
+ public:
+  static config_utilities::Factory::RegistrationRos<
+      TsdfIntegratorBase, SingleTsdfIntegrator, std::shared_ptr<Globals>>
+      registration_;
 };
 
 }  // namespace panoptic_mapping

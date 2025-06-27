@@ -26,10 +26,12 @@ class NullDataWriter : public DataWriterBase {
   void writeData(double time_stamp, const SubmapCollection& submaps) override{};
 
  private:
+  const Config config_;
+
+ public:
   static config_utilities::Factory::RegistrationRos<DataWriterBase,
                                                     NullDataWriter>
       registration_;
-  const Config config_;
 };
 
 }  // namespace panoptic_mapping

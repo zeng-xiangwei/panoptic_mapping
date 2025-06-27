@@ -31,10 +31,12 @@ class NullSubmapAllocator : public SubmapAllocatorBase {
   }
 
  private:
+  const Config config_;
+
+ public:
   static config_utilities::Factory::RegistrationRos<SubmapAllocatorBase,
                                                     NullSubmapAllocator>
       registration_;
-  const Config config_;
 };
 
 /**
@@ -61,10 +63,12 @@ class NullFreespaceAllocator : public FreespaceAllocatorBase {
   }
 
  private:
+  const Config config_;
+
+ public:
   static config_utilities::Factory::RegistrationRos<FreespaceAllocatorBase,
                                                     NullFreespaceAllocator>
       registration_;
-  const Config config_;
 };
 
 }  // namespace panoptic_mapping

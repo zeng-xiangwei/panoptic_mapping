@@ -42,7 +42,9 @@ void InputSynchronizer::Config::setupParamsAndPrinting() {
 
 InputSynchronizer::InputSynchronizer(const Config& config,
                                      rclcpp::Node::SharedPtr node)
-    : config_(config.checkValid()), node_(node), data_is_ready_(false) {
+    : config_(config.checkValid()),
+      node_(node),
+      data_is_ready_(false) {
   LOG_IF(INFO, config_.verbosity >= 1) << "\n" << config_.toString();
   if (!config_.sensor_frame_name.empty()) {
     used_sensor_frame_name_ = config_.sensor_frame_name;
@@ -274,8 +276,14 @@ std::shared_ptr<InputData> InputSynchronizer::getInputData() {
             [](const auto& lhs, const auto& rhs) -> bool {
               return lhs->timestamp < rhs->timestamp;
             });
+
+  LOG(INFO) << "data_queue_.size(): " << data_queue_.size();
+  for (size_t i = 0; i < data_queue_.size(); ++i) {
+    LOG(INFO) << "data_queue_[" << i << "] " << (data_queue_[i] != nullptr);
+  }
   for (size_t i = 0; i < data_queue_.size(); ++i) {
     if (data_queue_[i]->ready) {
+      LOG(INFO) << i << " is ready";
       // In case the sensor frame name is taken from the depth message check it
       // was written. This only happens for the first message.
       if (data_queue_[i]->data->sensorFrameName().empty()) {
@@ -290,9 +298,9 @@ std::shared_ptr<InputData> InputSynchronizer::getInputData() {
       }
 
       // Get the result and erase from the queue.
+      oldest_time_ = data_queue_.front()->timestamp;
       result = data_queue_[i]->data;
       data_queue_.erase(data_queue_.begin() + i);
-      oldest_time_ = data_queue_.front()->timestamp;
       break;
     }
   }

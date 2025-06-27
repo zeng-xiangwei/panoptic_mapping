@@ -48,10 +48,12 @@ class SemanticSubmapAllocator : public SubmapAllocatorBase {
                          int /* input_id */, const LabelEntry& label) override;
 
  private:
+  const Config config_;
+ 
+ public:
   static config_utilities::Factory::RegistrationRos<SubmapAllocatorBase,
                                                     SemanticSubmapAllocator>
       registration_;
-  const Config config_;
 };
 }  // namespace panoptic_mapping
 

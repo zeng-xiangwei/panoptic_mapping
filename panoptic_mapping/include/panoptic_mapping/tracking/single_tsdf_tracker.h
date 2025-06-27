@@ -46,11 +46,13 @@ class SingleTSDFTracker : public IDTrackerBase {
   void setup(SubmapCollection* submaps);
 
   void parseDetectronClasses(InputData* input);
-
- private:
+ 
+ public:
   static config_utilities::Factory::RegistrationRos<
       IDTrackerBase, SingleTSDFTracker, std::shared_ptr<Globals>>
       registration_;
+      
+ private:
   const Config config_;
 
   int map_id_;

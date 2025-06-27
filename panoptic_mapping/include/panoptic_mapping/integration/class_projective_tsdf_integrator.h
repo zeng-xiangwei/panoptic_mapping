@@ -64,13 +64,15 @@ class ClassProjectiveIntegrator : public ProjectiveIntegrator {
 
  private:
   const Config config_;
-  static config_utilities::Factory::RegistrationRos<
-      TsdfIntegratorBase, ClassProjectiveIntegrator, std::shared_ptr<Globals>>
-      registration_;
 
   // Cached data.
   std::unordered_map<int, int> id_to_class_;
   size_t num_classes_;
+
+ public:
+  static config_utilities::Factory::RegistrationRos<
+      TsdfIntegratorBase, ClassProjectiveIntegrator, std::shared_ptr<Globals>>
+      registration_;
 };
 
 }  // namespace panoptic_mapping

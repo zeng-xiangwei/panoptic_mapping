@@ -58,6 +58,8 @@ class VariableCountLayer : public ClassLayerImpl<VariableCountVoxel> {
 
  protected:
   const Config config_;
+
+ public:
   static config_utilities::Factory::RegistrationRos<
       ClassLayer, VariableCountLayer, float, int>
       registration_;

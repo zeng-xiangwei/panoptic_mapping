@@ -38,10 +38,12 @@ class EvaluationDataWriter : public LogDataWriter {
   explicit EvaluationDataWriter(const Config& config);
   ~EvaluationDataWriter() override = default;
 
- private:
+ public:
   static config_utilities::Factory::RegistrationRos<DataWriterBase,
                                                     EvaluationDataWriter>
       registration_;
+
+ private:
   const Config config_;
 
   // Tracking variables.

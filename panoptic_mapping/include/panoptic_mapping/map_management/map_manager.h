@@ -77,10 +77,12 @@ class MapManager : public MapManagerBase {
  protected:
   std::string pruneBlocks(Submap* submap) const;
 
- private:
+ public:
   static config_utilities::Factory::RegistrationRos<MapManagerBase, MapManager,
                                                     std::shared_ptr<Globals>>
       registration_;
+
+ private:
   // Members.
   const Config config_;
 

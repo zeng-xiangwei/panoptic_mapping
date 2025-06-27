@@ -61,6 +61,8 @@ class MovingBinaryCountLayer : public ClassLayerImpl<MovingBinaryCountVoxel> {
 
  protected:
   const Config config_;
+ 
+ public:
   static config_utilities::Factory::RegistrationRos<
       ClassLayer, MovingBinaryCountLayer, float, int>
       registration_;

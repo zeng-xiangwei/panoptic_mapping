@@ -37,10 +37,12 @@ class MonolithicFreespaceAllocator : public FreespaceAllocatorBase {
                          InputData* /* input */) override;
 
  private:
+  const Config config_;
+ 
+ public:
   static config_utilities::Factory::RegistrationRos<
       FreespaceAllocatorBase, MonolithicFreespaceAllocator>
       registration_;
-  const Config config_;
 };
 }  // namespace panoptic_mapping
 

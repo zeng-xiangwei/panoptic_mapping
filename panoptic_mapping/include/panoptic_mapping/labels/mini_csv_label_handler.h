@@ -33,10 +33,12 @@ class MiniCsvLabelHandler : public LabelHandlerBase {
 
  private:
   const Config config_;
+  void readLabelsFromFile();
+
+ public:
   static config_utilities::Factory::RegistrationRos<LabelHandlerBase,
                                                     MiniCsvLabelHandler>
       registration_;
-  void readLabelsFromFile();
 };
 
 }  // namespace panoptic_mapping

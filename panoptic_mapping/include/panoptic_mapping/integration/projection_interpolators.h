@@ -90,7 +90,7 @@ class InterpolatorNearest : public InterpolatorBase {
   int u_;
   int v_;
 
- private:
+ public:
   static config_utilities::Factory::Registration<InterpolatorBase,
                                                  InterpolatorNearest>
       registration_;
@@ -116,7 +116,7 @@ class InterpolatorBilinear : public InterpolatorBase {
   int v_;
   float weight_[4];
 
- private:
+ public:
   static config_utilities::Factory::Registration<InterpolatorBase,
                                                  InterpolatorBilinear>
       registration_;
@@ -147,7 +147,7 @@ class InterpolatorAdaptive : public InterpolatorBilinear {
   float weight_[4];
   bool use_bilinear_;
 
- private:
+ public:
   static config_utilities::Factory::Registration<InterpolatorBase,
                                                  InterpolatorAdaptive>
       registration_;

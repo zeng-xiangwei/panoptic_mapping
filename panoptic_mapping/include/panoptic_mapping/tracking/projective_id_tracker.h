@@ -91,11 +91,12 @@ class ProjectiveIDTracker : public IDTrackerBase {
   TrackingInfo renderTrackingInfoVertices(const Submap& submap,
                                           const InputData& input) const;
 
- private:
+ public:
   static config_utilities::Factory::RegistrationRos<
       IDTrackerBase, ProjectiveIDTracker, std::shared_ptr<Globals>>
       registration_;
-
+      
+ private:
   // Members
   const Config config_;
 

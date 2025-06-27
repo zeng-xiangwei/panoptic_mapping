@@ -156,7 +156,7 @@ class InputSynchronizer : public InputSynchronizerBase {
 
   // Variables.
   std::atomic<bool> data_is_ready_;
-  rclcpp::Time oldest_time_ = rclcpp::Time(0);
+  rclcpp::Time oldest_time_ = rclcpp::Time(static_cast<int64_t>(0), rcl_clock_type_t::RCL_ROS_TIME);
   std::string used_sensor_frame_name_;
   std::mutex data_mutex_;
 };

@@ -56,7 +56,7 @@ void SingleTsdfVisualizer::clearMesh() {
   if (config_.submap_visualizer.visualize_mesh &&
       mesh_pub_->get_subscription_count() > 0) {
     voxblox_msgs::msg::MultiMesh msg;
-    msg.header.stamp = rclcpp::Clock().now();
+    msg.header.stamp = node_->get_clock()->now();
     msg.name_space = map_name_space_;
     mesh_pub_->publish(msg);
   }
@@ -81,7 +81,7 @@ SingleTsdfVisualizer::generateMeshMsgs(SubmapCollection* submaps) {
 
   // Setup message.
   voxblox_msgs::msg::MultiMesh msg;
-  msg.header.stamp = rclcpp::Clock().now();
+  msg.header.stamp = node_->get_clock()->now();
   msg.header.frame_id = submap.getFrameName();
   msg.name_space = map_name_space_;
 

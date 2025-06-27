@@ -1,7 +1,7 @@
 #include "voxblox_rviz_plugin/voxblox_mesh_display.h"
 
-#include <OGRE/OgreSceneManager.h>
-#include <OGRE/OgreSceneNode.h>
+#include <OgreSceneManager.h>
+#include <OgreSceneNode.h>
 
 #include <tf2_ros/transform_listener.h>
 #include <rclcpp/rclcpp.hpp>

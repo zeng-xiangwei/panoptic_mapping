@@ -51,10 +51,12 @@ class GroundTruthIDTracker : public IDTrackerBase {
    */
   void printAndResetWarnings();
 
- private:
+ public:
   static config_utilities::Factory::RegistrationRos<
       IDTrackerBase, GroundTruthIDTracker, std::shared_ptr<Globals>>
       registration_;
+      
+ private:
   const Config config_;
   std::unordered_map<int, int> instance_to_id_;  // Track active maps.
   std::unordered_map<int, int> unknown_ids;      // For error handling.

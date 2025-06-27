@@ -32,10 +32,12 @@ class RangeLabelHandler : public LabelHandlerBase {
 
  private:
   const Config config_;
+  void initialiseLabels();
+
+ public:
   static config_utilities::Factory::RegistrationRos<LabelHandlerBase,
                                                     RangeLabelHandler>
       registration_;
-  void initialiseLabels();
 };
 
 }  // namespace panoptic_mapping

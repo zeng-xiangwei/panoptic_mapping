@@ -57,7 +57,7 @@ visualization_msgs::msg::Marker PlanningVisualizer::generateSliceMsg() {
   // Setup the message.
   visualization_msgs::msg::Marker marker;
   marker.header.frame_id = global_frame_name_;
-  marker.header.stamp = rclcpp::Clock().now();
+  marker.header.stamp = node_->get_clock()->now();
   marker.action = visualization_msgs::msg::Marker::ADD;
   marker.type = visualization_msgs::msg::Marker::CUBE_LIST;
   marker.id = 0;

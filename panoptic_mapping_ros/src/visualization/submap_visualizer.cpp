@@ -96,7 +96,7 @@ void SubmapVisualizer::clearMesh() {
   if (config_.visualize_mesh && mesh_pub_->get_subscription_count() > 0) {
     for (auto& info : vis_infos_) {
       voxblox_msgs::msg::MultiMesh msg;
-      msg.header.stamp = rclcpp::Clock().now();
+      msg.header.stamp = node_->get_clock()->now();
       msg.name_space = info.second.name_space;
       mesh_pub_->publish(msg);
     }
@@ -181,7 +181,7 @@ std::vector<voxblox_msgs::msg::MultiMesh> SubmapVisualizer::generateMeshMsgs(
   for (auto it = vis_infos_.begin(); it != vis_infos_.end();) {
     if (it->second.was_deleted) {
       voxblox_msgs::msg::MultiMesh msg;
-      msg.header.stamp = rclcpp::Clock().now();
+      msg.header.stamp = node_->get_clock()->now();
       msg.header.frame_id = global_frame_name_;
       msg.name_space = it->second.name_space;
       result.emplace_back(msg);
@@ -207,7 +207,7 @@ std::vector<voxblox_msgs::msg::MultiMesh> SubmapVisualizer::generateMeshMsgs(
     SubmapVisInfo& info = it->second;
     if (!info.visible) {
       voxblox_msgs::msg::MultiMesh msg;
-      msg.header.stamp = rclcpp::Clock().now();
+      msg.header.stamp = node_->get_clock()->now();
       msg.header.frame_id = global_frame_name_;
       msg.name_space = info.name_space;
       result.emplace_back(msg);
@@ -216,7 +216,6 @@ std::vector<voxblox_msgs::msg::MultiMesh> SubmapVisualizer::generateMeshMsgs(
 
     // Setup message.
     voxblox_msgs::msg::MultiMesh msg;
-    msg.header.stamp = rclcpp::Clock().now();
     msg.header.frame_id = submap.getFrameName();
     msg.name_space = info.name_space;
 
@@ -290,6 +289,9 @@ std::vector<voxblox_msgs::msg::MultiMesh> SubmapVisualizer::generateMeshMsgs(
 
     // Set alpha values.
     msg.alpha = info.alpha * 255.f;
+    auto time_now = node_->get_clock()->now();
+    msg.header.stamp = time_now;
+    msg.mesh.header.stamp = time_now;
     result.emplace_back(std::move(msg));
   }
   return result;
@@ -388,7 +390,7 @@ visualization_msgs::msg::MarkerArray SubmapVisualizer::generateBlockMsgs(
     for (auto& block_index : blocks) {
       visualization_msgs::msg::Marker marker;
       marker.header.frame_id = submap.getFrameName();
-      marker.header.stamp = rclcpp::Clock().now();
+      marker.header.stamp = node_->get_clock()->now();
       marker.color.r = color.r;
       marker.color.g = color.g;
       marker.color.b = color.b;
@@ -452,7 +454,7 @@ SubmapVisualizer::generateBoundingVolumeMsgs(const SubmapCollection& submaps) {
 
     visualization_msgs::msg::Marker marker;
     marker.header.frame_id = submap.getFrameName();
-    marker.header.stamp = rclcpp::Clock().now();
+    marker.header.stamp = node_->get_clock()->now();
     marker.color.r = color.r;
     marker.color.g = color.g;
     marker.color.b = color.b;

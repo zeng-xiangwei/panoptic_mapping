@@ -30,11 +30,13 @@ class NullMapManager : public MapManagerBase {
   void finishMapping(SubmapCollection* submaps) override {}
 
  private:
+  const Config config_;
+  const std::shared_ptr<Globals> globals_;
+
+ public:
   static config_utilities::Factory::RegistrationRos<
       MapManagerBase, NullMapManager, std::shared_ptr<Globals>>
       registration_;
-  const Config config_;
-  const std::shared_ptr<Globals> globals_;
 };
 
 }  // namespace panoptic_mapping

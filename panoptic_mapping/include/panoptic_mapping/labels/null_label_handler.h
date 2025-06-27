@@ -27,9 +27,11 @@ class NullLabelHandler : public LabelHandlerBase {
 
  private:
   const Config config_;
+
+ public:
   static config_utilities::Factory::RegistrationRos<LabelHandlerBase,
                                                     NullLabelHandler>
-      registration_[[gnu::used]];
+      registration_;
 };
 
 }  // namespace panoptic_mapping

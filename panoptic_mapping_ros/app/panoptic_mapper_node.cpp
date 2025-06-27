@@ -3,21 +3,27 @@
 
 #include "panoptic_mapping_ros/panoptic_mapper.h"
 
+class PanopticMapperNode : public rclcpp::Node {
+ public:
+  PanopticMapperNode(const std::string& name) : rclcpp::Node(name) {
+    this->declare_parameter<std::string>("config_path", "");
+  }
+};
+
 int main(int argc, char** argv) {
   // Start Ros.
   rclcpp::init(argc, argv);
 
-  // Always add these arguments for proper logging.
-  config_utilities::RequiredArguments ra(
-      &argc, &argv, {"--logtostderr", "--colorlogtostderr"});
-
   // Setup logging.
   google::InitGoogleLogging(argv[0]);
   google::InstallFailureSignalHandler();
-  google::ParseCommandLineFlags(&argc, &argv, false);
+  // Can not use argc argv to parse, because ros2 has other arguments. It's
+  // conflict.
+  FLAGS_alsologtostderr = true;
+  FLAGS_colorlogtostderr = true;
 
   // Setup node.
-  auto node = rclcpp::Node::make_shared("panoptic_mapper");
+  auto node = std::make_shared<PanopticMapperNode>("panoptic_mapper");
   panoptic_mapping::PanopticMapper mapper(node);
 
   // Setup spinning.

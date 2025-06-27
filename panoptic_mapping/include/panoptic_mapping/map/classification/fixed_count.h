@@ -67,6 +67,8 @@ class FixedCountLayer : public ClassLayerImpl<FixedCountVoxel> {
 
  protected:
   const Config config_;
+ 
+ public:
   static config_utilities::Factory::RegistrationRos<ClassLayer, FixedCountLayer,
                                                     float, int>
       registration_;

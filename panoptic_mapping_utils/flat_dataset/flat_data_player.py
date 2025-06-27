@@ -3,6 +3,7 @@
 import os
 import json
 import csv
+import math
 
 import rclpy
 from rclpy.node import Node
@@ -15,8 +16,39 @@ import numpy as np
 import tf2_ros
 from tf2_ros import TransformBroadcaster
 
-from std_srvs.srv import Empty, EmptyResponse
+from std_srvs.srv import Empty
 from panoptic_mapping_msgs.msg import DetectronLabel, DetectronLabels
+
+def quaternion_from_matrix(matrix):
+    """Return quaternion from rotation matrix.
+
+    >>> R = rotation_matrix(0.123, (1, 2, 3))
+    >>> q = quaternion_from_matrix(R)
+    >>> numpy.allclose(q, [0.0164262, 0.0328524, 0.0492786, 0.9981095])
+    True
+
+    """
+    q = np.empty((4, ), dtype=np.float64)
+    M = np.array(matrix, dtype=np.float64, copy=False)[:4, :4]
+    t = np.trace(M)
+    if t > M[3, 3]:
+        q[3] = t
+        q[2] = M[1, 0] - M[0, 1]
+        q[1] = M[0, 2] - M[2, 0]
+        q[0] = M[2, 1] - M[1, 2]
+    else:
+        i, j, k = 0, 1, 2
+        if M[1, 1] > M[0, 0]:
+            i, j, k = 1, 2, 0
+        if M[2, 2] > M[i, i]:
+            i, j, k = 2, 0, 1
+        t = M[i, i] - (M[j, j] + M[k, k]) + M[3, 3]
+        q[i] = t
+        q[j] = M[i, j] + M[j, i]
+        q[k] = M[k, i] + M[i, k]
+        q[3] = M[k, j] - M[j, k]
+    q *= 0.5 / math.sqrt(t * M[3, 3])
+    return q
 
 
 class FlatDataPlayer(Node):
@@ -26,54 +58,54 @@ class FlatDataPlayer(Node):
         super().__init__('flat_data_player')
         # params
         self.declare_parameter(
-            '~data_path', '/home/lukas/Documents/Datasets/flat_dataset/run1')
-        self.data_path = self.get_parameter('~data_path').value
+            'data_path', '/home/lukas/Documents/Datasets/flat_dataset/run1')
+        self.data_path = self.get_parameter('data_path').value
 
-        self.declare_parameter('~global_frame_name', 'world')
-        self.global_frame_name = self.get_parameter('~global_frame_name').value
+        self.declare_parameter('global_frame_name', 'world')
+        self.global_frame_name = self.get_parameter('global_frame_name').value
 
-        self.declare_parameter('~sensor_frame_name', 'depth_cam')
-        self.sensor_frame_name = self.get_parameter('~sensor_frame_name').value
+        self.declare_parameter('sensor_frame_name', 'depth_cam')
+        self.sensor_frame_name = self.get_parameter('sensor_frame_name').value
 
-        self.declare_parameter('~use_detectron', False)
-        self.use_detectron = self.get_parameter('~use_detectron').value
+        self.declare_parameter('use_detectron', False)
+        self.use_detectron = self.get_parameter('use_detectron').value
 
-        self.declare_parameter('~play_rate', 1.0)
-        self.play_rate = self.get_parameter('~play_rate').value
+        self.declare_parameter('play_rate', 1.0)
+        self.play_rate = self.get_parameter('play_rate').value
 
-        self.declare_parameter('~wait', False)
-        self.wait = self.get_parameter('~wait').value
+        self.declare_parameter('wait', False)
+        self.wait = self.get_parameter('wait').value
 
-        self.declare_parameter('~max_frames', 1e9)
-        self.max_frames = self.get_parameter('~max_frames').value
+        self.declare_parameter('max_frames', 1000000000)
+        self.max_frames = self.get_parameter('max_frames').value
 
         self.refresh_rate = 100  # Hz
 
         self.declare_parameter(
-            '~static_transform',
+            'static_transform',
             "1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1")
         static_transform = self.get_parameter(
-            '~static_transform').value.replace(" ", "").split(",")
+            'static_transform').value.replace(" ", "").split(",")
         self.static_transform = [float(x) for x in static_transform]
         self.get_logger().info(f"static_transform: {self.static_transform}")
         self.static_transform = np.array(self.static_transform).reshape(4, 4)
 
-        self.declare_parameter('~add_labels_name', True)
-        self.add_labels_name = self.get_parameter('~add_labels_name').value
+        self.declare_parameter('add_labels_name', True)
+        self.add_labels_name = self.get_parameter('add_labels_name').value
 
         self.declare_parameter(
-            '~labels_cvs_path',
+            'labels_cvs_path',
             '/mnt/data/3d-lidar/semantic/self_collect/realsense_labels.csv')
-        self.labels_cvs_path = self.get_parameter('~labels_cvs_path').value
+        self.labels_cvs_path = self.get_parameter('labels_cvs_path').value
 
         # ROS 2 Publishers
-        self.color_pub = self.create_publisher(Image, '~/color_image', 100)
-        self.depth_pub = self.create_publisher(Image, '~/depth_image', 100)
-        self.id_pub = self.create_publisher(Image, '~/id_image', 100)
+        self.color_pub = self.create_publisher(Image, 'color_image', 100)
+        self.depth_pub = self.create_publisher(Image, 'depth_image', 100)
+        self.id_pub = self.create_publisher(Image, 'id_image', 100)
         if self.use_detectron:
-            self.label_pub = self.create_publisher(DetectronLabels, '~/labels',
+            self.label_pub = self.create_publisher(DetectronLabels, 'labels',
                                                    100)
-        self.pose_pub = self.create_publisher(PoseStamped, '~/pose', 100)
+        self.pose_pub = self.create_publisher(PoseStamped, 'pose', 100)
 
         # TF broadcaster
         self.tf_broadcaster = TransformBroadcaster(self)
@@ -116,7 +148,7 @@ class FlatDataPlayer(Node):
         self.start_time = None
 
         if self.wait:
-            self.start_srv = self.create_service(Empty, '~/start',
+            self.start_srv = self.create_service(Empty, 'start',
                                                  self.start)
         else:
             self.start(None)
@@ -193,7 +225,7 @@ class FlatDataPlayer(Node):
                         if 'instance_id' not in d:
                             d['instance_id'] = 0
                         if 'score' not in d:
-                            d['score'] = 0
+                            d['score'] = 0.0
                         label = DetectronLabel()
                         label.id = d['id']
                         label.instance_id = d['instance_id']
@@ -221,7 +253,7 @@ class FlatDataPlayer(Node):
                 for col in range(4):
                     transform[row, col] = pose_data[row * 4 + col]
             transform = self.static_transform @ transform
-            rotation = tf2_ros.transformations.quaternion_from_matrix(transform)
+            rotation = quaternion_from_matrix(transform)
 
             t = TransformStamped()
             t.header.stamp = now

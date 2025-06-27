@@ -165,6 +165,8 @@ class ProjectiveIntegrator : public TsdfIntegratorBase {
 
  private:
   const Config config_;
+
+ public:
   static config_utilities::Factory::RegistrationRos<
       TsdfIntegratorBase, ProjectiveIntegrator, std::shared_ptr<Globals>>
       registration_;

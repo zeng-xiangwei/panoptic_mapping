@@ -50,6 +50,8 @@ class UncertaintyLayer : public ClassLayerImpl<UncertaintyVoxel> {
 
  protected:
   const Config config_;
+ 
+ public:
   static config_utilities::Factory::RegistrationRos<
       ClassLayer, UncertaintyLayer, float, int>
       registration_;

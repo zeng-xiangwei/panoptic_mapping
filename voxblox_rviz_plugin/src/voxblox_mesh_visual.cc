@@ -2,8 +2,8 @@
 
 #include <limits>
 
-#include <OGRE/OgreSceneManager.h>
-#include <OGRE/OgreSceneNode.h>
+#include <OgreSceneManager.h>
+#include <OgreSceneNode.h>
 
 #include <voxblox/mesh/mesh_utils.h>
 
