@@ -7,6 +7,8 @@ class PanopticMapperNode : public rclcpp::Node {
  public:
   PanopticMapperNode(const std::string& name) : rclcpp::Node(name) {
     this->declare_parameter<std::string>("config_path", "");
+    this->declare_parameter<bool>("load_map", false);
+    this->declare_parameter<std::string>("load_file", "");
   }
 };
 

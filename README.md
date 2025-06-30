@@ -18,7 +18,7 @@ dependencies:
 5. yaml-cpp
 
 ros1 迁移到 ros2 的注意项：
-1. 时间系统，rclcpp::Time 内部有三种时钟，ros、系统、steady，不同种类的时间之间不能比较，目前对于 `ros::Time` 都用节点中的时钟来获取 `node_ptr->getClock()->now()`，voxblox_rviz_plugin 中用 `context_->getClock()->now()`。
+1. 时间系统，rclcpp::Time 内部有三种时钟，ros、系统、steady，不同种类的时间之间不能比较，目前对于 `ros::Time` 都用节点中的时钟来获取 `node_ptr->get_clock()->now()`，voxblox_rviz_plugin 中用 `context_->getClock()->now()`。
 2. ament_cmake 默认是编译为静态库，由于编译为静态库时 panoptic_mapping_ros 中的工厂模式中所需的类都没有注册，因此都编译为动态库，且需要显示添加编译选项为 Release。
 3. voxblox_rviz_plugin 使用 ogre 时，在头文件的位置不要写如 `<OGRE/OgreSceneManager.h>`，写成 `<OgreSceneManager.h>`，否则可能会找到系统中的 OGRE 库，而不是 ros2 中的 OGRE 库。
 4. voxblox_rviz_plugin 中使用自定义显示材料时，在使用时要加上组名，否则找不到，在以下位置增加材料注册时的组名

@@ -42,7 +42,9 @@ def generate_launch_description():
             PathJoinSubstitution([
                 panoptic_mapping_ros_pkg, 'config/mapper',
                 LaunchConfiguration('config')
-            ])
+            ]),
+            'load_map': LaunchConfiguration('load_map'),
+            'load_file': LaunchConfiguration('load_file')
         }],
         remappings=[
             ('color_image_in', '/camera/color/image_raw'),
@@ -52,21 +54,6 @@ def generate_launch_description():
         ],
         on_exit=Shutdown()
         if LaunchConfiguration('shutdown_when_finished') == 'true' else [])
-
-    # Map loader 节点
-    map_loader_node = Node(package='panoptic_mapping_utils',
-                           executable='map_loader.py',
-                           name='map_loader',
-                           output='screen',
-                           parameters=[{
-                               'path': LaunchConfiguration('load_file')
-                           }, {
-                               'srv_name': '/panoptic_mapper/load_map'
-                           }, {
-                               'delay': '0.1'
-                           }],
-                           condition=IfCondition(
-                               LaunchConfiguration('load_map')))
 
     # RVIZ 可视化节点
     rviz_node = Node(package='rviz2',
@@ -93,6 +80,5 @@ def generate_launch_description():
 
         # 主要节点
         mapper_node,
-        map_loader_node,
         rviz_node
     ])

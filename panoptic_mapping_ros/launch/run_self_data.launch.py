@@ -27,11 +27,8 @@ def generate_launch_description():
     config_arg = DeclareLaunchArgument('config', default_value='realsense_owlvit_sam.yaml')
     shutdown_when_finished_arg = DeclareLaunchArgument('shutdown_when_finished', default_value='false')
 
-    load_map_arg = DeclareLaunchArgument('load_map', default_value='false')
-    load_file_arg = DeclareLaunchArgument('load_file', default_value='/mnt/data/3d-lidar/semantic/panoptic_mapping/test_result/run1.panmap')
-
-    # 条件控制参数
-    wait_arg = DeclareLaunchArgument('wait', default_value='true', condition=IfCondition(LaunchConfiguration('load_map')))
+    load_map_arg = DeclareLaunchArgument('load_map', default_value='true')
+    load_file_arg = DeclareLaunchArgument('load_file', default_value='/mnt/data/3d-lidar/semantic/self_collect/only_test/for_panoptic_mapping_3.panmap')
 
     # 包路径查找
     panoptic_mapping_utils_pkg = FindPackageShare('panoptic_mapping_utils')
@@ -79,7 +76,9 @@ def generate_launch_description():
         output='screen',
         # prefix=['xterm -e gdb -ex run --args'],
         parameters=[
-            {'config_path': PathJoinSubstitution([panoptic_mapping_ros_pkg, 'config/mapper', LaunchConfiguration('config')])}
+            {'config_path': PathJoinSubstitution([panoptic_mapping_ros_pkg, 'config/mapper', LaunchConfiguration('config')]),
+            'load_map': LaunchConfiguration('load_map'),
+            'load_file': LaunchConfiguration('load_file')}
         ],
         remappings=[
             ('color_image_in', [LaunchConfiguration('namespace'), '/color_image']),
@@ -88,20 +87,6 @@ def generate_launch_description():
             ('labels_in', [LaunchConfiguration('namespace'), '/segmentation_labels'])
         ],
         on_exit=Shutdown() if LaunchConfiguration('shutdown_when_finished') == 'true' else []
-    )
-
-    # Map loader 节点
-    map_loader_node = Node(
-        package='panoptic_mapping_utils',
-        executable='map_loader.py',
-        name='map_loader',
-        output='screen',
-        parameters=[
-            {'path': LaunchConfiguration('load_file')},
-            {'srv_name': '/panoptic_mapper/load_map'},
-            {'delay': '0.1'}
-        ],
-        condition=IfCondition(LaunchConfiguration('load_map'))
     )
 
     # RVIZ 可视化节点
@@ -132,7 +117,6 @@ def generate_launch_description():
         shutdown_when_finished_arg,
         load_map_arg,
         load_file_arg,
-        wait_arg,
 
         # 子 launch 文件
         play_flat_dataset_launch,
@@ -140,6 +124,5 @@ def generate_launch_description():
 
         # 主要节点
         mapper_node,
-        map_loader_node,
-        rviz_node
+        rviz_node,
     ])

@@ -179,6 +179,16 @@ void PanopticMapper::setupCollectionDependentMembers() {
 }
 
 void PanopticMapper::setupRos() {
+  bool load_map;
+  node_->get_parameter("load_map", load_map);
+  if (load_map) {
+    std::string load_file;
+    node_->get_parameter("load_file", load_file);
+    if (!loadMap(load_file)) {
+      CHECK(false) << "Failed to load map from " << load_file;
+    }
+  }
+
   // Setup all input topics.
   input_synchronizer_->advertiseInputTopics();
 
@@ -187,10 +197,7 @@ void PanopticMapper::setupRos() {
       node_->create_service<panoptic_mapping_msgs::srv::SaveLoadMap>(
           "save_map", std::bind(&PanopticMapper::saveMapCallback, this,
                                 std::placeholders::_1, std::placeholders::_2));
-  load_map_srv_ =
-      node_->create_service<panoptic_mapping_msgs::srv::SaveLoadMap>(
-          "load_map", std::bind(&PanopticMapper::loadMapCallback, this,
-                                std::placeholders::_1, std::placeholders::_2));
+                                
   set_visualization_mode_srv_ =
       node_->create_service<panoptic_mapping_msgs::srv::SetVisualizationMode>(
           "set_visualization_mode",
