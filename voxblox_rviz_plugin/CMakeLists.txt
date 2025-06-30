@@ -71,7 +71,7 @@ install(
 
 install(
   DIRECTORY icons/
-  DESTINATION share/icons)
+  DESTINATION share/${PROJECT_NAME}/icons)
 
 install(TARGETS ${PROJECT_NAME}
   EXPORT ${PROJECT_NAME}

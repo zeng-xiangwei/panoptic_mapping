@@ -4,7 +4,6 @@
 
 #include <OgreSceneManager.h>
 #include <OgreSceneNode.h>
-
 #include <voxblox/mesh/mesh_utils.h>
 
 namespace voxblox_rviz_plugin {
@@ -34,8 +33,8 @@ void VoxbloxMeshVisual::setPose(const Ogre::Vector3& position,
   frame_node_->setOrientation(orientation);
 }
 
-void VoxbloxMeshVisual::setMessage(const voxblox_msgs::msg::Mesh::ConstSharedPtr msg,
-                                   uint8_t alpha) {
+void VoxbloxMeshVisual::setMessage(
+    const voxblox_msgs::msg::Mesh::ConstSharedPtr msg, uint8_t alpha) {
   for (const voxblox_msgs::msg::MeshBlock& mesh_block : msg->mesh_blocks) {
     const voxblox::BlockIndex index(mesh_block.index[0], mesh_block.index[1],
                                     mesh_block.index[2]);
@@ -144,7 +143,8 @@ void VoxbloxMeshVisual::setMessage(const voxblox_msgs::msg::Mesh::ConstSharedPtr
     if (alpha < std::numeric_limits<uint8_t>::max()) {
       material_name = "VoxbloxMaterialTransparent";
     }
-    ogre_object->begin(material_name, Ogre::RenderOperation::OT_TRIANGLE_LIST);
+    ogre_object->begin(material_name, Ogre::RenderOperation::OT_TRIANGLE_LIST,
+                       "VoxbloxMaterials");
 
     for (size_t i = 0; i < connected_mesh.vertices.size(); ++i) {
       // note calling position changes what vertex the color and normal calls

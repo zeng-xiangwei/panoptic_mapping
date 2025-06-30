@@ -96,7 +96,7 @@ foreach(_folder ${_python_scripts_folders})
       message(STATUS "Marking PYTHON SCRIPTS FOLDER \"${_folder}\" of package \"${PROJECT_NAME}\" for installation")
       install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${_folder}/
           DESTINATION lib/${PROJECT_NAME}/
-          FILE_PERMISSIONS OWNER_EXECUTE GROUP_EXECUTE WORLD_EXECUTE
+          FILE_PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
       )
   endif()
 endforeach()

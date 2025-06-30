@@ -2,10 +2,9 @@
 
 #include <OgreSceneManager.h>
 #include <OgreSceneNode.h>
-
-#include <tf2_ros/transform_listener.h>
 #include <rclcpp/rclcpp.hpp>
 #include <rviz_common/visualization_manager.hpp>
+#include <tf2_ros/transform_listener.h>
 
 #include "voxblox_rviz_plugin/material_loader.h"
 
@@ -37,7 +36,8 @@ void VoxbloxMultiMeshDisplay::updateVisible() {
     }
     ns_visual_pair.second.setEnabled(visible);
     if (visible) {
-      updateTransformation(&(ns_visual_pair.second), rclcpp::Clock().now());
+      updateTransformation(&(ns_visual_pair.second),
+                           context_->getClock()->now());
     }
   }
 }
@@ -119,7 +119,7 @@ void VoxbloxMultiMeshDisplay::update(float wall_dt, float ros_dt) {
 
 void VoxbloxMultiMeshDisplay::updateAllTransformations() {
   for (auto& visual : visuals_) {
-    updateTransformation(&(visual.second), rclcpp::Clock().now());
+    updateTransformation(&(visual.second), context_->getClock()->now());
   }
 }
 

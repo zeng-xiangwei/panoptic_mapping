@@ -1,5 +1,32 @@
 ![Ubuntu 18 + ROS Melodic](https://github.com/ethz-asl/panoptic_mapping/actions/workflows/build_test_18.yml/badge.svg) ![Ubuntu 20 + ROS Noetic](https://github.com/ethz-asl/panoptic_mapping/actions/workflows/build_test_20.yml/badge.svg) ![Docker](https://github.com/ethz-asl/panoptic_mapping/actions/workflows/docker-publish.yml/badge.svg)
 
+# ros2
+changelog:
+1. config_utilities 改造为从 YAML::Node 中读取参数，不再依赖 xmlrpcpp
+2. 将 voxblox 相关内容合并到 panoptic_mapping 中
+3. 移除对 catkin_simple、minkindr_ros 等模块的依赖
+4. 使用本机已安装的 opencv、protobuf
+
+env：
+- ubuntu 22.04 + ros2 humble
+
+dependencies:
+1. OpenCV4、PCL (安装 ros2 时会默认安装)
+2. Eigen3
+3. Protobuf (libprotoc 3.4.0， 如果有 anaconda，需要注意 cmake 时使用的是哪个 protobuf)
+4. glog、gflags
+5. yaml-cpp
+
+ros1 迁移到 ros2 的注意项：
+1. 时间系统，rclcpp::Time 内部有三种时钟，ros、系统、steady，不同种类的时间之间不能比较，目前对于 `ros::Time` 都用节点中的时钟来获取 `node_ptr->getClock()->now()`，voxblox_rviz_plugin 中用 `context_->getClock()->now()`。
+2. ament_cmake 默认是编译为静态库，由于编译为静态库时 panoptic_mapping_ros 中的工厂模式中所需的类都没有注册，因此都编译为动态库，且需要显示添加编译选项为 Release。
+3. voxblox_rviz_plugin 使用 ogre 时，在头文件的位置不要写如 `<OGRE/OgreSceneManager.h>`，写成 `<OgreSceneManager.h>`，否则可能会找到系统中的 OGRE 库，而不是 ros2 中的 OGRE 库。
+4. voxblox_rviz_plugin 中使用自定义显示材料时，在使用时要加上组名，否则找不到，在以下位置增加材料注册时的组名
+```c++
+ogre_object->begin(material_name, Ogre::RenderOperation::OT_TRIANGLE_LIST,
+                       "VoxbloxMaterials");
+```
+
 # Panoptic Mapping
 This package contains **panoptic_mapping**, a general framework for semantic volumetric mapping. We provide, among other, a submap-based approach that leverages panoptic scene understanding towards adaptive spatio-temporally consistent volumetric mapping, as well as regular, monolithic semantic mapping.
 
@@ -17,6 +44,7 @@ Multi-resolution 3D Reconstruction, active and inactive panoptic submaps for tem
 * [Datasets](#Datasets)
 
 **Examples**
+- [ros2](#ros2)
 - [Panoptic Mapping](#panoptic-mapping)
 - [Table of Contents](#table-of-contents)
 - [Paper](#paper)

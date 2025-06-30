@@ -2,11 +2,9 @@
 
 #include <OgreSceneManager.h>
 #include <OgreSceneNode.h>
-
-#include <tf2_ros/transform_listener.h>
 #include <rclcpp/rclcpp.hpp>
 #include <rviz_common/visualization_manager.hpp>
-
+#include <tf2_ros/transform_listener.h>
 #include <voxblox_rviz_plugin/material_loader.h>
 
 namespace voxblox_rviz_plugin {
@@ -30,7 +28,7 @@ void VoxbloxMeshDisplay::visibleSLOT() {
     // Set visibility and update the pose if visibility is turned on.
     visual_->setEnabled(visible_property_.getBool());
     if (visible_property_.getBool()) {
-      updateTransformation(rclcpp::Clock().now());
+      updateTransformation(context_->getClock()->now());
     }
   }
 }
@@ -72,7 +70,7 @@ bool VoxbloxMeshDisplay::updateTransformation(rclcpp::Time stamp) {
 void VoxbloxMeshDisplay::fixedFrameChanged() {
   tf_filter_->setTargetFrame(fixed_frame_.toStdString());
   // update the transformation of the visuals w.r.t fixed frame
-  updateTransformation(rclcpp::Clock().now());
+  updateTransformation(context_->getClock()->now());
 }
 
 }  // namespace voxblox_rviz_plugin

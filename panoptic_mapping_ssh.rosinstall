@@ -1,6 +1,0 @@
-# Package Dependencies. Notice that voxblox requires a special branch.
-- git:
-    local-name: voxblox
-    uri: git@github.com:zeng-xiangwei/voxblox.git
-    version: 'devel/panoptic_mapping_ros2'
-
