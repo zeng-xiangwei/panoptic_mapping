@@ -5,8 +5,8 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
+        - /Axes1/Status1
         - /Panoptic Mapper1
-        - /Panoptic Mapper1/Mesh1
         - /Panoptic Mapper1/Mesh1/Topic1
         - /Tracking1/Color1/Topic1
         - /DetectSegmentResult1/Topic1
@@ -33,6 +33,13 @@ Panels:
 Visualization Manager:
   Class: ""
   Displays:
+    - Class: rviz_default_plugins/Axes
+      Enabled: true
+      Length: 1
+      Name: Axes
+      Radius: 0.05000000074505806
+      Reference Frame: <Fixed Frame>
+      Value: true
     - Alpha: 1
       Buffer Length: 1
       Class: rviz_default_plugins/Path
@@ -76,106 +83,26 @@ Visualization Manager:
             Value: /visualization/submaps/mesh
           Value: true
           Visible:
-            10_chair: true
-            116_chair: true
-            11_chair: true
-            12_chair: true
-            13_chair: true
-            142_floor: true
-            143_chair: true
-            144_wall: true
-            146_chair: true
-            14_chair: true
+            102_chair: true
+            123_chair: true
+            137_chair: true
+            142_chair: true
+            148_chair: true
             15_chair: true
-            165_chair: true
-            167_chair: true
-            168_chair: true
-            169_chair: true
-            16_chair: true
-            170_chair: true
-            171_chair: true
-            174_chair: true
-            17_laptop: true
-            186_table: true
-            18_table: true
-            19_wall: true
-            1_table: true
-            20_refrigerator: true
-            21_chair: true
-            221_chair: true
-            22_table: true
-            235_chair: true
-            23_microwave: true
-            248_laptop: true
-            249_floor: true
-            24_refrigerator: true
-            250_wall: true
-            251_floor: true
-            25_chair: true
-            26_wall: true
-            27_chair: true
-            288_wall: true
-            289_microwave: true
-            290_wall: true
-            291_table: true
-            292_chair: true
-            294_chair: true
-            295_refrigerator: true
-            296_floor: true
-            2_chair: true
-            313_microwave: true
-            326_floor: true
-            327_chair: true
-            328_chair: true
-            329_wall: true
-            330_chair: true
-            332_chair: true
-            333_microwave: true
-            334_chair: true
-            336_wall: true
-            337_chair: true
-            3_chair: true
-            41_chair: true
-            45_chair: true
+            181_chair: true
+            20_chair: true
+            215_chair: true
+            219_laptop: true
+            220_table: true
+            233_wall: true
+            236_refrigerator: true
+            31_chair: true
             46_chair: true
-            47_chair: true
-            48_chair: true
-            49_chair: true
-            4_chair: true
-            50_chair: true
-            56_chair: true
-            57_chair: true
-            5_chair: true
-            60_wall: true
             63_chair: true
-            65_wall: true
+            65_chair: true
             68_chair: true
-            69_water bottle: true
-            6_chair: true
-            70_wall: true
-            71_water bottle: true
-            72_chair: true
-            73_chair: true
-            74_wall: true
-            75_water bottle: true
-            76_chair: true
-            77_water bottle: true
-            78_wall: true
-            79_water bottle: true
-            7_chair: true
-            80_water bottle: true
-            82_water bottle: true
-            84_wall: true
-            85_wall: true
-            86_chair: true
-            87_wall: true
-            88_chair: true
-            89_chair: true
-            8_chair: true
-            91_chair: true
-            93_chair: true
-            97_wall: true
-            9_chair: true
+            69_chair: true
+            6_table: true
             Value: true
         - Alpha: 0.30000001192092896
           Autocompute Intensity Bounds: true
@@ -358,6 +285,162 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /visualize_detect_segment_result
       Value: false
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: ChangedObb
+      Namespaces:
+        chair_102_AABB: true
+        chair_10_AABB: true
+        chair_112_AABB: true
+        chair_117_AABB: true
+        chair_11_AABB: true
+        chair_120_AABB: true
+        chair_123_AABB: true
+        chair_128_AABB: true
+        chair_129_AABB: true
+        chair_130_AABB: true
+        chair_135_AABB: true
+        chair_137_AABB: true
+        chair_138_AABB: true
+        chair_13_AABB: true
+        chair_141_AABB: true
+        chair_142_AABB: true
+        chair_143_AABB: true
+        chair_144_AABB: true
+        chair_145_AABB: true
+        chair_146_AABB: true
+        chair_148_AABB: true
+        chair_153_AABB: true
+        chair_157_AABB: true
+        chair_15_AABB: true
+        chair_161_AABB: true
+        chair_164_AABB: true
+        chair_168_AABB: true
+        chair_16_AABB: true
+        chair_172_AABB: true
+        chair_173_AABB: true
+        chair_181_AABB: true
+        chair_188_AABB: true
+        chair_190_AABB: true
+        chair_191_AABB: true
+        chair_192_AABB: true
+        chair_193_AABB: true
+        chair_195_AABB: true
+        chair_196_AABB: true
+        chair_197_AABB: true
+        chair_198_AABB: true
+        chair_19_AABB: true
+        chair_209_AABB: true
+        chair_20_AABB: true
+        chair_211_AABB: true
+        chair_212_AABB: true
+        chair_215_AABB: true
+        chair_217_AABB: true
+        chair_21_AABB: true
+        chair_22_AABB: true
+        chair_23_AABB: true
+        chair_24_AABB: true
+        chair_25_AABB: true
+        chair_30_AABB: true
+        chair_31_AABB: true
+        chair_35_AABB: true
+        chair_37_AABB: true
+        chair_3_AABB: true
+        chair_41_AABB: true
+        chair_42_AABB: true
+        chair_46_AABB: true
+        chair_47_AABB: true
+        chair_50_AABB: true
+        chair_5_AABB: true
+        chair_60_AABB: true
+        chair_63_AABB: true
+        chair_65_AABB: true
+        chair_68_AABB: true
+        chair_69_AABB: true
+        chair_79_AABB: true
+        chair_7_AABB: true
+        chair_86_AABB: true
+        chair_87_AABB: true
+        chair_88_AABB: true
+        chair_8_AABB: true
+        chair_90_AABB: true
+        chair_91_AABB: true
+        chair_93_AABB: true
+        chair_94_AABB: true
+        chair_95_AABB: true
+        chair_98_AABB: true
+        floor_131_AABB: true
+        floor_149_AABB: true
+        floor_151_AABB: true
+        floor_166_AABB: true
+        floor_179_AABB: true
+        floor_180_AABB: true
+        floor_187_AABB: true
+        floor_201_AABB: true
+        floor_203_AABB: true
+        floor_204_AABB: true
+        floor_223_AABB: true
+        floor_225_AABB: true
+        floor_228_AABB: true
+        floor_234_AABB: true
+        floor_235_AABB: true
+        laptop_156_AABB: true
+        laptop_158_AABB: true
+        laptop_159_AABB: true
+        laptop_162_AABB: true
+        laptop_163_AABB: true
+        laptop_194_AABB: true
+        laptop_213_AABB: true
+        laptop_219_AABB: true
+        laptop_222_AABB: true
+        laptop_226_AABB: true
+        laptop_77_AABB: true
+        refrigerator_236_AABB: true
+        table_122_AABB: true
+        table_147_AABB: true
+        table_160_AABB: true
+        table_165_AABB: true
+        table_170_AABB: true
+        table_1_AABB: true
+        table_210_AABB: true
+        table_214_AABB: true
+        table_218_AABB: true
+        table_220_AABB: true
+        table_4_AABB: true
+        table_6_AABB: true
+        table_81_AABB: true
+        table_89_AABB: true
+        wall_115_AABB: true
+        wall_118_AABB: true
+        wall_121_AABB: true
+        wall_124_AABB: true
+        wall_125_AABB: true
+        wall_127_AABB: true
+        wall_12_AABB: true
+        wall_17_AABB: true
+        wall_189_AABB: true
+        wall_202_AABB: true
+        wall_227_AABB: true
+        wall_233_AABB: true
+        wall_44_AABB: true
+        wall_48_AABB: true
+        wall_52_AABB: true
+        wall_57_AABB: true
+        wall_58_AABB: true
+        water bottle_43_AABB: true
+        water bottle_45_AABB: true
+        water bottle_49_AABB: true
+        water bottle_51_AABB: true
+        water bottle_53_AABB: true
+        water bottle_54_AABB: true
+        water bottle_56_AABB: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /visualization/submaps/changed_submaps
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 255; 255; 255
@@ -404,25 +487,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 14.421697616577148
+      Distance: 10.389479637145996
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.43625950813293457
-        Y: 3.7219085693359375
-        Z: -1.529375672340393
+        X: 2.0861318111419678
+        Y: 0.5584323406219482
+        Z: -0.8002736568450928
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.8997958898544312
+      Pitch: 1.0147953033447266
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz_default_plugins)
-      Yaw: 3.4753923416137695
+      Yaw: 3.460422992706299
     Saved: ~
 Window Geometry:
   Color:

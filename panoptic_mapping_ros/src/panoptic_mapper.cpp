@@ -31,6 +31,7 @@ const std::map<std::string, std::pair<std::string, std::string>>
         {"vis_submaps", {"visualization/submaps", "submaps"}},
         {"vis_tracking", {"visualization/tracking", ""}},
         {"vis_planning", {"visualization/planning", ""}},
+        {"vis_changed_submaps", {"visualization/changed_submaps", ""}},
         {"data_writer", {"data_writer", "null"}}};
 
 void PanopticMapper::Config::checkParams() const {
@@ -135,6 +136,12 @@ void PanopticMapper::setupMembersFromYaml() {
       node_);
   tracking_visualizer_->registerIDTracker(id_tracker_.get());
 
+  // For demo, changed submap visualizer.
+  changed_submap_visualizer_ = std::make_unique<ChangedSubmapVisualizer>(
+      config_utilities::getConfigFromYaml<ChangedSubmapVisualizer::Config>(
+          root_yaml_, defaultYamlKeyPath("vis_changed_submaps")),
+      node_);
+
   // Planning.
   setupCollectionDependentMembers();
 
@@ -197,7 +204,7 @@ void PanopticMapper::setupRos() {
       node_->create_service<panoptic_mapping_msgs::srv::SaveLoadMap>(
           "save_map", std::bind(&PanopticMapper::saveMapCallback, this,
                                 std::placeholders::_1, std::placeholders::_2));
-                                
+
   set_visualization_mode_srv_ =
       node_->create_service<panoptic_mapping_msgs::srv::SetVisualizationMode>(
           "set_visualization_mode",
@@ -371,6 +378,7 @@ void PanopticMapper::publishVisualization() {
   Timer timer("visualization");
   submap_visualizer_->visualizeAll(submaps_.get());
   planning_visualizer_->visualizeAll();
+  changed_submap_visualizer_->visualizeChangedSubmaps(submaps_.get());
 }
 
 void PanopticMapper::publishSegmentedPointCloud(InputData* input) {
@@ -487,6 +495,7 @@ bool PanopticMapper::loadMap(const std::string& file_path) {
   // Loaded submaps are 'from the past' so set them to inactive.
   for (Submap& submap : *loaded_map) {
     submap.finishActivePeriod();
+    submap.setMatchRedetection(true);
     if (config_.load_submaps_conservative) {
       submap.setChangeState(ChangeState::kUnobserved);
     } else {

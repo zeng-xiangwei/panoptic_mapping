@@ -18,10 +18,10 @@
 #include "panoptic_mapping/map/classification/class_block.h"
 #include "panoptic_mapping/map/classification/class_layer.h"
 #include "panoptic_mapping/map/classification/class_voxel.h"
+#include "panoptic_mapping/map/instance_id.h"
 #include "panoptic_mapping/map/scores/score_block.h"
 #include "panoptic_mapping/map/scores/score_layer.h"
 #include "panoptic_mapping/map/scores/score_voxel.h"
-#include "panoptic_mapping/map/instance_id.h"
 #include "panoptic_mapping/map/submap_bounding_volume.h"
 #include "panoptic_mapping/map/submap_id.h"
 
@@ -96,6 +96,7 @@ class Submap {
   bool wasTracked() const { return was_tracked_; }
   bool hasClassLayer() const { return has_class_layer_; }
   bool hasScoreLayer() const { return has_score_layer_; }
+  bool matchRedetection() const { return match_redetection_; }
   const std::vector<IsoSurfacePoint>& getIsoSurfacePoints() const {
     return iso_surface_points_;
   }
@@ -123,11 +124,12 @@ class Submap {
   void setChangeState(ChangeState state) { change_state_ = state; }
   void setIsActive(bool is_active) { is_active_ = is_active; }
   void setWasTracked(bool was_tracked) { was_tracked_ = was_tracked; }
-  
+  void setMatchRedetection(bool match) { match_redetection_ = match; }
+
   /**
    * @brief Set the Class Name, auto generate unique class id
-   * 
-   * @param class_name 
+   *
+   * @param class_name
    */
   void setClassName(const std::string& class_name);
 
@@ -259,6 +261,7 @@ class Submap {
   bool was_tracked_ = true;  // Set to true by the id tracker if matched.
   bool has_class_layer_ = false;
   bool has_score_layer_ = false;
+  bool match_redetection_ = false;
   ChangeState change_state_ = ChangeState::kNew;
 
   // Transformations.

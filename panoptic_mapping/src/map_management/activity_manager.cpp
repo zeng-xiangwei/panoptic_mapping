@@ -54,6 +54,7 @@ void ActivityManager::processSubmaps(SubmapCollection* submaps) {
 bool ActivityManager::checkRequiredRedetection(Submap* submap) {
   // Check the submap was re-detected in X consecutive frames after allocation.
   if (config_.required_reobservations <= 0) {
+    submap->setMatchRedetection(true);
     return true;
   }
   const int submap_id = submap->getID();
@@ -65,11 +66,15 @@ bool ActivityManager::checkRequiredRedetection(Submap* submap) {
   }
   if (it->second <= 0) {
     // This submap already passed the re-detection test.
+    submap->setMatchRedetection(true);
     return true;
   }
   if (submap->wasTracked()) {
     // Was re-observed, decrease remaining required re-observations.
     it->second--;
+    if (it->second <= 0) {
+      submap->setMatchRedetection(true);
+    }
     return true;
   }
   // Not detected, remove the submap.

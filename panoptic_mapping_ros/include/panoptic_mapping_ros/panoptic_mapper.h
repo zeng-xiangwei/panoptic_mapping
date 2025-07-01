@@ -24,11 +24,11 @@
 #include <rclcpp/rclcpp.hpp>
 #include <std_srvs/srv/empty.hpp>
 
-#include "panoptic_mapping_ros/dependencies.h"
 #include "panoptic_mapping_ros/input/input_synchronizer.h"
 #include "panoptic_mapping_ros/visualization/planning_visualizer.h"
 #include "panoptic_mapping_ros/visualization/submap_visualizer.h"
 #include "panoptic_mapping_ros/visualization/tracking_visualizer.h"
+#include "panoptic_mapping_ros/visualization/changed_submap_visualizer.h"
 
 namespace panoptic_mapping {
 
@@ -204,6 +204,7 @@ class PanopticMapper {
   std::unique_ptr<SubmapVisualizer> submap_visualizer_;
   std::unique_ptr<PlanningVisualizer> planning_visualizer_;
   std::unique_ptr<TrackingVisualizer> tracking_visualizer_;
+  std::unique_ptr<ChangedSubmapVisualizer> changed_submap_visualizer_;
 
   // Which processing to perform.
   bool compute_vertex_map_ = false;

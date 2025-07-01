@@ -57,6 +57,7 @@ add_library(${PROJECT_NAME} SHARED
         src/visualization/single_tsdf_visualizer.cpp
         src/visualization/planning_visualizer.cpp
         src/visualization/tracking_visualizer.cpp
+        src/visualization/changed_submap_visualizer.cpp
         src/conversions/conversions.cpp
         )
 
