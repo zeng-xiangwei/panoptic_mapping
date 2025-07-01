@@ -35,6 +35,7 @@
 
   <depend>voxblox</depend>
   <depend>voxblox_msgs</depend>
+  <depend>vln_msg</depend>
 
   <depend>panoptic_mapping</depend>
   <depend>panoptic_mapping_msgs</depend>

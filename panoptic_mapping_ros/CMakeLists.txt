@@ -27,6 +27,8 @@ find_package(OpenCV REQUIRED)
 find_package(PCL REQUIRED)
 find_package(glog REQUIRED)
 
+find_package(vln_msg QUIET)
+
 set(DEPENDENCIES_COMBINE
     rclcpp
     builtin_interfaces
@@ -44,6 +46,14 @@ set(DEPENDENCIES_COMBINE
     panoptic_mapping
     panoptic_mapping_msgs
 )
+
+if (vln_msg_FOUND)
+    message(STATUS "Found vln_msg package")
+    list(APPEND DEPENDENCIES_COMBINE vln_msg)
+    add_definitions(-DVLN_MSG_FOUND)
+else()
+    message(STATUS "vln_msg package not found")
+endif()
 
 
 #############

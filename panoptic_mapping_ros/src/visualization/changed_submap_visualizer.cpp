@@ -27,6 +27,11 @@ ChangedSubmapVisualizer::ChangedSubmapVisualizer(const Config& config,
   obb_publisher_ =
       node_->create_publisher<visualization_msgs::msg::MarkerArray>(
           "visualization/submaps/changed_submaps", rclcpp::QoS(10));
+
+  #ifdef VLN_MSG_FOUND
+  vln_map_update_pub_ = node_->create_publisher<vln_msg::msg::MapUpdate>(
+          "vln_map_update", rclcpp::QoS(10));
+  #endif
 }
 
 void ChangedSubmapVisualizer::visualizeChangedSubmaps(
@@ -36,6 +41,7 @@ void ChangedSubmapVisualizer::visualizeChangedSubmaps(
 
   // 发布变化
   publishChanges(*submaps);
+  publishChangesForVln(*submaps);
 
   // 删除 kDeleted 的数据
   update();
@@ -90,7 +96,7 @@ void ChangedSubmapVisualizer::findChangedSubmaps(SubmapCollection& submaps) {
     auto it = submap_infos_.emplace(std::make_pair(id, SubmapInfo())).first;
     SubmapInfo& info = it->second;
     info.id = id;
-    info.name = submap.getName();
+    info.name = submap.getClassName();
     info.change_type = ChangeType::kAdded;
     info.surface_points_size = submap.getIsoSurfacePoints().size();
     info.obb = computeOBB(submap.getIsoSurfacePoints());
@@ -226,6 +232,47 @@ void ChangedSubmapVisualizer::publishChanges(const SubmapCollection& submaps) {
   }
 
   obb_publisher_->publish(result);
+}
+
+void ChangedSubmapVisualizer::publishChangesForVln(const SubmapCollection& submaps) {
+  #ifdef VLN_MSG_FOUND
+  vln_msg::msg::MapUpdate result;
+  for (auto& kv : submap_infos_) {
+    const SubmapInfo& info = kv.second;
+    if (config_.verbosity >= 4 && !info.obb.valid) {
+      LOG(WARNING) << " Submap " << kv.first << " has an invalid bounding box.";
+    }
+
+    if (info.change_type == ChangeType::kUnChanged || !info.obb.valid) {
+      continue;
+    }
+
+    int submap_id = info.id;
+    vln_msg::msg::SemanticObject obj;
+    obj.id = submap_id;
+    obj.name = info.name;
+    obj.center.x = info.obb.center.x();
+    obj.center.y = info.obb.center.y();
+    obj.center.z = info.obb.center.z();
+    obj.length = info.obb.extents(0);
+    obj.weight = info.obb.extents(1);
+    obj.height = info.obb.extents(2);
+    Eigen::Quaternionf q(info.obb.rotation);
+    obj.quat.x = q.x();
+    obj.quat.y = q.y();
+    obj.quat.z = q.z();
+    obj.quat.w = q.w();
+    if (info.change_type == ChangeType::kAdded) {
+      result.add_objects.push_back(obj);
+    } else if (info.change_type == ChangeType::kDeleted) {
+      result.del_objects.push_back(obj);
+    } else if (info.change_type == ChangeType::kChanged) {
+      result.update_objects.push_back(obj);
+    }
+  }
+
+  vln_map_update_pub_->publish(result);
+  #endif
 }
 
 ChangedSubmapVisualizer::OrientedBoundingBox
