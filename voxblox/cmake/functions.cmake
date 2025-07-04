@@ -1,5 +1,6 @@
 function(_find_protobuf_compiler)
   set(PROTOBUF_COMPILER_CANDIDATES
+      /usr/bin/protoc
       "${PREFERRED_PROTOC_EXECUTABLE}"      # Set by preferences and exported.
       "${PROTOBUF_PROTOC_EXECUTABLE}"       # This will be "/usr/bin/protoc" on Ubuntu if find_package succeeded.
   )
