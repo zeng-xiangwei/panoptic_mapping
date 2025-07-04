@@ -27,7 +27,7 @@ def generate_launch_description():
     config_arg = DeclareLaunchArgument('config', default_value='realsense_owlvit_sam.yaml')
     shutdown_when_finished_arg = DeclareLaunchArgument('shutdown_when_finished', default_value='false')
 
-    load_map_arg = DeclareLaunchArgument('load_map', default_value='true')
+    load_map_arg = DeclareLaunchArgument('load_map', default_value='false')
     load_file_arg = DeclareLaunchArgument('load_file', default_value='/mnt/data/3d-lidar/semantic/self_collect/only_test/for_panoptic_mapping_3.panmap')
 
     # 包路径查找
@@ -84,7 +84,8 @@ def generate_launch_description():
             ('color_image_in', [LaunchConfiguration('namespace'), '/color_image']),
             ('depth_image_in', [LaunchConfiguration('namespace'), '/depth_image']),
             ('segmentation_image_in', [LaunchConfiguration('namespace'), '/segmentation_image']),
-            ('labels_in', [LaunchConfiguration('namespace'), '/segmentation_labels'])
+            ('labels_in', [LaunchConfiguration('namespace'), '/segmentation_labels']),
+            ('vln_map_update', '/vln/semantic_map')
         ],
         on_exit=Shutdown() if LaunchConfiguration('shutdown_when_finished') == 'true' else []
     )

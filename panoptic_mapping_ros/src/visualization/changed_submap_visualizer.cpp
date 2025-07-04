@@ -255,7 +255,7 @@ void ChangedSubmapVisualizer::publishChangesForVln(const SubmapCollection& subma
     obj.center.y = info.obb.center.y();
     obj.center.z = info.obb.center.z();
     obj.length = info.obb.extents(0);
-    obj.weight = info.obb.extents(1);
+    obj.width = info.obb.extents(1);
     obj.height = info.obb.extents(2);
     Eigen::Quaternionf q(info.obb.rotation);
     obj.quat.x = q.x();
