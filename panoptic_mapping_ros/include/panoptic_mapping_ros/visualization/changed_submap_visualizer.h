@@ -7,8 +7,8 @@
 
 #include "panoptic_mapping/3rd_party/config_utilities.hpp"
 
-#ifdef VLN_MSG_FOUND
-#include <vln_msg/msg/map_update.hpp>
+#ifdef VLN_MSGS_FOUND
+#include <vln_msgs/msg/map_update.hpp>
 #endif
 
 namespace panoptic_mapping {
@@ -108,8 +108,8 @@ class ChangedSubmapVisualizer {
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr
       obb_publisher_;
 
-  #ifdef VLN_MSG_FOUND
-  rclcpp::Publisher<vln_msg::msg::MapUpdate>::SharedPtr vln_map_update_pub_;
+  #ifdef VLN_MSGS_FOUND
+  rclcpp::Publisher<vln_msgs::msg::MapUpdate>::SharedPtr vln_map_update_pub_;
   #endif
 
  private:

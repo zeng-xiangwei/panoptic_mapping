@@ -28,8 +28,8 @@ ChangedSubmapVisualizer::ChangedSubmapVisualizer(const Config& config,
       node_->create_publisher<visualization_msgs::msg::MarkerArray>(
           "visualization/submaps/changed_submaps", rclcpp::QoS(10));
 
-  #ifdef VLN_MSG_FOUND
-  vln_map_update_pub_ = node_->create_publisher<vln_msg::msg::MapUpdate>(
+  #ifdef VLN_MSGS_FOUND
+  vln_map_update_pub_ = node_->create_publisher<vln_msgs::msg::MapUpdate>(
           "vln_map_update", rclcpp::QoS(10));
   #endif
 }
@@ -235,8 +235,8 @@ void ChangedSubmapVisualizer::publishChanges(const SubmapCollection& submaps) {
 }
 
 void ChangedSubmapVisualizer::publishChangesForVln(const SubmapCollection& submaps) {
-  #ifdef VLN_MSG_FOUND
-  vln_msg::msg::MapUpdate result;
+  #ifdef VLN_MSGS_FOUND
+  vln_msgs::msg::MapUpdate result;
   for (auto& kv : submap_infos_) {
     const SubmapInfo& info = kv.second;
     if (config_.verbosity >= 4 && !info.obb.valid) {
@@ -248,7 +248,7 @@ void ChangedSubmapVisualizer::publishChangesForVln(const SubmapCollection& subma
     }
 
     int submap_id = info.id;
-    vln_msg::msg::SemanticObject obj;
+    vln_msgs::msg::SemanticObject obj;
     obj.id = submap_id;
     obj.name = info.name;
     obj.center.x = info.obb.center.x();
