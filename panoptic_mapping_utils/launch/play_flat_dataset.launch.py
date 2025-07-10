@@ -40,7 +40,7 @@ def generate_launch_description():
     )
     global_frame_name_arg = DeclareLaunchArgument(
         'global_frame_name',
-        default_value='world',
+        default_value='map',
         description='Name of the global frame'
     )
     sensor_frame_name_arg = DeclareLaunchArgument(

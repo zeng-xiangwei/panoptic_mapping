@@ -27,6 +27,12 @@ ogre_object->begin(material_name, Ogre::RenderOperation::OT_TRIANGLE_LIST,
                        "VoxbloxMaterials");
 ```
 
+实采测试数据
+```text
+通过网盘分享的文件：self_test_data.zip
+链接: https://pan.baidu.com/s/1VA8H-urXWkGnPfprMhM4Fw?pwd=w4im 提取码: w4im 复制这段内容后打开百度网盘手机App，操作更方便哦
+```
+
 # Panoptic Mapping
 This package contains **panoptic_mapping**, a general framework for semantic volumetric mapping. We provide, among other, a submap-based approach that leverages panoptic scene understanding towards adaptive spatio-temporally consistent volumetric mapping, as well as regular, monolithic semantic mapping.
 

@@ -5,7 +5,6 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
-        - /Axes1/Status1
         - /Panoptic Mapper1
         - /Panoptic Mapper1/Mesh1/Topic1
         - /Tracking1/Color1/Topic1
@@ -83,25 +82,8 @@ Visualization Manager:
             Value: /visualization/submaps/mesh
           Value: true
           Visible:
-            102_chair: true
-            123_chair: true
-            137_chair: true
-            142_chair: true
-            148_chair: true
             15_chair: true
-            181_chair: true
-            20_chair: true
-            215_chair: true
-            219_laptop: true
-            220_table: true
-            233_wall: true
-            236_refrigerator: true
-            31_chair: true
-            46_chair: true
-            63_chair: true
-            65_chair: true
-            68_chair: true
-            69_chair: true
+            19_chair: true
             6_table: true
             Value: true
         - Alpha: 0.30000001192092896
@@ -289,151 +271,8 @@ Visualization Manager:
       Enabled: true
       Name: ChangedObb
       Namespaces:
-        chair_102_AABB: true
-        chair_10_AABB: true
-        chair_112_AABB: true
-        chair_117_AABB: true
-        chair_11_AABB: true
-        chair_120_AABB: true
-        chair_123_AABB: true
-        chair_128_AABB: true
-        chair_129_AABB: true
-        chair_130_AABB: true
-        chair_135_AABB: true
-        chair_137_AABB: true
-        chair_138_AABB: true
-        chair_13_AABB: true
-        chair_141_AABB: true
-        chair_142_AABB: true
-        chair_143_AABB: true
-        chair_144_AABB: true
-        chair_145_AABB: true
-        chair_146_AABB: true
-        chair_148_AABB: true
-        chair_153_AABB: true
-        chair_157_AABB: true
-        chair_15_AABB: true
-        chair_161_AABB: true
-        chair_164_AABB: true
-        chair_168_AABB: true
-        chair_16_AABB: true
-        chair_172_AABB: true
-        chair_173_AABB: true
-        chair_181_AABB: true
-        chair_188_AABB: true
-        chair_190_AABB: true
-        chair_191_AABB: true
-        chair_192_AABB: true
-        chair_193_AABB: true
-        chair_195_AABB: true
-        chair_196_AABB: true
-        chair_197_AABB: true
-        chair_198_AABB: true
-        chair_19_AABB: true
-        chair_209_AABB: true
-        chair_20_AABB: true
-        chair_211_AABB: true
-        chair_212_AABB: true
-        chair_215_AABB: true
-        chair_217_AABB: true
-        chair_21_AABB: true
-        chair_22_AABB: true
-        chair_23_AABB: true
-        chair_24_AABB: true
-        chair_25_AABB: true
-        chair_30_AABB: true
-        chair_31_AABB: true
-        chair_35_AABB: true
-        chair_37_AABB: true
-        chair_3_AABB: true
-        chair_41_AABB: true
-        chair_42_AABB: true
-        chair_46_AABB: true
-        chair_47_AABB: true
-        chair_50_AABB: true
-        chair_5_AABB: true
-        chair_60_AABB: true
-        chair_63_AABB: true
-        chair_65_AABB: true
-        chair_68_AABB: true
-        chair_69_AABB: true
-        chair_79_AABB: true
-        chair_7_AABB: true
-        chair_86_AABB: true
-        chair_87_AABB: true
-        chair_88_AABB: true
-        chair_8_AABB: true
-        chair_90_AABB: true
-        chair_91_AABB: true
-        chair_93_AABB: true
-        chair_94_AABB: true
-        chair_95_AABB: true
-        chair_98_AABB: true
-        floor_131_AABB: true
-        floor_149_AABB: true
-        floor_151_AABB: true
-        floor_166_AABB: true
-        floor_179_AABB: true
-        floor_180_AABB: true
-        floor_187_AABB: true
-        floor_201_AABB: true
-        floor_203_AABB: true
-        floor_204_AABB: true
-        floor_223_AABB: true
-        floor_225_AABB: true
-        floor_228_AABB: true
-        floor_234_AABB: true
-        floor_235_AABB: true
-        laptop_156_AABB: true
-        laptop_158_AABB: true
-        laptop_159_AABB: true
-        laptop_162_AABB: true
-        laptop_163_AABB: true
-        laptop_194_AABB: true
-        laptop_213_AABB: true
-        laptop_219_AABB: true
-        laptop_222_AABB: true
-        laptop_226_AABB: true
-        laptop_77_AABB: true
-        refrigerator_236_AABB: true
-        table_122_AABB: true
-        table_147_AABB: true
-        table_160_AABB: true
-        table_165_AABB: true
-        table_170_AABB: true
-        table_1_AABB: true
-        table_210_AABB: true
-        table_214_AABB: true
-        table_218_AABB: true
-        table_220_AABB: true
-        table_4_AABB: true
-        table_6_AABB: true
-        table_81_AABB: true
-        table_89_AABB: true
-        wall_115_AABB: true
-        wall_118_AABB: true
-        wall_121_AABB: true
-        wall_124_AABB: true
-        wall_125_AABB: true
-        wall_127_AABB: true
-        wall_12_AABB: true
-        wall_17_AABB: true
-        wall_189_AABB: true
-        wall_202_AABB: true
-        wall_227_AABB: true
-        wall_233_AABB: true
-        wall_44_AABB: true
-        wall_48_AABB: true
-        wall_52_AABB: true
-        wall_57_AABB: true
-        wall_58_AABB: true
-        water bottle_43_AABB: true
-        water bottle_45_AABB: true
-        water bottle_49_AABB: true
-        water bottle_51_AABB: true
-        water bottle_53_AABB: true
-        water bottle_54_AABB: true
-        water bottle_56_AABB: true
+        chair_15_OBB: true
+        table_6_OBB: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -444,7 +283,7 @@ Visualization Manager:
   Enabled: true
   Global Options:
     Background Color: 255; 255; 255
-    Fixed Frame: world
+    Fixed Frame: map
     Frame Rate: 30
   Name: root
   Tools:

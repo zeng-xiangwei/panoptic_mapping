@@ -3,7 +3,7 @@ verbosity: 3
 use_threadsafe_submap_collection: true
 use_transform_caching: true
 transform_lookup_time: 0.1
-global_frame_name: world
+global_frame_name: map
 visualization_interval: -1.0
 data_logging_interval: -1.0
 print_timing_interval: 0.0
@@ -155,5 +155,5 @@ visualization:
     only_use_aabb: false
     box_only_align_z: true
     min_obb_length: 0.02
-    obb_frame_id: world
+    obb_frame_id: map
     use_redetection_for_add: true
