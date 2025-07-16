@@ -38,13 +38,12 @@ void InputSynchronizer::Config::setupParamsAndPrinting() {
   setupParam("transform_lookup_time", &transform_lookup_time);
   setupParam("max_delay", &max_delay);
   setupParam("depth_type", &depth_type);
+  setupParam("color_msg_type", &color_msg_type);
 }
 
 InputSynchronizer::InputSynchronizer(const Config& config,
                                      rclcpp::Node::SharedPtr node)
-    : config_(config.checkValid()),
-      node_(node),
-      data_is_ready_(false) {
+    : config_(config.checkValid()), node_(node), data_is_ready_(false) {
   LOG_IF(INFO, config_.verbosity >= 1) << "\n" << config_.toString();
   if (!config_.sensor_frame_name.empty()) {
     used_sensor_frame_name_ = config_.sensor_frame_name;
@@ -102,10 +101,17 @@ void InputSynchronizer::advertiseInputTopics() {
       case InputData::InputType::kColorImage: {
         using MsgT = sensor_msgs::msg::Image;
         addQueue<MsgT>(
-            type, [](const MsgT::SharedPtr msg, InputSynchronizerData* data) {
-              const cv_bridge::CvImageConstPtr color =
-                  cv_bridge::toCvCopy(msg, "bgr8");
-              data->data->color_image_ = color->image;
+            type, [this](const MsgT::SharedPtr msg, InputSynchronizerData* data) {
+              if (this->config_.color_msg_type == "bgr8") {
+                const cv_bridge::CvImageConstPtr color =
+                    cv_bridge::toCvCopy(msg, "bgr8");
+                data->data->color_image_ = color->image;
+              } else {
+                const cv_bridge::CvImageConstPtr color =
+                    cv_bridge::toCvCopy(msg, "rgb8");
+                cv::cvtColor(color->image, data->data->color_image_,
+                             cv::COLOR_RGB2BGR);
+              }
               const std::lock_guard<std::mutex> lock(data->write_mutex_);
               data->data->contained_inputs_.insert(
                   InputData::InputType::kColorImage);

@@ -43,6 +43,11 @@ class InputSynchronizer : public InputSynchronizerBase {
     // Depth image type. 32F: meters, 16U: millimeters.
     std::string depth_type = "32F";
 
+    // Color image type. rgb8, bgr8. cv_bridge::toCvCopy(msg, "bgr8") cannot
+    // work in jetson orin with realsense ros driver, it must use
+    // v_bridge::toCvCopy(msg, "rgb8")
+    std::string color_msg_type = "bgr8";
+
     Config() { setConfigName("InputSynchronizer"); }
 
    protected:
@@ -156,7 +161,8 @@ class InputSynchronizer : public InputSynchronizerBase {
 
   // Variables.
   std::atomic<bool> data_is_ready_;
-  rclcpp::Time oldest_time_ = rclcpp::Time(static_cast<int64_t>(0), rcl_clock_type_t::RCL_ROS_TIME);
+  rclcpp::Time oldest_time_ =
+      rclcpp::Time(static_cast<int64_t>(0), rcl_clock_type_t::RCL_ROS_TIME);
   std::string used_sensor_frame_name_;
   std::mutex data_mutex_;
 };
