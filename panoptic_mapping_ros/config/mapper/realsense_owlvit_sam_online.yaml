@@ -10,6 +10,7 @@ print_timing_interval: 0.0
 max_input_queue_length: 20
 ros_spinning_threads: 8
 depth_type: 16U
+color_msg_type: rgb8
 
 labels:
   type: mini_csv
