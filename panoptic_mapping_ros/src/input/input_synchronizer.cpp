@@ -243,6 +243,7 @@ bool InputSynchronizer::allocateDataInQueue(const rclcpp::Time& timestamp) {
     if (!lookupTransform(timestamp, config_.global_frame_name,
                          used_sensor_frame_name_, &T_M_C)) {
       data.valid = false;
+      data.timestamp = timestamp;
       return false;
     }
   }
