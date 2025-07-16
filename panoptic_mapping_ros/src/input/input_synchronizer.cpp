@@ -285,6 +285,9 @@ std::shared_ptr<InputData> InputSynchronizer::getInputData() {
         if (!lookupTransform(data_queue_[i]->timestamp,
                              config_.global_frame_name, used_sensor_frame_name_,
                              &T_M_C)) {
+          // erase. To avoid always waiting for tf
+          data_queue_.erase(data_queue_.begin() + i);
+          data_is_ready_ = false;
           return result;
         }
         data_queue_[i]->data->setT_M_C(T_M_C);

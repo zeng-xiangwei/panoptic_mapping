@@ -47,8 +47,8 @@ def generate_launch_description():
             'load_file': LaunchConfiguration('load_file')
         }],
         remappings=[
-            ('color_image_in', '/camera/color/image_raw'),
-            ('depth_image_in', '/camera/aligned_depth_to_color/image_raw'),
+            ('color_image_in', '/camera/camera/color/image_raw'),
+            ('depth_image_in', '/camera/camera/aligned_depth_to_color/image_raw'),
             ('segmentation_image_in', '/segmentation_mask'),
             ('labels_in', '/detection_result')
         ],
