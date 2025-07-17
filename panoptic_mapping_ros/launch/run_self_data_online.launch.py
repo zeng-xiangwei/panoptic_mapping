@@ -50,7 +50,8 @@ def generate_launch_description():
             ('color_image_in', '/camera/camera/color/image_raw'),
             ('depth_image_in', '/camera/camera/aligned_depth_to_color/image_raw'),
             ('segmentation_image_in', '/segmentation_mask'),
-            ('labels_in', '/detection_result')
+            ('labels_in', '/detection_result'),
+            ('vln_map_update', '/vln/semantic_map')
         ],
         on_exit=Shutdown()
         if LaunchConfiguration('shutdown_when_finished') == 'true' else [])

@@ -14,16 +14,15 @@ color_msg_type: rgb8
 
 labels:
   type: mini_csv
-  file_name: /mnt/data/3d-lidar/semantic/self_collect/realsense_labels_mini.csv
-
+  file_name: /home/xiangweizeng/3D_slam/sematic-mapping/panoptic_mapping_ws/src/panoptic_mapping/panoptic_mapping_ros/config/classes/realsense_labels_mini.csv
 camera:
   verbosity: 1
   width: 640  # Px
   height: 480
-  vx: 329.505
-  vy: 242.564
-  fx: 385.118
-  fy: 384.607
+  vx: 321.049
+  vy: 244.335
+  fx: 386.487
+  fy: 386.098
   max_range: 3.0  # m
   min_range: 0.5
   
@@ -98,7 +97,7 @@ map_management:
   detect_disappear_by_sensor_data: true
   
   activity_manager:
-    required_reobservations: 2 # Consecutive observations to keep new submaps.
+    required_reobservations: 5 # Consecutive observations to keep new submaps.
     deactivate_after_missed_detections: 5  # Deactivate submaps when not observed for x frames.
   
   tsdf_registrator:
@@ -108,7 +107,7 @@ map_management:
     match_rejection_points: 20  
     match_rejection_percentage: 0.2
     match_acceptance_points: 20
-    match_acceptance_percentage: 0.4
+    match_acceptance_percentage: 0.2
     normalize_by_voxel_weight: true
   
   change_detector:

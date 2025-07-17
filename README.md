@@ -33,6 +33,12 @@ ogre_object->begin(material_name, Ogre::RenderOperation::OT_TRIANGLE_LIST,
 链接: https://pan.baidu.com/s/1VA8H-urXWkGnPfprMhM4Fw?pwd=w4im 提取码: w4im 复制这段内容后打开百度网盘手机App，操作更方便哦
 ```
 
+运行
+需要修改 yaml 配置参数中的 labels.file_name 为实际的类别文件路径
+```shell
+ros2 launch panoptic_mapping_ros run_self_data_online.launch.py
+```
+
 # Panoptic Mapping
 This package contains **panoptic_mapping**, a general framework for semantic volumetric mapping. We provide, among other, a submap-based approach that leverages panoptic scene understanding towards adaptive spatio-temporally consistent volumetric mapping, as well as regular, monolithic semantic mapping.
 

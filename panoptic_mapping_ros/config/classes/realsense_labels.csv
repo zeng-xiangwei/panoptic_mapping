@@ -1,0 +1,12 @@
+InstanceID,ClassID,PanopticID,R,G,B,Name,Size
+0,0,1,0,0,0,water bottle,S
+1,1,1,0,0,0,laptop,S
+2,2,1,0,0,0,chair,S
+3,3,1,0,0,0,marker,S
+4,4,1,0,0,0,hand sanitizer,S
+5,5,1,0,0,0,refrigerator,L
+6,6,1,0,0,0,microwave,S
+7,7,1,0,0,0,table,M
+8,8,0,0,0,0,wall,L
+9,9,0,0,0,0,floor,L
+10,10,1,0,0,0,box,S
