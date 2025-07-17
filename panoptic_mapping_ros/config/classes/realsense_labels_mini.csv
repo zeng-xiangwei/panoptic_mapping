@@ -1,12 +1,24 @@
 ClassName,Size
 water bottle,S
 laptop,S
+mouse,S
+desk,S
 chair,S
-marker,S
-hand sanitizer,S
-refrigerator,L
+trash can,S
+bedside table,S
+bed,S
+sofa,S
+tea table,S
 microwave,S
-table,M
-wall,L
-floor,L
-box,S
+toy,S
+snack,S
+cup,S
+keyboard,S
+waste,S
+‌paper trash,S
+spoon,S
+chopsticks,S
+pot,S
+pillow,S
+telephone,S
+floor,Ss
