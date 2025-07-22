@@ -412,6 +412,7 @@ ChangedSubmapVisualizer::computeZAlignedOBB(
     obb.extents.head<2>() = (max_pt - min_pt);
     obb.rotation.block<2, 2>(0, 0) = Eigen::Matrix2f::Identity();
     obb.box_type = "AABB";
+    obb.valid = true;
     return obb;
   }
 

@@ -31,7 +31,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: ""
+    SyncSource: SegmentedDepthCloud
 Visualization Manager:
   Class: ""
   Displays:
@@ -85,10 +85,10 @@ Visualization Manager:
             Value: /visualization/submaps/mesh
           Value: true
           Visible:
-            0_bedside table: true
-            1_chair: true
-            2_desk: true
-            3_chair: true
+            0_desk: true
+            1_desk: true
+            2_mouse: true
+            42_desk: true
             Value: true
         - Alpha: 0.30000001192092896
           Autocompute Intensity Bounds: true
@@ -171,7 +171,7 @@ Visualization Manager:
           Channel Name: intensity
           Class: rviz_default_plugins/PointCloud2
           Color: 255; 255; 255
-          Color Transformer: ""
+          Color Transformer: RGB8
           Decay Time: 0
           Enabled: true
           Invert Rainbow: false
@@ -180,7 +180,7 @@ Visualization Manager:
           Min Color: 0; 0; 0
           Min Intensity: 0
           Name: SegmentedDepthCloud
-          Position Transformer: ""
+          Position Transformer: XYZ
           Selectable: true
           Size (Pixels): 1
           Size (m): 0.009999999776482582
@@ -191,7 +191,7 @@ Visualization Manager:
             Filter size: 10
             History Policy: Keep Last
             Reliability Policy: Reliable
-            Value: /panoptic_mapper/segmented_point_cloud
+            Value: /segmented_point_cloud
           Use Fixed Frame: true
           Use rainbow: true
           Value: true
@@ -374,11 +374,89 @@ Visualization Manager:
           Value: true
         submap_1:
           Value: true
+        submap_10:
+          Value: true
+        submap_12:
+          Value: true
+        submap_13:
+          Value: true
+        submap_14:
+          Value: true
+        submap_15:
+          Value: true
+        submap_16:
+          Value: true
+        submap_17:
+          Value: true
+        submap_19:
+          Value: true
         submap_2:
+          Value: true
+        submap_20:
+          Value: true
+        submap_21:
+          Value: true
+        submap_22:
+          Value: true
+        submap_24:
+          Value: true
+        submap_25:
+          Value: true
+        submap_26:
+          Value: true
+        submap_27:
+          Value: true
+        submap_28:
+          Value: true
+        submap_29:
           Value: true
         submap_3:
           Value: true
+        submap_30:
+          Value: true
+        submap_31:
+          Value: true
+        submap_32:
+          Value: true
+        submap_33:
+          Value: true
+        submap_34:
+          Value: true
+        submap_35:
+          Value: true
+        submap_36:
+          Value: true
+        submap_37:
+          Value: true
+        submap_38:
+          Value: true
+        submap_39:
+          Value: true
         submap_4:
+          Value: true
+        submap_40:
+          Value: true
+        submap_41:
+          Value: true
+        submap_42:
+          Value: true
+        submap_43:
+          Value: true
+        submap_46:
+          Value: true
+        submap_47:
+          Value: true
+        submap_5:
+          Value: true
+        submap_55:
+          Value: true
+        submap_6:
+          Value: true
+        submap_7:
+          Value: true
+        submap_8:
+          Value: true
+        submap_9:
           Value: true
       Marker Scale: 1
       Name: TF
@@ -398,11 +476,89 @@ Visualization Manager:
             {}
           submap_1:
             {}
+          submap_10:
+            {}
+          submap_12:
+            {}
+          submap_13:
+            {}
+          submap_14:
+            {}
+          submap_15:
+            {}
+          submap_16:
+            {}
+          submap_17:
+            {}
+          submap_19:
+            {}
           submap_2:
+            {}
+          submap_20:
+            {}
+          submap_21:
+            {}
+          submap_22:
+            {}
+          submap_24:
+            {}
+          submap_25:
+            {}
+          submap_26:
+            {}
+          submap_27:
+            {}
+          submap_28:
+            {}
+          submap_29:
             {}
           submap_3:
             {}
+          submap_30:
+            {}
+          submap_31:
+            {}
+          submap_32:
+            {}
+          submap_33:
+            {}
+          submap_34:
+            {}
+          submap_35:
+            {}
+          submap_36:
+            {}
+          submap_37:
+            {}
+          submap_38:
+            {}
+          submap_39:
+            {}
           submap_4:
+            {}
+          submap_40:
+            {}
+          submap_41:
+            {}
+          submap_42:
+            {}
+          submap_43:
+            {}
+          submap_46:
+            {}
+          submap_47:
+            {}
+          submap_5:
+            {}
+          submap_55:
+            {}
+          submap_6:
+            {}
+          submap_7:
+            {}
+          submap_8:
+            {}
+          submap_9:
             {}
       Update Interval: 0
       Value: true
@@ -466,25 +622,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 4.3685712814331055
+      Distance: 10.78422737121582
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -4.300313472747803
-        Y: 0.58645099401474
-        Z: 1.0972763299942017
+        X: -3.221186876296997
+        Y: -0.44660484790802
+        Z: 1.2796132564544678
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.7497973442077637
+      Pitch: 0.7697978615760803
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz_default_plugins)
-      Yaw: 5.640435695648193
+      Yaw: 1.3822500705718994
     Saved: ~
 Window Geometry:
   Color:
