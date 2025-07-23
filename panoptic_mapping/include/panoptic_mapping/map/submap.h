@@ -56,6 +56,9 @@ class Submap {
     // Config of the mesh integrator.
     MeshIntegrator::Config mesh;
 
+    // 使用固定的 frame_id，避免使用 tf，因为目前的适用的submap都是表示在同一个世界系下，且均为单位阵
+    std::string frame_id = "world";
+
     Config() { setConfigName("Submap"); }
 
     // Utility tool that checks whether a classification layer was specified.

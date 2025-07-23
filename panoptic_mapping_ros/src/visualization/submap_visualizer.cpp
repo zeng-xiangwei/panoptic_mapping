@@ -105,14 +105,14 @@ void SubmapVisualizer::clearMesh() {
 
 void SubmapVisualizer::visualizeAll(SubmapCollection* submaps) {
   // Publish tf transforms in begin and end, ensure that it can be used in rviz
-  publishTfTransforms(*submaps);
+  // publishTfTransforms(*submaps);
   updateVisInfos(*submaps);
   vis_infos_are_updated_ = true;  // Prevent repeated updates.
   visualizeMeshes(submaps);
   visualizeTsdfBlocks(*submaps);
   visualizeFreeSpace(*submaps);
   visualizeBoundingVolume(*submaps);
-  publishTfTransforms(*submaps);
+  // publishTfTransforms(*submaps);
   vis_infos_are_updated_ = false;
 
   if (config_.verbosity >= 4) {

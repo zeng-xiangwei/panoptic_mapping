@@ -3,7 +3,7 @@ verbosity: 3
 use_threadsafe_submap_collection: true
 use_transform_caching: true
 transform_lookup_time: 0.1
-global_frame_name: map
+global_frame_name: &global_frame_name map
 visualization_interval: -1.0
 data_logging_interval: -1.0
 print_timing_interval: 0.0
@@ -33,6 +33,7 @@ submap_allocator:
   voxels_per_side: &voxels_per_side 16
   truncation_distance: -2 # negative = #vs
   use_class_layer: true
+  frame_id: *global_frame_name
   mesh:
     clear_foreign_voxels: false
     required_belonging_corners: 4

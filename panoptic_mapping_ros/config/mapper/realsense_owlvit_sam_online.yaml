@@ -3,7 +3,7 @@ verbosity: 3
 use_threadsafe_submap_collection: true
 use_transform_caching: true
 transform_lookup_time: 0.1
-global_frame_name: map
+global_frame_name: &global_frame_name map
 visualization_interval: -1.0
 data_logging_interval: -1.0
 print_timing_interval: 0.0
@@ -34,6 +34,7 @@ submap_allocator:
   voxels_per_side: &voxels_per_side 16
   truncation_distance: -2 # negative = #vs
   use_class_layer: true
+  frame_id: *global_frame_name
   mesh:
     clear_foreign_voxels: false
     required_belonging_corners: 4
@@ -103,11 +104,11 @@ map_management:
   tsdf_registrator:
     verbosity: 3
     min_voxel_weight: 0.000001
-    error_threshold: -1 # m, negative = #vs
+    error_threshold: -2 # m, negative = #vs
     match_rejection_points: 20  
-    match_rejection_percentage: 0.2
+    match_rejection_percentage: 0.02
     match_acceptance_points: 20
-    match_acceptance_percentage: 0.2
+    match_acceptance_percentage: 0.02
     normalize_by_voxel_weight: true
   
   change_detector:
@@ -115,9 +116,9 @@ map_management:
     strong_disappear_threshold: -10 # m, negative = #vs
     weak_disappear_threshold: -2 # m, negative = #vs
     match_strong_disappear_points: 50
-    match_strong_disappear_percentage: 0.3
+    match_strong_disappear_percentage: 0.1
     match_weak_disappear_points: 50
-    match_weak_disappear_percentage: 0.6
+    match_weak_disappear_percentage: 0.2
     match_weak_average_distance: -4 # m, negative = #vs
     detection_threads: 1
     

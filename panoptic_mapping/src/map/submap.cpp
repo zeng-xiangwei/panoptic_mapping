@@ -44,6 +44,7 @@ void Submap::Config::setupParamsAndPrinting() {
   setupParam("classification", &classification, "classification");
   setupParam("scores", &scores, "scores");
   setupParam("mesh", &mesh, "mesh");
+  setupParam("frame_id", &frame_id);
 }
 
 bool Submap::Config::useClassLayer() const {
@@ -75,8 +76,8 @@ Submap::Submap(const Config& config, SubmapIDManager* submap_id_manager,
 void Submap::initialize() {
   // Default values.
   std::stringstream ss;
-  ss << "submap_" << static_cast<int>(id_);
-  frame_name_ = ss.str();
+  // ss << "submap_" << static_cast<int>(id_);
+  frame_name_ = config_.frame_id;
 
   // Initialize with identity transformation.
   T_M_S_.setIdentity();

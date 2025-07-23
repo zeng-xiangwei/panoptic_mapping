@@ -6,6 +6,7 @@ Panels:
       Expanded:
         - /Global Options1
         - /Panoptic Mapper1
+        - /Panoptic Mapper1/Mesh1
         - /Panoptic Mapper1/Mesh1/Topic1
         - /Tracking1/Color1/Topic1
         - /DetectSegmentResult1/Topic1
@@ -31,7 +32,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: SegmentedDepthCloud
+    SyncSource: ""
 Visualization Manager:
   Class: ""
   Displays:
@@ -85,10 +86,7 @@ Visualization Manager:
             Value: /visualization/submaps/mesh
           Value: true
           Visible:
-            0_desk: true
-            1_desk: true
-            2_mouse: true
-            42_desk: true
+            25_desk: true
             Value: true
         - Alpha: 0.30000001192092896
           Autocompute Intensity Bounds: true
@@ -173,7 +171,7 @@ Visualization Manager:
           Color: 255; 255; 255
           Color Transformer: RGB8
           Decay Time: 0
-          Enabled: true
+          Enabled: false
           Invert Rainbow: false
           Max Color: 255; 255; 255
           Max Intensity: 4096
@@ -194,7 +192,7 @@ Visualization Manager:
             Value: /segmented_point_cloud
           Use Fixed Frame: true
           Use rainbow: true
-          Value: true
+          Value: false
       Enabled: true
       Name: Panoptic Mapper
     - Class: rviz_common/Group
@@ -374,31 +372,181 @@ Visualization Manager:
           Value: true
         submap_1:
           Value: true
-        submap_10:
+        submap_100:
           Value: true
-        submap_12:
+        submap_101:
           Value: true
-        submap_13:
+        submap_102:
           Value: true
-        submap_14:
+        submap_103:
           Value: true
-        submap_15:
+        submap_104:
           Value: true
-        submap_16:
+        submap_105:
           Value: true
-        submap_17:
+        submap_106:
           Value: true
-        submap_19:
+        submap_107:
+          Value: true
+        submap_108:
+          Value: true
+        submap_109:
+          Value: true
+        submap_110:
+          Value: true
+        submap_111:
+          Value: true
+        submap_112:
+          Value: true
+        submap_113:
+          Value: true
+        submap_114:
+          Value: true
+        submap_115:
+          Value: true
+        submap_116:
+          Value: true
+        submap_117:
+          Value: true
+        submap_118:
+          Value: true
+        submap_119:
+          Value: true
+        submap_120:
+          Value: true
+        submap_121:
+          Value: true
+        submap_122:
+          Value: true
+        submap_123:
+          Value: true
+        submap_124:
+          Value: true
+        submap_125:
+          Value: true
+        submap_126:
+          Value: true
+        submap_127:
+          Value: true
+        submap_128:
+          Value: true
+        submap_129:
+          Value: true
+        submap_130:
+          Value: true
+        submap_131:
+          Value: true
+        submap_132:
+          Value: true
+        submap_133:
+          Value: true
+        submap_134:
+          Value: true
+        submap_135:
+          Value: true
+        submap_136:
+          Value: true
+        submap_137:
+          Value: true
+        submap_138:
+          Value: true
+        submap_139:
+          Value: true
+        submap_140:
+          Value: true
+        submap_141:
+          Value: true
+        submap_142:
+          Value: true
+        submap_143:
+          Value: true
+        submap_144:
+          Value: true
+        submap_145:
+          Value: true
+        submap_146:
+          Value: true
+        submap_147:
+          Value: true
+        submap_148:
+          Value: true
+        submap_149:
+          Value: true
+        submap_150:
+          Value: true
+        submap_151:
+          Value: true
+        submap_152:
+          Value: true
+        submap_153:
+          Value: true
+        submap_154:
+          Value: true
+        submap_155:
+          Value: true
+        submap_156:
+          Value: true
+        submap_157:
+          Value: true
+        submap_158:
+          Value: true
+        submap_159:
+          Value: true
+        submap_160:
+          Value: true
+        submap_161:
+          Value: true
+        submap_162:
+          Value: true
+        submap_163:
+          Value: true
+        submap_164:
+          Value: true
+        submap_165:
+          Value: true
+        submap_166:
+          Value: true
+        submap_167:
+          Value: true
+        submap_168:
+          Value: true
+        submap_169:
+          Value: true
+        submap_170:
+          Value: true
+        submap_171:
+          Value: true
+        submap_172:
+          Value: true
+        submap_173:
+          Value: true
+        submap_174:
+          Value: true
+        submap_175:
+          Value: true
+        submap_176:
+          Value: true
+        submap_177:
+          Value: true
+        submap_178:
+          Value: true
+        submap_179:
+          Value: true
+        submap_180:
+          Value: true
+        submap_181:
+          Value: true
+        submap_182:
+          Value: true
+        submap_183:
+          Value: true
+        submap_184:
+          Value: true
+        submap_185:
+          Value: true
+        submap_186:
           Value: true
         submap_2:
-          Value: true
-        submap_20:
-          Value: true
-        submap_21:
-          Value: true
-        submap_22:
-          Value: true
-        submap_24:
           Value: true
         submap_25:
           Value: true
@@ -432,8 +580,6 @@ Visualization Manager:
           Value: true
         submap_39:
           Value: true
-        submap_4:
-          Value: true
         submap_40:
           Value: true
         submap_41:
@@ -442,21 +588,123 @@ Visualization Manager:
           Value: true
         submap_43:
           Value: true
+        submap_44:
+          Value: true
+        submap_45:
+          Value: true
         submap_46:
           Value: true
         submap_47:
           Value: true
+        submap_48:
+          Value: true
+        submap_49:
+          Value: true
         submap_5:
+          Value: true
+        submap_50:
+          Value: true
+        submap_51:
+          Value: true
+        submap_52:
+          Value: true
+        submap_53:
+          Value: true
+        submap_54:
           Value: true
         submap_55:
           Value: true
+        submap_56:
+          Value: true
+        submap_57:
+          Value: true
+        submap_58:
+          Value: true
+        submap_59:
+          Value: true
         submap_6:
+          Value: true
+        submap_60:
+          Value: true
+        submap_61:
+          Value: true
+        submap_62:
+          Value: true
+        submap_63:
+          Value: true
+        submap_64:
+          Value: true
+        submap_65:
+          Value: true
+        submap_66:
+          Value: true
+        submap_67:
+          Value: true
+        submap_68:
+          Value: true
+        submap_69:
           Value: true
         submap_7:
           Value: true
-        submap_8:
+        submap_70:
           Value: true
-        submap_9:
+        submap_71:
+          Value: true
+        submap_72:
+          Value: true
+        submap_73:
+          Value: true
+        submap_74:
+          Value: true
+        submap_75:
+          Value: true
+        submap_76:
+          Value: true
+        submap_77:
+          Value: true
+        submap_78:
+          Value: true
+        submap_79:
+          Value: true
+        submap_80:
+          Value: true
+        submap_81:
+          Value: true
+        submap_82:
+          Value: true
+        submap_83:
+          Value: true
+        submap_84:
+          Value: true
+        submap_85:
+          Value: true
+        submap_86:
+          Value: true
+        submap_87:
+          Value: true
+        submap_88:
+          Value: true
+        submap_89:
+          Value: true
+        submap_90:
+          Value: true
+        submap_91:
+          Value: true
+        submap_92:
+          Value: true
+        submap_93:
+          Value: true
+        submap_94:
+          Value: true
+        submap_95:
+          Value: true
+        submap_96:
+          Value: true
+        submap_97:
+          Value: true
+        submap_98:
+          Value: true
+        submap_99:
           Value: true
       Marker Scale: 1
       Name: TF
@@ -476,31 +724,181 @@ Visualization Manager:
             {}
           submap_1:
             {}
-          submap_10:
+          submap_100:
             {}
-          submap_12:
+          submap_101:
             {}
-          submap_13:
+          submap_102:
             {}
-          submap_14:
+          submap_103:
             {}
-          submap_15:
+          submap_104:
             {}
-          submap_16:
+          submap_105:
             {}
-          submap_17:
+          submap_106:
             {}
-          submap_19:
+          submap_107:
+            {}
+          submap_108:
+            {}
+          submap_109:
+            {}
+          submap_110:
+            {}
+          submap_111:
+            {}
+          submap_112:
+            {}
+          submap_113:
+            {}
+          submap_114:
+            {}
+          submap_115:
+            {}
+          submap_116:
+            {}
+          submap_117:
+            {}
+          submap_118:
+            {}
+          submap_119:
+            {}
+          submap_120:
+            {}
+          submap_121:
+            {}
+          submap_122:
+            {}
+          submap_123:
+            {}
+          submap_124:
+            {}
+          submap_125:
+            {}
+          submap_126:
+            {}
+          submap_127:
+            {}
+          submap_128:
+            {}
+          submap_129:
+            {}
+          submap_130:
+            {}
+          submap_131:
+            {}
+          submap_132:
+            {}
+          submap_133:
+            {}
+          submap_134:
+            {}
+          submap_135:
+            {}
+          submap_136:
+            {}
+          submap_137:
+            {}
+          submap_138:
+            {}
+          submap_139:
+            {}
+          submap_140:
+            {}
+          submap_141:
+            {}
+          submap_142:
+            {}
+          submap_143:
+            {}
+          submap_144:
+            {}
+          submap_145:
+            {}
+          submap_146:
+            {}
+          submap_147:
+            {}
+          submap_148:
+            {}
+          submap_149:
+            {}
+          submap_150:
+            {}
+          submap_151:
+            {}
+          submap_152:
+            {}
+          submap_153:
+            {}
+          submap_154:
+            {}
+          submap_155:
+            {}
+          submap_156:
+            {}
+          submap_157:
+            {}
+          submap_158:
+            {}
+          submap_159:
+            {}
+          submap_160:
+            {}
+          submap_161:
+            {}
+          submap_162:
+            {}
+          submap_163:
+            {}
+          submap_164:
+            {}
+          submap_165:
+            {}
+          submap_166:
+            {}
+          submap_167:
+            {}
+          submap_168:
+            {}
+          submap_169:
+            {}
+          submap_170:
+            {}
+          submap_171:
+            {}
+          submap_172:
+            {}
+          submap_173:
+            {}
+          submap_174:
+            {}
+          submap_175:
+            {}
+          submap_176:
+            {}
+          submap_177:
+            {}
+          submap_178:
+            {}
+          submap_179:
+            {}
+          submap_180:
+            {}
+          submap_181:
+            {}
+          submap_182:
+            {}
+          submap_183:
+            {}
+          submap_184:
+            {}
+          submap_185:
+            {}
+          submap_186:
             {}
           submap_2:
-            {}
-          submap_20:
-            {}
-          submap_21:
-            {}
-          submap_22:
-            {}
-          submap_24:
             {}
           submap_25:
             {}
@@ -534,8 +932,6 @@ Visualization Manager:
             {}
           submap_39:
             {}
-          submap_4:
-            {}
           submap_40:
             {}
           submap_41:
@@ -544,21 +940,123 @@ Visualization Manager:
             {}
           submap_43:
             {}
+          submap_44:
+            {}
+          submap_45:
+            {}
           submap_46:
             {}
           submap_47:
             {}
+          submap_48:
+            {}
+          submap_49:
+            {}
           submap_5:
+            {}
+          submap_50:
+            {}
+          submap_51:
+            {}
+          submap_52:
+            {}
+          submap_53:
+            {}
+          submap_54:
             {}
           submap_55:
             {}
+          submap_56:
+            {}
+          submap_57:
+            {}
+          submap_58:
+            {}
+          submap_59:
+            {}
           submap_6:
+            {}
+          submap_60:
+            {}
+          submap_61:
+            {}
+          submap_62:
+            {}
+          submap_63:
+            {}
+          submap_64:
+            {}
+          submap_65:
+            {}
+          submap_66:
+            {}
+          submap_67:
+            {}
+          submap_68:
+            {}
+          submap_69:
             {}
           submap_7:
             {}
-          submap_8:
+          submap_70:
             {}
-          submap_9:
+          submap_71:
+            {}
+          submap_72:
+            {}
+          submap_73:
+            {}
+          submap_74:
+            {}
+          submap_75:
+            {}
+          submap_76:
+            {}
+          submap_77:
+            {}
+          submap_78:
+            {}
+          submap_79:
+            {}
+          submap_80:
+            {}
+          submap_81:
+            {}
+          submap_82:
+            {}
+          submap_83:
+            {}
+          submap_84:
+            {}
+          submap_85:
+            {}
+          submap_86:
+            {}
+          submap_87:
+            {}
+          submap_88:
+            {}
+          submap_89:
+            {}
+          submap_90:
+            {}
+          submap_91:
+            {}
+          submap_92:
+            {}
+          submap_93:
+            {}
+          submap_94:
+            {}
+          submap_95:
+            {}
+          submap_96:
+            {}
+          submap_97:
+            {}
+          submap_98:
+            {}
+          submap_99:
             {}
       Update Interval: 0
       Value: true
@@ -622,25 +1120,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 10.78422737121582
+      Distance: 9.743025779724121
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -3.221186876296997
-        Y: -0.44660484790802
+        X: -3.6344552040100098
+        Y: -0.3194238841533661
         Z: 1.2796132564544678
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.7697978615760803
+      Pitch: 0.7597973346710205
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz_default_plugins)
-      Yaw: 1.3822500705718994
+      Yaw: 0.9672517776489258
     Saved: ~
 Window Geometry:
   Color:
