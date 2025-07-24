@@ -58,7 +58,12 @@ void SingleTsdfVisualizer::clearMesh() {
     voxblox_msgs::msg::MultiMesh msg;
     msg.header.stamp = node_->get_clock()->now();
     msg.name_space = map_name_space_;
-    mesh_pub_->publish(msg);
+
+    voxblox_msgs::msg::MultiMeshList msg_list;
+    msg_list.header.stamp = node_->get_clock()->now();
+    msg_list.header.frame_id = global_frame_name_;
+    msg_list.meshlist.push_back(msg);
+    mesh_pub_->publish(msg_list);
   }
 }
 

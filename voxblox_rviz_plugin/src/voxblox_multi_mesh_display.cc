@@ -51,43 +51,91 @@ void VoxbloxMultiMeshDisplay::toggleVisibilityAllSLOT() {
   updateVisible();
 }
 
-void VoxbloxMultiMeshDisplay::processMessage(
-    const voxblox_msgs::msg::MultiMesh::ConstSharedPtr msg) {
-  // Select the matching visual
-  auto it = visuals_.find(msg->name_space);
-  if (msg->mesh.mesh_blocks.empty()) {
-    // if blocks are empty the visual is to be cleared.
-    if (it != visuals_.end()) {
-      visibility_fields_->removeField(it->first);
-      visuals_.erase(it);
-    }
-  } else {
-    // create a visual if it does not yet exist.
-    if (it == visuals_.end()) {
-      it = visuals_
-               .insert(std::make_pair(
-                   msg->name_space,
-                   VoxbloxMeshVisual(context_->getSceneManager(), scene_node_)))
-               .first;
-      visibility_fields_->addField(msg->name_space);
-      it->second.setEnabled(visibility_fields_->isEnabled(msg->name_space));
-    }
+// void VoxbloxMultiMeshDisplay::processMessage(
+//     const voxblox_msgs::msg::MultiMesh::ConstSharedPtr msg) {
+//   // Select the matching visual
+//   auto it = visuals_.find(msg->name_space);
+//   if (msg->mesh.mesh_blocks.empty()) {
+//     // if blocks are empty the visual is to be cleared.
+//     if (it != visuals_.end()) {
+//       visibility_fields_->removeField(it->first);
+//       visuals_.erase(it);
+//     }
+//   } else {
+//     // create a visual if it does not yet exist.
+//     if (it == visuals_.end()) {
+//       it = visuals_
+//                .insert(std::make_pair(
+//                    msg->name_space,
+//                    VoxbloxMeshVisual(context_->getSceneManager(), scene_node_)))
+//                .first;
+//       visibility_fields_->addField(msg->name_space);
+//       it->second.setEnabled(visibility_fields_->isEnabled(msg->name_space));
+//     }
 
-    // update the frame, pose and mesh of the visual.
-    it->second.setFrameId(msg->header.frame_id);
-    if (updateTransformation(&(it->second), msg->header.stamp)) {
-      // here we use the multi-mesh msg header.
-      // catch uninitialized alpha values, since nobody wants to display a
-      // completely invisible mesh.
-      uint8_t alpha = msg->alpha;
-      if (alpha == 0) {
-        alpha = std::numeric_limits<uint8_t>::max();
+//     // update the frame, pose and mesh of the visual.
+//     it->second.setFrameId(msg->header.frame_id);
+//     if (updateTransformation(&(it->second), msg->header.stamp)) {
+//       // here we use the multi-mesh msg header.
+//       // catch uninitialized alpha values, since nobody wants to display a
+//       // completely invisible mesh.
+//       uint8_t alpha = msg->alpha;
+//       if (alpha == 0) {
+//         alpha = std::numeric_limits<uint8_t>::max();
+//       }
+
+//       // convert to normal mesh msg for visual
+//       voxblox_msgs::msg::Mesh::SharedPtr mesh(new voxblox_msgs::msg::Mesh);
+//       *mesh = msg->mesh;
+//       it->second.setMessage(mesh, alpha);
+//     }
+//   }
+// }
+
+void VoxbloxMultiMeshDisplay::processMessage(
+    const voxblox_msgs::msg::MultiMeshList::ConstSharedPtr msg_list) {
+  if (msg_list->meshlist.empty()) {
+    return;
+  }
+
+  for (auto& msg : msg_list->meshlist) {
+    // Select the matching visual
+    auto it = visuals_.find(msg.name_space);
+    if (msg.mesh.mesh_blocks.empty()) {
+      // if blocks are empty the visual is to be cleared.
+      if (it != visuals_.end()) {
+        visibility_fields_->removeField(it->first);
+        visuals_.erase(it);
+      }
+    } else {
+      // create a visual if it does not yet exist.
+      if (it == visuals_.end()) {
+        it = visuals_
+                 .insert(std::make_pair(
+                     msg.name_space,
+                     VoxbloxMeshVisual(context_->getSceneManager(),
+                                       scene_node_)))
+                 .first;
+        visibility_fields_->addField(msg.name_space);
+        it->second.setEnabled(visibility_fields_->isEnabled(msg.name_space));
       }
 
-      // convert to normal mesh msg for visual
-      voxblox_msgs::msg::Mesh::SharedPtr mesh(new voxblox_msgs::msg::Mesh);
-      *mesh = msg->mesh;
-      it->second.setMessage(mesh, alpha);
+      // update the frame, pose and mesh of the visual.
+      it->second.setFrameId(msg.header.frame_id);
+      if (updateTransformation(&(it->second), msg.header.stamp)) {
+        // here we use the multi-mesh msg header.
+        // catch uninitialized alpha values, since nobody wants to display a
+        // completely invisible mesh.
+        uint8_t alpha = msg.alpha;
+        if (alpha == 0) {
+          alpha = std::numeric_limits<uint8_t>::max();
+        }
+
+        // convert to normal mesh msg for visual
+        voxblox_msgs::msg::Mesh::SharedPtr mesh(new voxblox_msgs::msg::Mesh);
+        *mesh = msg.mesh;
+        it->second.setMessage(mesh, alpha);
+      }
     }
   }
 }

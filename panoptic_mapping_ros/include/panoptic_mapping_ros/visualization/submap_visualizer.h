@@ -16,6 +16,7 @@
 #include <voxblox/mesh/mesh_integrator.h>
 #include <voxblox/utils/color_maps.h>
 #include <voxblox_msgs/msg/multi_mesh.hpp>
+#include <voxblox_msgs/msg/multi_mesh_list.hpp>
 
 #include "panoptic_mapping_ros/conversions/mesh_vis.h"
 
@@ -156,7 +157,8 @@ class SubmapVisualizer {
   // ROS.
   rclcpp::Node::SharedPtr node_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr freespace_pub_;
-  rclcpp::Publisher<voxblox_msgs::msg::MultiMesh>::SharedPtr mesh_pub_;
+  // rclcpp::Publisher<voxblox_msgs::msg::MultiMesh>::SharedPtr mesh_pub_;
+  rclcpp::Publisher<voxblox_msgs::msg::MultiMeshList>::SharedPtr mesh_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr
       tsdf_blocks_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr

@@ -10,6 +10,6 @@
          type="voxblox_rviz_plugin::VoxbloxMultiMeshDisplay"
          base_class_type="rviz_common::Display">
     <description>Displays incremental voxblox mesh messages for multiple meshes.</description>
-    <message_type>voxblox_msgs/msg/MultiMesh</message_type>
+    <message_type>voxblox_msgs/msg/MultiMeshList</message_type>
   </class>
 </library>

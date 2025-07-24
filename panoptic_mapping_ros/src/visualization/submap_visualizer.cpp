@@ -68,7 +68,7 @@ SubmapVisualizer::SubmapVisualizer(const Config& config,
         "visualization/submaps/free_space_tsdf", 100);
   }
   if (config_.visualize_mesh) {
-    mesh_pub_ = node_->create_publisher<voxblox_msgs::msg::MultiMesh>(
+    mesh_pub_ = node_->create_publisher<voxblox_msgs::msg::MultiMeshList>(
         "visualization/submaps/mesh", 1000);
   }
   if (config_.visualize_tsdf_blocks) {
@@ -94,12 +94,17 @@ void SubmapVisualizer::clearMesh() {
   // NOTE(schmluk): Other visuals could also be cleared but since they are
   // non-incremental they will anyways be overwritten.
   if (config_.visualize_mesh && mesh_pub_->get_subscription_count() > 0) {
+    voxblox_msgs::msg::MultiMeshList msg_list;
     for (auto& info : vis_infos_) {
       voxblox_msgs::msg::MultiMesh msg;
       msg.header.stamp = node_->get_clock()->now();
       msg.name_space = info.second.name_space;
-      mesh_pub_->publish(msg);
+      msg_list.meshlist.push_back(msg);
     }
+    msg_list.header.stamp = node_->get_clock()->now();
+    msg_list.header.frame_id = global_frame_name_;
+    mesh_pub_->publish(msg_list);
+
   }
 }
 
@@ -132,9 +137,11 @@ void SubmapVisualizer::visualizeAll(SubmapCollection* submaps) {
 void SubmapVisualizer::visualizeMeshes(SubmapCollection* submaps) {
   if (config_.visualize_mesh && mesh_pub_->get_subscription_count() > 0) {
     std::vector<voxblox_msgs::msg::MultiMesh> msgs = generateMeshMsgs(submaps);
-    for (auto& msg : msgs) {
-      mesh_pub_->publish(msg);
-    }
+    voxblox_msgs::msg::MultiMeshList msg_list;
+    msg_list.header.stamp = node_->get_clock()->now();
+    msg_list.header.frame_id = global_frame_name_;
+    msg_list.meshlist = msgs;
+    mesh_pub_->publish(msg_list);
   }
 }
 

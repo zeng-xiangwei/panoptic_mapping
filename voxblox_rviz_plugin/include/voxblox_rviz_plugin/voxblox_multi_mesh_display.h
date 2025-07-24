@@ -10,6 +10,7 @@
 #include <rviz_common/message_filter_display.hpp>
 #include <rviz_common/properties/bool_property.hpp>
 #include <voxblox_msgs/msg/multi_mesh.hpp>
+#include <voxblox_msgs/msg/multi_mesh_list.hpp>
 
 #include "voxblox_rviz_plugin/voxblox_mesh_visual.h"
 
@@ -19,7 +20,8 @@ class VoxbloxMeshVisual;
 class VisibilityField;
 
 class VoxbloxMultiMeshDisplay
-    : public rviz_common::MessageFilterDisplay<voxblox_msgs::msg::MultiMesh> {
+    : public rviz_common::MessageFilterDisplay<voxblox_msgs::msg::MultiMeshList> {
+    // : public rviz_common::MessageFilterDisplay<voxblox_msgs::msg::MultiMesh> {
   Q_OBJECT
 
  public:
@@ -36,8 +38,10 @@ class VoxbloxMultiMeshDisplay
   void update(float wall_dt, float ros_dt) override;
 
  private:
+  // void processMessage(
+  //     const voxblox_msgs::msg::MultiMesh::ConstSharedPtr msg) override;
   void processMessage(
-      const voxblox_msgs::msg::MultiMesh::ConstSharedPtr msg) override;
+      const voxblox_msgs::msg::MultiMeshList::ConstSharedPtr msg) override;
   bool updateTransformation(VoxbloxMeshVisual* visual, rclcpp::Time stamp);
   void updateAllTransformations();
 

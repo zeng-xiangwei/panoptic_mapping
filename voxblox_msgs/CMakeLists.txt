@@ -16,6 +16,7 @@ set(msg_files
   msg/MeshBlock.msg
   msg/MultiMesh.msg
   msg/VoxelEvaluationDetails.msg
+  msg/MultiMeshList.msg
 )
 
 set(srv_files
