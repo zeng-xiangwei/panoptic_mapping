@@ -45,6 +45,8 @@ void Submap::Config::setupParamsAndPrinting() {
   setupParam("scores", &scores, "scores");
   setupParam("mesh", &mesh, "mesh");
   setupParam("frame_id", &frame_id);
+  setupParam("max_embedding_weight", &max_embedding_weight);
+  setupParam("min_embedding_weight", &min_embedding_weight);
 }
 
 bool Submap::Config::useClassLayer() const {
@@ -119,6 +121,10 @@ void Submap::getProto(SubmapProto* proto) const {
   proto->set_panoptic_label(static_cast<int>(label_));
   proto->set_name(name_);
   proto->set_change_state(static_cast<int>(change_state_));
+  for (size_t i = 0; i < embedding_vector_.size(); ++i) {
+    proto->add_embedding_vector(embedding_vector_[i]);
+  }
+  proto->set_embedding_weight(embedding_weight_);
 
   // Store TSDF data.
   proto->set_num_blocks(tsdf_layer_->getNumberOfAllocatedBlocks());
@@ -221,6 +227,10 @@ std::unique_ptr<Submap> Submap::loadFromStream(
   submap->setLabel(static_cast<PanopticLabel>(submap_proto.panoptic_label()));
   submap->setName(submap_proto.name());
   submap->setChangeState(static_cast<ChangeState>(submap_proto.change_state()));
+  for (int i = 0; i < submap_proto.embedding_vector_size(); ++i) {
+    submap->embedding_vector_.push_back(submap_proto.embedding_vector(i));
+  }
+  submap->embedding_weight_ = submap_proto.embedding_weight();
 
   // Load the TSDF layer.
   if (!voxblox::io::LoadBlocksFromStream(
@@ -269,6 +279,39 @@ void Submap::setClassName(const std::string& class_name) {
   }
 
   class_id_ = ClassNameManager::getGlobalInstance()->getClassID(class_name);
+}
+
+void Submap::setEmbeddingVector(const std::vector<float>& embedding_vector,
+                                float weight) {
+  embedding_vector_ = embedding_vector;
+  embedding_weight_ = weight;
+}
+
+void Submap::updateEmbeddingVector(const std::vector<float>& input_vec,
+                                   float weight) {
+  if (input_vec.empty()) {
+    return;
+  }
+  if (embedding_vector_.empty()) {
+    embedding_vector_ = input_vec;
+    embedding_weight_ = weight;
+    return;
+  }
+
+  if (input_vec.size() != embedding_vector_.size()) {
+    LOG(ERROR) << "Cannot update embedding vector. Vector sizes do not match. "
+               << embedding_vector_.size() << " != " << input_vec.size();
+    return;
+  }
+
+  float weight_sum = embedding_weight_ + weight;
+  for (int i = 0; i < input_vec.size(); ++i) {
+    embedding_vector_[i] =
+        (embedding_vector_[i] * embedding_weight_ + input_vec[i] * weight) /
+        weight_sum;
+  }
+  embedding_weight_ += weight;
+  embedding_weight_ = std::min(embedding_weight_, config_.max_embedding_weight);
 }
 
 void Submap::finishActivePeriod() {
@@ -353,6 +396,8 @@ std::unique_ptr<Submap> Submap::clone(
   result->instance_id_ = static_cast<int>(instance_id_);
   result->class_id_ = class_id_;
   result->class_name_ = class_name_;
+  result->embedding_vector_ = embedding_vector_;
+  result->embedding_weight_ = embedding_weight_;
   result->label_ = label_;
   result->name_ = name_;
   result->is_active_ = is_active_;

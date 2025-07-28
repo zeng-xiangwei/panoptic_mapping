@@ -277,6 +277,7 @@ bool MapManager::mergeSubmapIfPossible(SubmapCollection* submaps, int submap_id,
             << "Merged Submap " << submap->getID() << " into " << other.getID()
             << ".";
         other.setChangeState(ChangeState::kPersistent);
+        other.updateEmbeddingVector(submap->getEmbeddingVector(), submap->getEmbeddingWeight());
         submaps->removeSubmap(submap_id);
         if (merged_id) {
           *merged_id = other.getID();

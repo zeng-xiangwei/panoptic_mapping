@@ -35,6 +35,7 @@ class DetectronIDTracker : public ProjectiveIDTracker {
   Submap* allocateSubmap(int input_id, SubmapCollection* submaps,
                          InputData* input) override;
   bool classesMatch(int input_id, int submap_class_id) override;
+  std::vector<float> getEmbeddingVector(int input_id) override;
 
  public:
   static config_utilities::Factory::RegistrationRos<

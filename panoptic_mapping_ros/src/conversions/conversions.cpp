@@ -13,6 +13,7 @@ DetectronLabel detectronLabelFromMsg(
   result.category_id = msg.category_id;
   result.category_name = msg.category_name;
   result.score = msg.score;
+  result.embedding_vector = msg.embedding_vector;
   return result;
 }
 

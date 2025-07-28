@@ -77,6 +77,9 @@ class PanopticMapper {
     // If true, indicate the default values when printing component configs.
     bool indicate_default_values = true;
 
+    // 是否使用文件保存的embedding向量，如果保存的地图文件与当前使用的检测分割模型不一致，则该变量应该置为false
+    bool use_saved_embeddings = true;
+
     Config() { setConfigName("PanopticMapper"); }
 
    protected:

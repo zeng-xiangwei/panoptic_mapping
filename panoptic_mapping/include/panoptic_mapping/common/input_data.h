@@ -24,6 +24,7 @@ struct DetectronLabel {
   std::string category_name = "Unknown";
   int instance_id = 0;
   float score = 0.f;
+  std::vector<float> embedding_vector;
 };
 typedef std::unordered_map<int, DetectronLabel> DetectronLabels;  // <id-label>
 

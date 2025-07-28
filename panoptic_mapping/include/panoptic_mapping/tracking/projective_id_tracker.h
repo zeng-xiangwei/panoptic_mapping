@@ -80,6 +80,7 @@ class ProjectiveIDTracker : public IDTrackerBase {
   virtual bool classesMatch(int input_id, int submap_class_id);
   virtual Submap* allocateSubmap(int input_id, SubmapCollection* submaps,
                                  InputData* input);
+  virtual std::vector<float> getEmbeddingVector(int input_id);
   TrackingInfoAggregator computeTrackingData(SubmapCollection* submaps,
                                              InputData* input);
   TrackingInfo renderTrackingInfo(const Submap& submap,
@@ -95,7 +96,7 @@ class ProjectiveIDTracker : public IDTrackerBase {
   static config_utilities::Factory::RegistrationRos<
       IDTrackerBase, ProjectiveIDTracker, std::shared_ptr<Globals>>
       registration_;
-      
+
  private:
   // Members
   const Config config_;

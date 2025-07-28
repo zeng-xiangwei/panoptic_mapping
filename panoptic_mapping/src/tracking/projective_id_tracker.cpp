@@ -83,6 +83,7 @@ void ProjectiveIDTracker::processInput(SubmapCollection* submaps,
     bool matched = false;
     float value;
     bool any_overlap;
+    std::vector<float> embedding_vector;
     std::stringstream logging_details;
 
     // Find matches.
@@ -141,11 +142,15 @@ void ProjectiveIDTracker::processInput(SubmapCollection* submaps,
       n_matched++;
       input_to_output[input_id] = submap_id;
       submaps->getSubmapPtr(submap_id)->setWasTracked(true);
+      embedding_vector = getEmbeddingVector(input_id);
+      submaps->getSubmapPtr(submap_id)->updateEmbeddingVector(embedding_vector);
     } else if (allocate_new_submap) {
       n_new++;
       Submap* new_submap = allocateSubmap(input_id, submaps, input);
       if (new_submap) {
         input_to_output[input_id] = new_submap->getID();
+        embedding_vector = getEmbeddingVector(input_id);
+        new_submap->setEmbeddingVector(embedding_vector);
       } else {
         input_to_output[input_id] = -1;
       }
@@ -233,6 +238,10 @@ bool ProjectiveIDTracker::classesMatch(int input_id, int submap_class_id) {
     return false;
   }
   return globals_->labelHandler()->getClassID(input_id) == submap_class_id;
+}
+
+std::vector<float> ProjectiveIDTracker::getEmbeddingVector(int input_id) {
+  return std::vector<float>();
 }
 
 TrackingInfoAggregator ProjectiveIDTracker::computeTrackingData(

@@ -104,7 +104,6 @@ void SubmapVisualizer::clearMesh() {
     msg_list.header.stamp = node_->get_clock()->now();
     msg_list.header.frame_id = global_frame_name_;
     mesh_pub_->publish(msg_list);
-
   }
 }
 
@@ -120,7 +119,7 @@ void SubmapVisualizer::visualizeAll(SubmapCollection* submaps) {
   // publishTfTransforms(*submaps);
   vis_infos_are_updated_ = false;
 
-  if (config_.verbosity >= 4) {
+  if (config_.verbosity >= 3) {
     for (Submap& submap : *submaps) {
       LOG(INFO) << "Submap id: " << submap.getID()
                 << ", name: " << submap.getName()
@@ -130,6 +129,20 @@ void SubmapVisualizer::visualizeAll(SubmapCollection* submaps) {
                 << ", was tracked: " << submap.wasTracked()
                 << ", change  state: "
                 << changeStateToString(submap.getChangeState());
+    }
+  }
+
+  if (config_.verbosity >= 4) {
+    for (Submap& submap : *submaps) {
+      std::stringstream ss;
+      ss << "(";
+      for (float v : submap.getEmbeddingVector()) {
+        ss << v << ",";
+      }
+      ss << ")";
+      LOG(INFO) << "Submap id: " << submap.getID()
+                << ", embedding vector: " << ss.str()
+                << ", embedding weight: " << submap.getEmbeddingWeight();
     }
   }
 }

@@ -57,6 +57,7 @@ void PanopticMapper::Config::setupParamsAndPrinting() {
   setupParam("save_map_path_when_finished", &save_map_path_when_finished);
   setupParam("display_config_units", &display_config_units);
   setupParam("indicate_default_values", &indicate_default_values);
+  setupParam("use_saved_embeddings", &use_saved_embeddings);
 }
 
 PanopticMapper::PanopticMapper(rclcpp::Node::SharedPtr node)
@@ -500,6 +501,10 @@ bool PanopticMapper::loadMap(const std::string& file_path) {
       submap.setChangeState(ChangeState::kUnobserved);
     } else {
       submap.setChangeState(ChangeState::kPersistent);
+    }
+
+    if (!config_.use_saved_embeddings) {
+      submap.setEmbeddingVector(std::vector<float>(), 0.f);
     }
   }
 

@@ -218,6 +218,7 @@ class FlatDataPlayer(Node):
         if self.use_detectron:
             label_msg = DetectronLabels()
             label_msg.header.stamp = now
+            embedding_vector = [0.0, 0.0]
             try:
                 with open(labels_file) as json_file:
                     data = json.load(json_file)
@@ -234,6 +235,9 @@ class FlatDataPlayer(Node):
                         label.score = d['score']
                         label.category_name = self.category_id_to_category_name[d['category_id']]
                         label_msg.labels.append(label)
+                        embedding_vector[0] += 1.0
+                        embedding_vector[1] += 1.0
+                        label.embedding_vector = embedding_vector
                 self.label_pub.publish(label_msg)
             except Exception as e:
                 self.get_logger().warn(f"Failed to load labels: {str(e)}")

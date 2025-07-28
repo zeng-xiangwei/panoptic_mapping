@@ -56,8 +56,13 @@ class Submap {
     // Config of the mesh integrator.
     MeshIntegrator::Config mesh;
 
-    // 使用固定的 frame_id，避免使用 tf，因为目前的适用的submap都是表示在同一个世界系下，且均为单位阵
+    // 使用固定的 frame_id，避免使用
+    // tf，因为目前的适用的submap都是表示在同一个世界系下，且均为单位阵
     std::string frame_id = "world";
+
+    // 特征向量的最大权重、最小权重，最小权重仅用来判断是否特征向量是否可用
+    float max_embedding_weight = 1000.f;
+    float min_embedding_weight = 1e-5f;
 
     Config() { setConfigName("Submap"); }
 
@@ -86,6 +91,10 @@ class Submap {
   int getInstanceID() const { return instance_id_; }
   int getClassID() const { return class_id_; }
   const std::string& getClassName() const { return class_name_; }
+  const std::vector<float>& getEmbeddingVector() const {
+    return embedding_vector_;
+  }
+  float getEmbeddingWeight() const { return embedding_weight_; }
   PanopticLabel getLabel() const { return label_; }
   const std::string& getName() const { return name_; }
   const std::string& getFrameName() const { return frame_name_; }
@@ -135,6 +144,13 @@ class Submap {
    * @param class_name
    */
   void setClassName(const std::string& class_name);
+  void setEmbeddingVector(const std::vector<float>& embedding_vector, float weight = 1.0);
+
+  /**
+   * @brief Update embedding vector. By average.
+   * 
+   */
+  void updateEmbeddingVector(const std::vector<float>& embedding_vector, float weight = 1.0);
 
   // Processing.
   /**
@@ -258,6 +274,8 @@ class Submap {
   std::string class_name_;
   PanopticLabel label_ = PanopticLabel::kUnknown;
   std::string name_ = "Unknown";
+  std::vector<float> embedding_vector_;
+  float embedding_weight_ = 0.f;
 
   // State.
   bool is_active_ = true;

@@ -94,4 +94,18 @@ bool DetectronIDTracker::classesMatch(int input_id, int submap_class_id) {
   return input_class_id == submap_class_id;
 }
 
+std::vector<float> DetectronIDTracker::getEmbeddingVector(int input_id) {
+  if (input_id == 0) {
+    // The id 0 is used to denote no-predictions by detectron.
+    return std::vector<float>();
+  }
+  auto it = labels_->find(input_id);
+  if (it == labels_->end()) {
+    // No known input label.
+    return std::vector<float>();;
+  }
+
+  return it->second.embedding_vector;
+}
+
 }  // namespace panoptic_mapping

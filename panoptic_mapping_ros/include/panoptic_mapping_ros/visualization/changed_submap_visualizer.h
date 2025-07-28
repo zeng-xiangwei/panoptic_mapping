@@ -89,6 +89,7 @@ class ChangedSubmapVisualizer {
     ChangeType change_type = ChangeType::kUnChanged;
     OrientedBoundingBox obb;
     Color color = Color::Gray();
+    std::vector<float> embedding_vector;
   };
 
   /**

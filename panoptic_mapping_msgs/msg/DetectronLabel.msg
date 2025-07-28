@@ -4,3 +4,4 @@ float32 score
 int32 category_id
 string category_name
 int32 instance_id
+float32[] embedding_vector

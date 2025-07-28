@@ -101,6 +101,7 @@ void ChangedSubmapVisualizer::findChangedSubmaps(SubmapCollection& submaps) {
     info.surface_points_size = submap.getIsoSurfacePoints().size();
     info.obb = computeOBB(submap.getIsoSurfacePoints());
     info.color = kAddColor;
+    info.embedding_vector = submap.getEmbeddingVector();
   }
 
   // Deleted Submaps.
@@ -138,6 +139,7 @@ void ChangedSubmapVisualizer::findChangedSubmaps(SubmapCollection& submaps) {
       info.obb = computeOBB(submap.getIsoSurfacePoints());
       info.color = kChangedColor;
       info.surface_points_size = surface_points_size;
+      info.embedding_vector = submap.getEmbeddingVector();
     } else {
       info.change_type = ChangeType::kUnChanged;
       info.color = kUnchangedColor;
@@ -262,6 +264,7 @@ void ChangedSubmapVisualizer::publishChangesForVln(const SubmapCollection& subma
     obj.quat.y = q.y();
     obj.quat.z = q.z();
     obj.quat.w = q.w();
+    obj.embedding_vector = info.embedding_vector;
     if (info.change_type == ChangeType::kAdded) {
       result.add_objects.push_back(obj);
     } else if (info.change_type == ChangeType::kDeleted) {
