@@ -28,10 +28,10 @@ ChangedSubmapVisualizer::ChangedSubmapVisualizer(const Config& config,
       node_->create_publisher<visualization_msgs::msg::MarkerArray>(
           "visualization/submaps/changed_submaps", rclcpp::QoS(10));
 
-  #ifdef VLN_MSGS_FOUND
+#ifdef VLN_MSGS_FOUND
   vln_map_update_pub_ = node_->create_publisher<vln_msgs::msg::MapUpdate>(
-          "vln_map_update", rclcpp::QoS(10));
-  #endif
+      "vln_map_update", rclcpp::QoS(10));
+#endif
 }
 
 void ChangedSubmapVisualizer::visualizeChangedSubmaps(
@@ -207,9 +207,9 @@ void ChangedSubmapVisualizer::publishChanges(const SubmapCollection& submaps) {
     marker.pose.orientation.y = q.y();
     marker.pose.orientation.z = q.z();
     marker.pose.orientation.w = q.w();
-    marker.pose.position.x = info.obb.center.x();
-    marker.pose.position.y = info.obb.center.y();
-    marker.pose.position.z = info.obb.center.z();
+    marker.pose.position.x = info.obb.box_center.x();
+    marker.pose.position.y = info.obb.box_center.y();
+    marker.pose.position.z = info.obb.box_center.z();
 
     if (info.change_type == ChangeType::kUnChanged) {
       marker.action = visualization_msgs::msg::Marker::MODIFY;
@@ -236,8 +236,9 @@ void ChangedSubmapVisualizer::publishChanges(const SubmapCollection& submaps) {
   obb_publisher_->publish(result);
 }
 
-void ChangedSubmapVisualizer::publishChangesForVln(const SubmapCollection& submaps) {
-  #ifdef VLN_MSGS_FOUND
+void ChangedSubmapVisualizer::publishChangesForVln(
+    const SubmapCollection& submaps) {
+#ifdef VLN_MSGS_FOUND
   vln_msgs::msg::MapUpdate result;
   for (auto& kv : submap_infos_) {
     const SubmapInfo& info = kv.second;
@@ -253,9 +254,9 @@ void ChangedSubmapVisualizer::publishChangesForVln(const SubmapCollection& subma
     vln_msgs::msg::SemanticObject obj;
     obj.id = submap_id;
     obj.name = info.name;
-    obj.center.x = info.obb.center.x();
-    obj.center.y = info.obb.center.y();
-    obj.center.z = info.obb.center.z();
+    obj.center.x = info.obb.centroid.x();
+    obj.center.y = info.obb.centroid.y();
+    obj.center.z = info.obb.centroid.z();
     obj.length = info.obb.extents(0);
     obj.width = info.obb.extents(1);
     obj.height = info.obb.extents(2);
@@ -275,7 +276,7 @@ void ChangedSubmapVisualizer::publishChangesForVln(const SubmapCollection& subma
   }
 
   vln_map_update_pub_->publish(result);
-  #endif
+#endif
 }
 
 ChangedSubmapVisualizer::OrientedBoundingBox
@@ -317,27 +318,30 @@ ChangedSubmapVisualizer::computeStandardOBB(
   Eigen::Matrix3f eigenvectors = solver.eigenvectors();
 
   OrientedBoundingBox obb;
+  
+  Eigen::Vector3f min_pt, max_pt;
+  min_pt = max_pt = points[0].position;
 
+  for (const auto& pt : points) {
+    const Eigen::Vector3f& pt_pos = pt.position;
+    for (int i = 0; i < 3; ++i) {
+      if (pt_pos(i) < min_pt(i)) min_pt(i) = pt_pos(i);
+      if (pt_pos(i) > max_pt(i)) max_pt(i) = pt_pos(i);
+    }
+  }
+  Eigen::Vector3f box_center = (min_pt + max_pt) / 2.0f;
+  
   // 特征值较小时，使用AABB包围盒
   if (config_.only_use_aabb || eigenvalues(0) < kEpsilon ||
       eigenvalues(1) < kEpsilon || eigenvalues(2) < kEpsilon) {
-    Eigen::Vector3f min_pt, max_pt;
-    min_pt = max_pt = points[0].position;
 
-    for (const auto& pt : points) {
-      const Eigen::Vector3f& pt_pos = pt.position;
-      for (int i = 0; i < 3; ++i) {
-        if (pt_pos(i) < min_pt(i)) min_pt(i) = pt_pos(i);
-        if (pt_pos(i) > max_pt(i)) max_pt(i) = pt_pos(i);
-      }
-    }
-
-    obb.center = centroid;
+    obb.centroid = centroid;
+    obb.box_center = box_center;
     obb.extents = (max_pt - min_pt);
     obb.rotation = Eigen::Matrix3f::Identity();
     obb.box_type = "AABB";
   } else {
-    // 正常 OBB 计算
+    // OBB 计算
     Eigen::Vector3f min_proj =
         Eigen::Vector3f::Constant(std::numeric_limits<float>::max());
     Eigen::Vector3f max_proj =
@@ -352,7 +356,8 @@ ChangedSubmapVisualizer::computeStandardOBB(
       }
     }
 
-    obb.center = centroid;
+    obb.box_center = box_center;
+    obb.centroid = centroid;
     obb.extents = (max_proj - min_proj);
     obb.rotation = eigenvectors;
     obb.box_type = "OBB";
@@ -396,22 +401,24 @@ ChangedSubmapVisualizer::computeZAlignedOBB(
   Eigen::Vector2f eigenvalues = solver.eigenvalues();
   Eigen::Matrix2f eigenvectors_xy = solver.eigenvectors();
 
+  // 计算盒体中心
+  Eigen::Vector2f min_pt, max_pt;
+  min_pt = max_pt = points[0].position.head<2>();
+  for (const auto& pt : points) {
+    const Eigen::Vector2f& pt_pos = pt.position.head<2>();
+    for (int i = 0; i < 2; ++i) {
+      if (pt_pos(i) < min_pt(i)) min_pt(i) = pt_pos(i);
+      if (pt_pos(i) > max_pt(i)) max_pt(i) = pt_pos(i);
+    }
+  }
+  Eigen::Vector2f box_center = (min_pt + max_pt) / 2.0f;
+  
   // Check if eigenvalues are too small, use AABB instead
   if (config_.only_use_aabb || eigenvalues(0) < kEpsilon ||
       eigenvalues(1) < kEpsilon) {
-    Eigen::Vector2f min_pt, max_pt;
-    min_pt = max_pt = points[0].position.head<2>();
-
-    for (const auto& pt : points) {
-      const Eigen::Vector2f& pt_pos = pt.position.head<2>();
-      for (int i = 0; i < 2; ++i) {
-        if (pt_pos(i) < min_pt(i)) min_pt(i) = pt_pos(i);
-        if (pt_pos(i) > max_pt(i)) max_pt(i) = pt_pos(i);
-      }
-    }
-
     OrientedBoundingBox obb;
-    obb.center.head<2>() = centroid_xy;
+    obb.centroid.head<2>() = centroid_xy;
+    obb.box_center.head<2>() = box_center;
     obb.extents.head<2>() = (max_pt - min_pt);
     obb.rotation.block<2, 2>(0, 0) = Eigen::Matrix2f::Identity();
     obb.box_type = "AABB";
@@ -453,8 +460,10 @@ ChangedSubmapVisualizer::computeZAlignedOBB(
 
   // Build final OBB
   OrientedBoundingBox obb;
-  obb.center.head<2>() = centroid_xy;
-  obb.center.z() = (min_z + max_z) / 2.0f;
+  obb.centroid.head<2>() = centroid_xy;
+  obb.centroid.z() = (min_z + max_z) / 2.0f;
+  obb.box_center.head<2>() = box_center;
+  obb.box_center.z() = (min_z + max_z) / 2.0f;
   obb.extents.head<2>() = (max_proj - min_proj);
   obb.extents.z() = max_z - min_z;
   obb.rotation = rotation;

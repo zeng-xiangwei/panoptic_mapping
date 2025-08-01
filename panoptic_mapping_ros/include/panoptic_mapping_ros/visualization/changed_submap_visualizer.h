@@ -70,12 +70,15 @@ class ChangedSubmapVisualizer {
   enum class ChangeType { kUnChanged = 0, kAdded, kDeleted, kChanged };
 
   struct OrientedBoundingBox {
-    // 中心点
-    Eigen::Vector3f center = Eigen::Vector3f::Zero();
+    // 盒子中心点
+    Eigen::Vector3f box_center = Eigen::Vector3f::Zero();
     // 各轴边长
     Eigen::Vector3f extents = Eigen::Vector3f::Zero();
     // 旋转矩阵（由主成分分析得到）
     Eigen::Matrix3f rotation = Eigen::Matrix3f::Identity();
+
+    // 点云质心
+    Eigen::Vector3f centroid = Eigen::Vector3f::Zero();
     // 是否是有效
     bool valid = false;
     // OBB、AABB
