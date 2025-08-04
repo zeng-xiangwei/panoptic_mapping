@@ -35,6 +35,15 @@ void ChangeDetector::Config::setupParamsAndPrinting() {
              &match_weak_disappear_percentage);
   setupParam("match_weak_average_distance", &match_weak_average_distance);
   setupParam("detection_threads", &detection_threads);
+  setupParam("use_classification_for_tiny", &use_classification_for_tiny);
+  setupParam("classification_disappear_threshold",
+             &classification_disappear_threshold);
+  setupParam("classification_disappear_percentage",
+             &classification_disappear_percentage);
+  setupParam("classification_disappear_average_distance",
+             &classification_disappear_average_distance);
+  setupParam("classification_projected_percentage",
+             &classification_projected_percentage);
 }
 
 ChangeDetector::ChangeDetector(const Config& config,
@@ -80,6 +89,10 @@ void ChangeDetector::checkSubmapCollectionVisibleByInputData(
           while (index_getter.getNextIndex(&index)) {
             info += this->checkSubmapVisibleByInputData(
                 submaps->getSubmapPtr(index), input);
+            if (config_.use_classification_for_tiny) {
+              info += this->checkSubmapVisibleByInputDataWithClassification(
+                  submaps->getSubmapPtr(index), input);
+            }
           }
           return info;
         }));
@@ -185,6 +198,131 @@ std::string ChangeDetector::checkSubmapVisibleByInputData(Submap* submap,
        << "," << weak_absent_num << ")"
        << "/" << submap->getIsoSurfacePoints().size()
        << ", weak distance sum: " << weak_absent_dis_sum << " m. "
+       << "valid_measurement_nums / projected_nums: "
+       << valid_depth_measurement_num << " / " << projected_num;
+  return info.str();
+}
+
+std::string ChangeDetector::checkSubmapVisibleByInputDataWithClassification(
+    Submap* submap, InputData* input) {
+  auto T_C_S = input->T_M_C().inverse() * submap->getT_M_S();
+  const Camera& camera = *globals_->camera();
+  const cv::Mat& depth_image = input->depthImage();
+  const cv::Mat& id_image_copy = input->idImageCopy();
+
+  int absent_num = 0;
+  float absent_dis_sum = 0.0;
+  int valid_depth_measurement_num = 0;
+  int projected_num = 0;
+
+  float depth_tolerance = config_.classification_disappear_threshold > 0
+                              ? config_.classification_disappear_threshold
+                              : -config_.classification_disappear_threshold *
+                                    submap->getTsdfLayer().voxel_size();
+
+  // Simply limit the measurement values of the depth measurement
+  float camera_visible_distance_max = 5.0 * camera.getConfig().max_range;
+
+  std::unordered_map<int, int> projected_instance_nums;
+  for (const auto& point : submap->getIsoSurfacePoints()) {
+    const auto p_C = T_C_S * point.position;
+    int u, v;
+    if (!camera.projectPointToImagePlane(p_C, &u, &v)) {
+      continue;
+    }
+
+    projected_num++;
+    float depth_value = depth_image.at<float>(v, u);
+    if (depth_value != 0.f) {
+      valid_depth_measurement_num++;
+    }
+    float distance = depth_image.at<float>(v, u) - p_C.z();
+    distance = std::min(distance, camera_visible_distance_max);
+    if (distance >= depth_tolerance) {
+      absent_num++;
+      absent_dis_sum += distance;
+    }
+
+    int instance_id = id_image_copy.at<int>(v, u);
+    projected_instance_nums[instance_id]++;
+  }
+
+  int max_instance_id = -1;
+  int max_projected_num = -1;
+  for (auto& pair : projected_instance_nums) {
+    if (pair.second > max_projected_num) {
+      max_projected_num = pair.second;
+      max_instance_id = pair.first;
+    }
+  }
+  if (max_instance_id == -1 || max_instance_id == 0) {
+    std::stringstream info;
+    info << "\nSubmap " << submap->getID() << " (" << submap->getName()
+         << ") not project on detected instance(instance_id: "
+         << max_instance_id << ").";
+    return info.str();
+  }
+
+  const DetectronLabels* labels = &(input->detectronLabels());
+  auto it = labels->find(max_instance_id);
+  if (it == labels->end()) {
+    std::stringstream info;
+    info << "\nSubmap " << submap->getID() << " (" << submap->getName()
+         << ") not project on detected instance(instance_id: "
+         << max_instance_id << " not found).";
+    return info.str();
+  }
+
+  // Find background to judge
+  if (!it->second.is_thing) {
+    std::stringstream info;
+    info << "\nSubmap " << submap->getID() << " (" << submap->getName()
+         << ") not project on detected instance(instance_id: "
+         << max_instance_id << " is not a thing).";
+    return info.str();
+  }
+
+  std::string background_class_name = it->second.category_name;
+  if (background_class_name == submap->getClassName()) {
+    return "";
+  }
+
+  int disappear_num_threshold =
+      static_cast<int>(config_.classification_disappear_percentage *
+                       submap->getIsoSurfacePoints().size());
+
+  int min_projected_other_type_num =
+      static_cast<int>(config_.classification_projected_percentage *
+                       submap->getIsoSurfacePoints().size());
+
+  float avg_dis_threshold =
+      config_.classification_disappear_average_distance > 0
+          ? config_.classification_disappear_average_distance
+          : -config_.classification_disappear_average_distance *
+                submap->getTsdfLayer().voxel_size();
+
+  if (max_projected_num > min_projected_other_type_num &&
+      absent_num > disappear_num_threshold) {
+    float absent_avg_distance = absent_dis_sum / absent_num;
+    if (absent_avg_distance > avg_dis_threshold) {
+      submap->setChangeState(ChangeState::kAbsent);
+      std::stringstream info;
+      info << "\nSubmap " << submap->getID() << " (" << submap->getName()
+           << ") conflicts with input data judged by classification. ("
+           << background_class_name << ") "
+           << " Marked as "
+              "absent.";
+      return info.str();
+    }
+  }
+
+  std::stringstream info;
+  info << "\nSubmap " << submap->getID() << " (" << submap->getName()
+       << ") is valid with input data by classification. Absent points: "
+       << absent_num << "/" << submap->getIsoSurfacePoints().size()
+       << ", distance sum: " << absent_dis_sum << " m. "
+       << "projected_on (" << background_class_name
+       << ") num: " << max_projected_num
        << "valid_measurement_nums / projected_nums: "
        << valid_depth_measurement_num << " / " << projected_num;
   return info.str();

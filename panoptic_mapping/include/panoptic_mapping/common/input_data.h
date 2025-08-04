@@ -89,6 +89,7 @@ class InputData {
   void setIdImage(const cv::Mat& id_image) {
     id_image_ = id_image;
     contained_inputs_.insert(InputType::kSegmentationImage);
+    id_image_copy_ = id_image.clone();
   }
   void setDetectronLabels(const DetectronLabels& labels) {
     detectron_labels_ = labels;
@@ -118,6 +119,7 @@ class InputData {
   const DetectronLabels& detectronLabels() const { return detectron_labels_; }
   const cv::Mat& vertexMap() const { return vertex_map_; }
   const cv::Mat& idImage() const { return id_image_; }
+  const cv::Mat& idImageCopy() const { return id_image_copy_; }
   const cv::Mat& validityImage() const { return validity_image_; }
   const cv::Mat& uncertaintyImage() const { return uncertainty_image_; }
 
@@ -144,6 +146,7 @@ class InputData {
   cv::Mat color_image_;  // BGR (CV_8U).
   cv::Mat id_image_;     // Mutable assigned ids as ints (CV_32SC1).
   cv::Mat uncertainty_image_; // Float image containing uncertainty information (CV_32FC1)
+  cv::Mat id_image_copy_;  // Copy of origin id_image_, for change detection
 
   // Common derived data.
   cv::Mat vertex_map_;      // XYZ points (CV32FC3), can be compute via camera.

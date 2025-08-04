@@ -120,6 +120,11 @@ map_management:
     match_weak_disappear_percentage: 0.6
     match_weak_average_distance: -4 # m, negative = #vs
     detection_threads: 1
+    use_classification_for_tiny: true
+    classification_disappear_threshold: -1 # m, negative = #vs
+    classification_disappear_percentage: 0.5
+    classification_disappear_average_distance: -1 # m, negative = #vs
+    classification_projected_percentage: 0.9
     
   layer_manipulator:
       verbosity: 3

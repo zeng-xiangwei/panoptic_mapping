@@ -126,6 +126,7 @@ void InputSynchronizer::advertiseInputTopics() {
               const cv_bridge::CvImageConstPtr seg =
                   cv_bridge::toCvCopy(msg, "32SC1");
               data->data->id_image_ = seg->image;
+              data->data->id_image_copy_ = seg->image.clone();
               const std::lock_guard<std::mutex> lock(data->write_mutex_);
               data->data->contained_inputs_.insert(
                   InputData::InputType::kSegmentationImage);

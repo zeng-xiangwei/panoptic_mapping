@@ -42,6 +42,20 @@ class ChangeDetector {
     // Number of threads used to perform change detection. Change detection is
     // submap-parallel.
     int detection_threads = std::thread::hardware_concurrency();
+
+    // Whether to use the classification information in input data to detect
+    // change for tiny object
+    bool use_classification_for_tiny = false;
+    // Allowed disappear distance in meters where a point is still considered
+    // visible in input data. Negative values are multiples of the voxel_size.
+    float classification_disappear_threshold = -1;
+    // Minimum percentage of points required for a submap to considered
+    // disappear.
+    float classification_disappear_percentage = 0.5;
+    float classification_disappear_average_distance = -1;
+    // Min percentage of points belong to other type.
+    float classification_projected_percentage = 0.9;
+
     Config() { setConfigName("ChangeDetector"); }
 
    protected:
@@ -59,6 +73,8 @@ class ChangeDetector {
 
  private:
   std::string checkSubmapVisibleByInputData(Submap* submap, InputData* input);
+  std::string checkSubmapVisibleByInputDataWithClassification(Submap* submap,
+                                                              InputData* input);
 
   const Config config_;
   const std::shared_ptr<Globals> globals_;
