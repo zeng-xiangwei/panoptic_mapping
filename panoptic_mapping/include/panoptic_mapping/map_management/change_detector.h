@@ -46,6 +46,8 @@ class ChangeDetector {
     // Whether to use the classification information in input data to detect
     // change for tiny object
     bool use_classification_for_tiny = false;
+    // Only handle tiny objects on background
+    bool classification_only_background = true;
     // Allowed disappear distance in meters where a point is still considered
     // visible in input data. Negative values are multiples of the voxel_size.
     float classification_disappear_threshold = -1;

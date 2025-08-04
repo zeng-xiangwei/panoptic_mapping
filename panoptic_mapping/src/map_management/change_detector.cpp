@@ -44,6 +44,7 @@ void ChangeDetector::Config::setupParamsAndPrinting() {
              &classification_disappear_average_distance);
   setupParam("classification_projected_percentage",
              &classification_projected_percentage);
+  setupParam("classification_only_background", &classification_only_background);
 }
 
 ChangeDetector::ChangeDetector(const Config& config,
@@ -274,11 +275,11 @@ std::string ChangeDetector::checkSubmapVisibleByInputDataWithClassification(
   }
 
   // Find background to judge
-  if (!it->second.is_thing) {
+  if (config_.classification_only_background && it->second.is_thing) {
     std::stringstream info;
     info << "\nSubmap " << submap->getID() << " (" << submap->getName()
          << ") not project on detected instance(instance_id: "
-         << max_instance_id << " is not a thing).";
+         << max_instance_id << " is a thing not background).";
     return info.str();
   }
 
