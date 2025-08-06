@@ -161,10 +161,12 @@ visualization:
     visualize_tracking: true
 
   changed_submaps:
-    verbosity: 4
+    verbosity: 5
     change_point_threshold: 10
     only_use_aabb: false
     box_only_align_z: true
     min_obb_length: 0.02
     obb_frame_id: map
     use_redetection_for_add: true
+    use_space_unique_boxes: true
+    box_overlap_threshold: 0.5
