@@ -36,6 +36,11 @@ class ChangedSubmapVisualizer {
     // 新增submap时，是否要求是满足重复检测条件的
     bool use_redetection_for_add = true;
 
+    // 输出的box是否根据空间位置去重
+    bool use_space_unique_boxes = false;
+    // 最大重叠比例阈值
+    float box_overlap_threshold = 0.5f;
+
     Config() { setConfigName("ChangedSubmapVisualizer"); }
 
    protected:
@@ -106,15 +111,27 @@ class ChangedSubmapVisualizer {
       const std::vector<IsoSurfacePoint>& points);
   OrientedBoundingBox computeStandardOBB(
       const std::vector<IsoSurfacePoint>& points);
+  float computeOBBIoU(const OrientedBoundingBox& obb1,
+                      const OrientedBoundingBox& obb2);
+
+  /**
+   * @brief 与已有的 submap 进行比较，判断 box
+   * 是否重复，避免同一个物体存在不同大小的 box（存在同一个物体，activate submap
+   * 比 persistent submap 小的情况）
+   *
+   * @param query_submap
+   * @return 是否应该保留输入的 submap
+   */
+  bool deleteRepeatByOBB(const SubmapInfo& query_submap);
 
   // ROS.
   rclcpp::Node::SharedPtr node_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr
       obb_publisher_;
 
-  #ifdef VLN_MSGS_FOUND
+#ifdef VLN_MSGS_FOUND
   rclcpp::Publisher<vln_msgs::msg::MapUpdate>::SharedPtr vln_map_update_pub_;
-  #endif
+#endif
 
  private:
   Config config_;

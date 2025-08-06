@@ -18,6 +18,8 @@ void ChangedSubmapVisualizer::Config::setupParamsAndPrinting() {
   setupParam("obb_frame_id", &obb_frame_id);
   setupParam("use_redetection_for_add", &use_redetection_for_add);
   setupParam("box_only_align_z", &box_only_align_z);
+  setupParam("use_space_unique_boxes", &use_space_unique_boxes);
+  setupParam("box_overlap_threshold", &box_overlap_threshold);
 }
 
 ChangedSubmapVisualizer::ChangedSubmapVisualizer(const Config& config,
@@ -36,6 +38,7 @@ ChangedSubmapVisualizer::ChangedSubmapVisualizer(const Config& config,
 
 void ChangedSubmapVisualizer::visualizeChangedSubmaps(
     SubmapCollection* submaps) {
+  std::chrono::system_clock::time_point t0 = std::chrono::system_clock::now();
   // 检测变化的物体
   findChangedSubmaps(*submaps);
 
@@ -45,6 +48,13 @@ void ChangedSubmapVisualizer::visualizeChangedSubmaps(
 
   // 删除 kDeleted 的数据
   update();
+  std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
+  if (config_.verbosity >= 2) {
+    LOG(INFO) << "Output changed submaps takes "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0)
+                     .count()
+              << " ms.";
+  }
 }
 
 void ChangedSubmapVisualizer::reset() {
@@ -93,8 +103,8 @@ void ChangedSubmapVisualizer::findChangedSubmaps(SubmapCollection& submaps) {
     if (submap.getChangeState() == ChangeState::kNew) {
       submap.computeIsoSurfacePoints();
     }
-    auto it = submap_infos_.emplace(std::make_pair(id, SubmapInfo())).first;
-    SubmapInfo& info = it->second;
+
+    SubmapInfo info;
     info.id = id;
     info.name = submap.getClassName();
     info.change_type = ChangeType::kAdded;
@@ -102,6 +112,15 @@ void ChangedSubmapVisualizer::findChangedSubmaps(SubmapCollection& submaps) {
     info.obb = computeOBB(submap.getIsoSurfacePoints());
     info.color = kAddColor;
     info.embedding_vector = submap.getEmbeddingVector();
+
+    bool remain = true;
+    if (config_.use_space_unique_boxes) {
+      remain = deleteRepeatByOBB(info);
+    }
+
+    if (remain) {
+      submap_infos_.emplace(std::make_pair(id, info));
+    }
   }
 
   // Deleted Submaps.
@@ -254,9 +273,12 @@ void ChangedSubmapVisualizer::publishChangesForVln(
     vln_msgs::msg::SemanticObject obj;
     obj.id = submap_id;
     obj.name = info.name;
-    obj.center.x = info.obb.centroid.x();
-    obj.center.y = info.obb.centroid.y();
-    obj.center.z = info.obb.centroid.z();
+    obj.center.x = info.obb.box_center.x();
+    obj.center.y = info.obb.box_center.y();
+    obj.center.z = info.obb.box_center.z();
+    obj.barycenter.x = info.obb.centroid.x();
+    obj.barycenter.y = info.obb.centroid.y();
+    obj.barycenter.z = info.obb.centroid.z();
     obj.length = info.obb.extents(0);
     obj.width = info.obb.extents(1);
     obj.height = info.obb.extents(2);
@@ -318,7 +340,7 @@ ChangedSubmapVisualizer::computeStandardOBB(
   Eigen::Matrix3f eigenvectors = solver.eigenvectors();
 
   OrientedBoundingBox obb;
-  
+
   Eigen::Vector3f min_pt, max_pt;
   min_pt = max_pt = points[0].position;
 
@@ -330,11 +352,10 @@ ChangedSubmapVisualizer::computeStandardOBB(
     }
   }
   Eigen::Vector3f box_center = (min_pt + max_pt) / 2.0f;
-  
+
   // 特征值较小时，使用AABB包围盒
   if (config_.only_use_aabb || eigenvalues(0) < kEpsilon ||
       eigenvalues(1) < kEpsilon || eigenvalues(2) < kEpsilon) {
-
     obb.centroid = centroid;
     obb.box_center = box_center;
     obb.extents = (max_pt - min_pt);
@@ -412,7 +433,7 @@ ChangedSubmapVisualizer::computeZAlignedOBB(
     }
   }
   Eigen::Vector2f box_center = (min_pt + max_pt) / 2.0f;
-  
+
   // Check if eigenvalues are too small, use AABB instead
   if (config_.only_use_aabb || eigenvalues(0) < kEpsilon ||
       eigenvalues(1) < kEpsilon) {
@@ -478,6 +499,176 @@ ChangedSubmapVisualizer::computeZAlignedOBB(
 
   obb.valid = true;
   return obb;
+}
+
+float ChangedSubmapVisualizer::computeOBBIoU(const OrientedBoundingBox& obb1,
+                                             const OrientedBoundingBox& obb2) {
+  // 如果任何一个OBB无效，返回0
+  if (!obb1.valid || !obb2.valid) {
+    return 0.0f;
+  }
+
+  // 使用分离轴定理（SAT）计算精确的OBB相交体积
+  // 首先获取两个OBB的顶点
+  auto getOBBVertices = [](const OrientedBoundingBox& obb) {
+    std::vector<Eigen::Vector3f> vertices(8);
+    Eigen::Vector3f extents =
+        obb.extents * 0.5f;  // extents是完整尺寸，需要一半
+
+    // 8个顶点的局部坐标
+    std::vector<Eigen::Vector3f> local_vertices = {
+        Eigen::Vector3f(-extents.x(), -extents.y(), -extents.z()),
+        Eigen::Vector3f(extents.x(), -extents.y(), -extents.z()),
+        Eigen::Vector3f(extents.x(), extents.y(), -extents.z()),
+        Eigen::Vector3f(-extents.x(), extents.y(), -extents.z()),
+        Eigen::Vector3f(-extents.x(), -extents.y(), extents.z()),
+        Eigen::Vector3f(extents.x(), -extents.y(), extents.z()),
+        Eigen::Vector3f(extents.x(), extents.y(), extents.z()),
+        Eigen::Vector3f(-extents.x(), extents.y(), extents.z())};
+
+    // 转换到世界坐标
+    for (size_t i = 0; i < 8; ++i) {
+      vertices[i] = obb.rotation * local_vertices[i] + obb.box_center;
+    }
+
+    return vertices;
+  };
+
+  // 计算两个OBB的顶点
+  auto vertices1 = getOBBVertices(obb1);
+  auto vertices2 = getOBBVertices(obb2);
+
+  // 使用分离轴定理检查是否相交
+  // 轴包括两个OBB的轴向以及它们的叉积
+  std::vector<Eigen::Vector3f> axes;
+
+  // 添加obb1的轴
+  axes.push_back(obb1.rotation.col(0));
+  axes.push_back(obb1.rotation.col(1));
+  axes.push_back(obb1.rotation.col(2));
+
+  // 添加obb2的轴
+  axes.push_back(obb2.rotation.col(0));
+  axes.push_back(obb2.rotation.col(1));
+  axes.push_back(obb2.rotation.col(2));
+
+  // 添加叉积轴
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      Eigen::Vector3f cross_axis =
+          obb1.rotation.col(i).cross(obb2.rotation.col(j));
+      if (cross_axis.squaredNorm() > 1e-6f) {  // 避免零向量
+        cross_axis.normalize();
+        axes.push_back(cross_axis);
+      }
+    }
+  }
+
+  // 投影函数
+  auto projectOntoAxis = [](const std::vector<Eigen::Vector3f>& vertices,
+                            const Eigen::Vector3f& axis) {
+    float min_proj = axis.dot(vertices[0]);
+    float max_proj = min_proj;
+
+    for (size_t i = 1; i < vertices.size(); ++i) {
+      float proj = axis.dot(vertices[i]);
+      if (proj < min_proj) min_proj = proj;
+      if (proj > max_proj) max_proj = proj;
+    }
+
+    return std::make_pair(min_proj, max_proj);
+  };
+
+  // 检查所有轴上的投影是否重叠
+  for (const auto& axis : axes) {
+    auto proj1 = projectOntoAxis(vertices1, axis);
+    auto proj2 = projectOntoAxis(vertices2, axis);
+
+    // 如果在任何轴上不重叠，则OBB不相交
+    if (proj1.second < proj2.first || proj2.second < proj1.first) {
+      return 0.0f;
+    }
+  }
+
+  // 如果通过所有测试，OBB相交
+  // 计算两个OBB的体积
+  float volume1 = obb1.extents.x() * obb1.extents.y() * obb1.extents.z();
+  float volume2 = obb2.extents.x() * obb2.extents.y() * obb2.extents.z();
+
+  // 由于精确计算3D OBB相交体积非常复杂，我们使用一种近似方法
+  // 基于重叠区间来估算相交体积
+  float intersection_volume = 1.0f;
+
+  // 在每个主轴上计算重叠
+  for (int i = 0; i < 3; ++i) {
+    // 将obb2的轴映射到obb1的坐标系中
+    Eigen::Vector3f axis = obb1.rotation.col(i);
+    auto proj1 = projectOntoAxis(vertices1, axis);
+    auto proj2 = projectOntoAxis(vertices2, axis);
+
+    // 计算重叠长度
+    float overlap = std::max(0.0f, std::min(proj1.second, proj2.second) -
+                                       std::max(proj1.first, proj2.first));
+    intersection_volume *= overlap;
+  }
+
+  if (volume1 < 0.00001f || volume2 < 0.00001f) {
+    return 0.0f;
+  }
+
+  float ration_1 = intersection_volume / volume1;
+  float ration_2 = intersection_volume / volume2;
+  return std::max(ration_1, ration_2);
+}
+
+bool ChangedSubmapVisualizer::deleteRepeatByOBB(
+    const SubmapInfo& query_submap) {
+  // 存在 query_submap 小于相交的 submap，则该 query_submap 应该删除，否则保留
+  bool remain_query_submap = true;
+  std::vector<int> delete_ids;
+  for (const auto& [k, v] : submap_infos_) {
+    int id = v.id;
+    if (id == query_submap.id || query_submap.name != v.name ||
+        v.change_type == ChangeType::kDeleted) {
+      continue;
+    }
+
+    if (!v.obb.valid) {
+      continue;
+    }
+
+    float obb_overlap_ratio = computeOBBIoU(query_submap.obb, v.obb);
+    if (obb_overlap_ratio > config_.box_overlap_threshold) {
+      LOG_IF(INFO, config_.verbosity >= 5)
+          << "Repeat submap detected: query: " << query_submap.name << " "
+          << query_submap.id << ", repeated with: " << v.id << " " << v.name
+          << ", box overlap ratio: " << obb_overlap_ratio;
+      if (query_submap.obb.extents.norm() >
+          submap_infos_[id].obb.extents.norm()) {
+        delete_ids.push_back(id);
+      } else {
+        remain_query_submap = false;
+      }
+    }
+  }
+
+  if (remain_query_submap) {
+    std::stringstream ss;
+    for (int delete_id : delete_ids) {
+      ss << delete_id << " ";
+      if (submap_infos_[delete_id].change_type == ChangeType::kAdded) {
+        // 保证 KDelete 属性的是之前已经存在的，如果是 kAdded
+        // 则说明之前不存在，可以直接删除
+        submap_infos_.erase(delete_id);
+        continue;
+      }
+      submap_infos_[delete_id].change_type = ChangeType::kDeleted;
+    }
+    LOG_IF(INFO, config_.verbosity >= 4)
+        << "save query: " << query_submap.name << " " << query_submap.id
+        << " , delete submap ids: " << ss.str();
+  }
+  return remain_query_submap;
 }
 
 }  // namespace panoptic_mapping
