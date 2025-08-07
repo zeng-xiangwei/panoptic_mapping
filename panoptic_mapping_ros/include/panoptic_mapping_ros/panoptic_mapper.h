@@ -25,10 +25,10 @@
 #include <std_srvs/srv/empty.hpp>
 
 #include "panoptic_mapping_ros/input/input_synchronizer.h"
+#include "panoptic_mapping_ros/visualization/changed_submap_visualizer.h"
 #include "panoptic_mapping_ros/visualization/planning_visualizer.h"
 #include "panoptic_mapping_ros/visualization/submap_visualizer.h"
 #include "panoptic_mapping_ros/visualization/tracking_visualizer.h"
-#include "panoptic_mapping_ros/visualization/changed_submap_visualizer.h"
 
 namespace panoptic_mapping {
 
@@ -227,6 +227,9 @@ class PanopticMapper {
   // Yaml
   std::string defaultYamlKeyPath(const std::string& key);
   YAML::Node loadYaml();
+
+  // Mainly used for ros services
+  std::mutex node_mutex_;
 };
 
 }  // namespace panoptic_mapping

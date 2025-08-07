@@ -249,6 +249,7 @@ void PanopticMapper::setupRos() {
 }
 
 void PanopticMapper::inputCallback() {
+  std::lock_guard<std::mutex> lock(node_mutex_);
   if (input_synchronizer_->hasInputData()) {
     std::shared_ptr<InputData> data = input_synchronizer_->getInputData();
     if (data) {
@@ -445,6 +446,9 @@ void PanopticMapper::publishSegmentedPointCloud(InputData* input) {
 }
 
 bool PanopticMapper::saveMap(const std::string& file_path) {
+  // 保存地图时先 finish，否则保存的地图可能有问题
+  map_manager_->finishMapping(submaps_.get());
+
   bool success = submaps_->saveToFile(file_path);
   LOG_IF(INFO, success) << "Successfully saved " << submaps_->size()
                         << " submaps to '" << file_path << "'.";
@@ -466,7 +470,7 @@ bool PanopticMapper::saveIsoSurfacePoints(const std::string& file_path) {
   point_label_cloud_file << "x,y,z,id,label,changeStatus,changeStatusId"
                          << std::endl;
   for (const auto& submap : *submaps_) {
-    if (submap.getChangeState() != ChangeState::kPersistent ||
+    if (submap.getChangeState() == ChangeState::kAbsent ||
         submap.getLabel() == PanopticLabel::kFreeSpace) {
       continue;
     }
@@ -475,7 +479,7 @@ bool PanopticMapper::saveIsoSurfacePoints(const std::string& file_path) {
     for (const IsoSurfacePoint& point : surface_points) {
       point_label_cloud_file
           << point.position.x() << "," << point.position.y() << ","
-          << point.position.z() << "," << submap.getInstanceID() << ","
+          << point.position.z() << "," << submap.getID() << ","
           << submap.getName() << ","
           << changeStateToString(submap.getChangeState()) << ","
           << static_cast<int>(submap.getChangeState()) << std::endl;
@@ -591,6 +595,7 @@ bool PanopticMapper::setVisualizationModeCallback(
 bool PanopticMapper::saveMapCallback(
     const panoptic_mapping_msgs::srv::SaveLoadMap::Request::SharedPtr request,
     panoptic_mapping_msgs::srv::SaveLoadMap::Response::SharedPtr response) {
+  std::lock_guard<std::mutex> lock(node_mutex_);
   response->success = saveMap(request->file_path);
   return response->success;
 }
@@ -616,6 +621,7 @@ void PanopticMapper::printTimings() const { LOG(INFO) << Timing::Print(); }
 bool PanopticMapper::finishMappingCallback(
     const std_srvs::srv::Empty::Request::SharedPtr request,
     std_srvs::srv::Empty::Response::SharedPtr response) {
+  std::lock_guard<std::mutex> lock(node_mutex_);
   finishMapping();
   return true;
 }
