@@ -89,6 +89,12 @@ void ChangedSubmapVisualizer::findChangedSubmaps(SubmapCollection& submaps) {
   }
   submaps.updateIDList(ids, &new_ids, &deleted_ids);
 
+  // Deleted Submaps.
+  for (int id : deleted_ids) {
+    submap_infos_[id].change_type = ChangeType::kDeleted;
+    submap_infos_[id].color = kDeletedColor;
+  }
+  
   // New submaps.
   for (int id : new_ids) {
     Submap& submap = *(submaps.getSubmapPtr(id));
@@ -121,12 +127,6 @@ void ChangedSubmapVisualizer::findChangedSubmaps(SubmapCollection& submaps) {
     if (remain) {
       submap_infos_.emplace(std::make_pair(id, info));
     }
-  }
-
-  // Deleted Submaps.
-  for (int id : deleted_ids) {
-    submap_infos_[id].change_type = ChangeType::kDeleted;
-    submap_infos_[id].color = kDeletedColor;
   }
 
   // Check updated Submaps in old.
