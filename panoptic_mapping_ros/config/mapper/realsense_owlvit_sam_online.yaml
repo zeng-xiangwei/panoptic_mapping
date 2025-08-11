@@ -39,7 +39,7 @@ submap_allocator:
   max_embedding_weight: 1000.0
   min_embedding_weight: 0.00001
   mesh:
-    clear_foreign_voxels: false
+    clear_foreign_voxels: true
     required_belonging_corners: 4
   classification:
     type: moving_binary_count
