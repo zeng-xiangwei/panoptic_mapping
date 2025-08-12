@@ -35,6 +35,7 @@ void SubmapVisualizer::Config::setupParamsAndPrinting() {
   setupParam("visualize_bounding_volumes", &visualize_bounding_volumes);
   setupParam("include_free_space", &include_free_space);
   setupParam("visualize_other_mode", &visualize_other_mode);
+  setupParam("class_type_to_pub_for_occ", &class_type_to_pub_for_occ);
 }
 
 void SubmapVisualizer::Config::printFields() const {
@@ -61,6 +62,12 @@ SubmapVisualizer::SubmapVisualizer(const Config& config,
   setVisualizationMode(visualizationModeFromString(config_.visualization_mode));
   setColorMode(colorModeFromString(config_.color_mode));
   id_color_map_.setItemsPerRevolution(config_.submap_color_discretization);
+  
+  parseClasses(config_.class_type_to_pub_for_occ, classes_to_pub_for_occ_);
+  LOG(INFO) << "Classes to publish for occupancy size: " << classes_to_pub_for_occ_.size();
+  for (auto class_name : classes_to_pub_for_occ_) {
+    LOG(INFO) << "Classes name: " << class_name;
+  }
 
   // Setup publishers.
   if (config_.visualize_free_space) {
@@ -81,6 +88,10 @@ SubmapVisualizer::SubmapVisualizer(const Config& config,
         node_->create_publisher<visualization_msgs::msg::MarkerArray>(
             "visualization/submaps/bounding_volumes", 100);
   }
+
+  occupancy_submap_pub_ =
+      node_->create_publisher<sensor_msgs::msg::PointCloud2>(
+          "visualization/submaps/occupancy_cloud", 1);
 }
 
 void SubmapVisualizer::reset() {
@@ -117,6 +128,8 @@ void SubmapVisualizer::visualizeAll(SubmapCollection* submaps) {
   visualizeFreeSpace(*submaps);
   visualizeBoundingVolume(*submaps);
   // publishTfTransforms(*submaps);
+
+  publishOccupancyCloud(*submaps);
   vis_infos_are_updated_ = false;
 
   if (config_.verbosity >= 3) {
@@ -815,6 +828,55 @@ std::string SubmapVisualizer::visualizationModeToString(
       return "persistent";
     default:
       return "unknown";
+  }
+}
+
+void SubmapVisualizer::parseClasses(const std::string& class_string,
+                                    std::set<std::string>& output) {
+  output.clear();
+
+  if (class_string.empty()) {
+    return;
+  }
+
+  std::stringstream ss(class_string);
+  std::string class_name;
+
+  while (std::getline(ss, class_name, ',')) {
+    if (!class_name.empty()) {
+      output.insert(class_name);
+    }
+  }
+}
+
+void SubmapVisualizer::publishOccupancyCloud(const SubmapCollection& submaps) {
+  pcl::PointCloud<pcl::PointXYZ> selected_cloud;
+  for (const auto& submap : submaps) {
+    if (submap.getChangeState() != ChangeState::kPersistent ||
+        submap.getLabel() == PanopticLabel::kFreeSpace) {
+      continue;
+    }
+
+    if (classes_to_pub_for_occ_.count(submap.getClassName()) == 0) {
+      continue;
+    }
+
+    const std::vector<IsoSurfacePoint>& surface_points =
+        submap.getIsoSurfacePoints();
+    for (const IsoSurfacePoint& point : surface_points) {
+      selected_cloud.push_back(pcl::PointXYZ(
+          point.position.x(), point.position.y(), point.position.z()));
+    }
+  }
+
+  if (selected_cloud.size() > 0) {
+    if (occupancy_submap_pub_->get_subscription_count() > 0) {
+      sensor_msgs::msg::PointCloud2 msg;
+      pcl::toROSMsg(selected_cloud, msg);
+      msg.header.frame_id = global_frame_name_;
+      msg.header.stamp = node_->get_clock()->now();
+      occupancy_submap_pub_->publish(msg);
+    }
   }
 }
 

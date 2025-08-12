@@ -149,6 +149,7 @@ visualization:
     visualize_bounding_volumes: true
     include_free_space: false
     mesh_min_weight: 0.000001
+    class_type_to_pub_for_occ: toy,doll,vegetable toy,vegetable doll
   
   planning:
     verbosity: 1

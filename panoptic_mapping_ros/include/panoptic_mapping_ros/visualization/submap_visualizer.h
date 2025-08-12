@@ -40,6 +40,9 @@ class SubmapVisualizer {
     bool visualize_other_mode = true;
     std::string ros_namespace;
 
+    // Object type to pub, for occupancy map
+    std::string class_type_to_pub_for_occ;
+
     Config() { setConfigName("SubmapVisualizer"); }
 
    protected:
@@ -101,6 +104,7 @@ class SubmapVisualizer {
   virtual void visualizeFreeSpace(const SubmapCollection& submaps);
   virtual void visualizeBoundingVolume(const SubmapCollection& submaps);
   virtual void publishTfTransforms(const SubmapCollection& submaps);
+  void publishOccupancyCloud(const SubmapCollection& submaps);
 
   // Interaction.
   virtual void reset();
@@ -138,6 +142,8 @@ class SubmapVisualizer {
   virtual void generateClassificationMesh(Submap* submap,
                                           voxblox_msgs::msg::Mesh* mesh);
 
+  void parseClasses(const std::string& class_string, std::set<std::string>& output);
+
  protected:
   // Settings.
   VisualizationMode visualization_mode_;
@@ -163,7 +169,11 @@ class SubmapVisualizer {
       tsdf_blocks_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr
       bounding_volume_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr occupancy_submap_pub_;
   tf2_ros::TransformBroadcaster tf_broadcaster_;
+
+  // Occupancy
+  std::set<std::string> classes_to_pub_for_occ_;
 
  private:
   const Config config_;
