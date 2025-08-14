@@ -222,6 +222,10 @@ void PanopticMapper::setupRos() {
       std::bind(&PanopticMapper::finishMappingCallback, this,
                 std::placeholders::_1, std::placeholders::_2));
 
+  running_switch_srv_ = node_->create_service<std_srvs::srv::Empty>(
+      "running_switch",
+      std::bind(&PanopticMapper::runningSwitchCallback, this,
+                std::placeholders::_1, std::placeholders::_2));
   // Publishers.
   segmented_point_cloud_pub_ =
       node_->create_publisher<sensor_msgs::msg::PointCloud2>(
@@ -252,7 +256,7 @@ void PanopticMapper::inputCallback() {
   std::lock_guard<std::mutex> lock(node_mutex_);
   if (input_synchronizer_->hasInputData()) {
     std::shared_ptr<InputData> data = input_synchronizer_->getInputData();
-    if (data) {
+    if (!stop_running_ && data) {
       processInput(data.get());
       if (config_.shutdown_when_finished) {
         last_input_ = node_->get_clock()->now();
@@ -477,12 +481,12 @@ bool PanopticMapper::saveIsoSurfacePoints(const std::string& file_path) {
     const std::vector<IsoSurfacePoint>& surface_points =
         submap.getIsoSurfacePoints();
     for (const IsoSurfacePoint& point : surface_points) {
-      point_label_cloud_file
-          << point.position.x() << "," << point.position.y() << ","
-          << point.position.z() << "," << submap.getID() << ","
-          << submap.getName() << ","
-          << changeStateToString(submap.getChangeState()) << ","
-          << static_cast<int>(submap.getChangeState()) << std::endl;
+      point_label_cloud_file << point.position.x() << "," << point.position.y()
+                             << "," << point.position.z() << ","
+                             << submap.getID() << "," << submap.getName() << ","
+                             << changeStateToString(submap.getChangeState())
+                             << "," << static_cast<int>(submap.getChangeState())
+                             << std::endl;
     }
   }
   point_label_cloud_file.close();
@@ -499,6 +503,9 @@ bool PanopticMapper::loadMap(const std::string& file_path) {
 
   // Loaded submaps are 'from the past' so set them to inactive.
   for (Submap& submap : *loaded_map) {
+    if (submap.getChangeState() == ChangeState::kAbsent) {
+      continue;
+    }
     submap.finishActivePeriod();
     submap.setMatchRedetection(true);
     if (config_.load_submaps_conservative) {
@@ -623,6 +630,14 @@ bool PanopticMapper::finishMappingCallback(
     std_srvs::srv::Empty::Response::SharedPtr response) {
   std::lock_guard<std::mutex> lock(node_mutex_);
   finishMapping();
+  return true;
+}
+
+bool PanopticMapper::runningSwitchCallback(
+    const std_srvs::srv::Empty::Request::SharedPtr request,
+    std_srvs::srv::Empty::Response::SharedPtr response) {
+  std::lock_guard<std::mutex> lock(node_mutex_);
+  stop_running_ = !stop_running_;
   return true;
 }
 

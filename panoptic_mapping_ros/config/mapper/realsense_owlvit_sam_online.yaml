@@ -20,10 +20,10 @@ camera:
   verbosity: 1
   width: 640  # Px
   height: 480
-  vx: 321.049
-  vy: 244.335
-  fx: 386.487
-  fy: 386.098
+  vx: 326.478
+  vy: 243.792
+  fx: 386.275
+  fy: 385.776
   max_range: 2.5  # m
   min_range: 0.5
   
@@ -40,7 +40,7 @@ submap_allocator:
   min_embedding_weight: 0.00001
   mesh:
     clear_foreign_voxels: true
-    required_belonging_corners: 4
+    required_belonging_corners: 6
   classification:
     type: moving_binary_count
   
@@ -79,7 +79,7 @@ tsdf_integrator:
   interpolation_method: adaptive  # nearest, bilinear, adaptive
   foreign_rays_clear: true
   integration_threads: 8
-  allocate_neighboring_blocks: true
+  allocate_neighboring_blocks: false
   
   # Class Projective
   use_binary_classification: true
@@ -111,17 +111,17 @@ map_management:
     match_rejection_points: 20  
     match_rejection_percentage: 0.02
     match_acceptance_points: 20
-    match_acceptance_percentage: 0.02
-    normalize_by_voxel_weight: true
+    match_acceptance_percentage: 0.2
+    normalize_by_voxel_weight: false
   
   change_detector:
     verbosity: 3
     strong_disappear_threshold: -10 # m, negative = #vs
     weak_disappear_threshold: -2 # m, negative = #vs
     match_strong_disappear_points: 50
-    match_strong_disappear_percentage: 0.3
+    match_strong_disappear_percentage: 0.1
     match_weak_disappear_points: 50
-    match_weak_disappear_percentage: 0.6
+    match_weak_disappear_percentage: 0.2
     match_weak_average_distance: -4 # m, negative = #vs
     detection_threads: 1
     use_classification_for_tiny: true

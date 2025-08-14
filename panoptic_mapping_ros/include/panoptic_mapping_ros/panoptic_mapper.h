@@ -120,6 +120,10 @@ class PanopticMapper {
   bool finishMappingCallback(
       const std_srvs::srv::Empty::Request::SharedPtr request,  // NOLINT
       std_srvs::srv::Empty::Response::SharedPtr response);     // NOLINT
+  
+  bool runningSwitchCallback(
+      const std_srvs::srv::Empty::Request::SharedPtr request,  // NOLINT
+      std_srvs::srv::Empty::Response::SharedPtr response);     // NOLINT
 
   // Processing.
   // Integrate a set of input images. The input is usually gathered from ROS
@@ -177,6 +181,7 @@ class PanopticMapper {
   rclcpp::Service<std_srvs::srv::Empty>::SharedPtr set_color_mode_srv_;
   rclcpp::Service<std_srvs::srv::Empty>::SharedPtr print_timings_srv_;
   rclcpp::Service<std_srvs::srv::Empty>::SharedPtr finish_mapping_srv_;
+  rclcpp::Service<std_srvs::srv::Empty>::SharedPtr running_switch_srv_;
   rclcpp::TimerBase::SharedPtr visualization_timer_;
   rclcpp::TimerBase::SharedPtr data_logging_timer_;
   rclcpp::TimerBase::SharedPtr print_timing_timer_;
@@ -230,6 +235,9 @@ class PanopticMapper {
 
   // Mainly used for ros services
   std::mutex node_mutex_;
+
+  // Run or stop, controled by service
+  bool stop_running_ = false;
 };
 
 }  // namespace panoptic_mapping
