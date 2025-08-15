@@ -40,7 +40,7 @@ submap_allocator:
   min_embedding_weight: 0.00001
   mesh:
     clear_foreign_voxels: true
-    required_belonging_corners: 6
+    required_belonging_corners: 4
   classification:
     type: moving_binary_count
   
@@ -61,6 +61,7 @@ freespace_allocator:
 id_tracker:
   type: detectron # ground_truth, projective, detectron, single_tsdf
   verbosity: 3
+  whitelist_classes: toy,doll,vegetable toy,vegetable doll    
   
   # Projective ID tracker
   depth_tolerance: -2  # m, negative = #vs
