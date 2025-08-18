@@ -230,6 +230,9 @@ void PanopticMapper::setupRos() {
   segmented_point_cloud_pub_ =
       node_->create_publisher<sensor_msgs::msg::PointCloud2>(
           "segmented_point_cloud", 1);
+  colored_point_cloud_pub_ =
+      node_->create_publisher<sensor_msgs::msg::PointCloud2>(
+          "colored_point_cloud", 1);
 
   // Timers.
   if (config_.visualization_interval > 0.0) {
@@ -323,6 +326,9 @@ void PanopticMapper::processInput(InputData* input) {
     publishVisualizationCallback();
     if (segmented_point_cloud_pub_->get_subscription_count() > 0) {
       publishSegmentedPointCloud(input);
+    }
+    if (colored_point_cloud_pub_->get_subscription_count() > 0) {
+      publishColoredPointCloud(input);
     }
   }
   if (config_.data_logging_interval < 0.f) {
@@ -447,6 +453,57 @@ void PanopticMapper::publishSegmentedPointCloud(InputData* input) {
 
   // 发布点云话题
   segmented_point_cloud_pub_->publish(segmented_pointcloud_msg);
+}
+
+void PanopticMapper::publishColoredPointCloud(InputData* input) {
+  Pointcloud colored_pointcloud;
+  using ColorType = Eigen::Vector<uint8_t, 3>;
+  std::vector<ColorType, Eigen::aligned_allocator<ColorType>> colors;
+
+  // 获取相机内参
+  const Camera& camera = *globals_->camera();
+  float fx = camera.getConfig().fx;
+  float fy = camera.getConfig().fy;
+  float cx = camera.getConfig().vx;
+  float cy = camera.getConfig().vy;
+
+  // 获取深度图像数据
+  const cv::Mat& depth_image =
+      input->depthImage();  // 假设输入的深度图为 CV_32FC1 类型
+  const cv::Mat& color_image = input->colorImage();
+  const cv::Mat& validity_image = input->validityImage();
+
+  // 遍历深度图并生成点云
+  for (int v = 0; v < depth_image.rows; ++v) {
+    for (int u = 0; u < depth_image.cols; ++u) {
+      float depth = depth_image.at<float>(v, u);
+      if (validity_image.at<uchar>(v, u) == 0) continue;  // 跳过无效深度值
+
+      // 计算点的空间坐标
+      float x = (u - cx) * depth / fx;
+      float y = (v - cy) * depth / fy;
+      float z = depth;
+
+      // 添加点到点云
+      colored_pointcloud.push_back(Point(x, y, z));
+      auto color_bgr = color_image.at<cv::Vec3b>(v, u);
+      uint8_t r = color_bgr[2];
+      uint8_t g = color_bgr[1];
+      uint8_t b = color_bgr[0];
+
+      colors.emplace_back(ColorType(r, g, b));
+    }
+  }
+
+  // 发布点云消息
+  sensor_msgs::msg::PointCloud2 colored_pointcloud_msg;
+  convertToPointCloud2(colored_pointcloud, colors, colored_pointcloud_msg);
+  colored_pointcloud_msg.header.stamp =
+      rclcpp::Time(input->timestamp() * 1e9, rcl_clock_type_t::RCL_ROS_TIME);
+  colored_pointcloud_msg.header.frame_id = input->sensorFrameName();
+
+  // 发布点云话题
+  colored_point_cloud_pub_->publish(colored_pointcloud_msg);
 }
 
 bool PanopticMapper::saveMap(const std::string& file_path) {

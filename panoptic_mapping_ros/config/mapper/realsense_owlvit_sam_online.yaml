@@ -61,7 +61,7 @@ freespace_allocator:
 id_tracker:
   type: detectron # ground_truth, projective, detectron, single_tsdf
   verbosity: 3
-  whitelist_classes: toy,doll,vegetable toy,vegetable doll    
+  # whitelist_classes: toy,doll,vegetable toy,vegetable doll    
   
   # Projective ID tracker
   depth_tolerance: -2  # m, negative = #vs
@@ -112,7 +112,7 @@ map_management:
     match_rejection_points: 20  
     match_rejection_percentage: 0.02
     match_acceptance_points: 20
-    match_acceptance_percentage: 0.2
+    match_acceptance_percentage: 0.5
     normalize_by_voxel_weight: false
   
   change_detector:
@@ -120,16 +120,16 @@ map_management:
     strong_disappear_threshold: -10 # m, negative = #vs
     weak_disappear_threshold: -2 # m, negative = #vs
     match_strong_disappear_points: 50
-    match_strong_disappear_percentage: 0.1
+    match_strong_disappear_percentage: 0.3
     match_weak_disappear_points: 50
-    match_weak_disappear_percentage: 0.2
+    match_weak_disappear_percentage: 0.6
     match_weak_average_distance: -4 # m, negative = #vs
     detection_threads: 1
     use_classification_for_tiny: true
     classification_only_background: true
-    classification_disappear_threshold: -1 # m, negative = #vs
+    classification_disappear_threshold: -2 # m, negative = #vs
     classification_disappear_percentage: 0.5
-    classification_disappear_average_distance: -1 # m, negative = #vs
+    classification_disappear_average_distance: -2 # m, negative = #vs
     classification_projected_percentage: 0.9
     
   layer_manipulator:

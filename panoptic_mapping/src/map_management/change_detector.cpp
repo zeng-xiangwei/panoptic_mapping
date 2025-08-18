@@ -45,6 +45,7 @@ void ChangeDetector::Config::setupParamsAndPrinting() {
   setupParam("classification_projected_percentage",
              &classification_projected_percentage);
   setupParam("classification_only_background", &classification_only_background);
+  setupParam("limit_range", &limit_range);
 }
 
 ChangeDetector::ChangeDetector(const Config& config,
@@ -136,6 +137,9 @@ std::string ChangeDetector::checkSubmapVisibleByInputData(Submap* submap,
   // Simply limit the measurement values of the depth measurement
   float camera_visible_distance_max = 5.0 * camera.getConfig().max_range;
 
+  float camera_min_range = camera.getConfig().min_range;
+  float camera_max_range = camera.getConfig().max_range;
+
   for (const auto& point : submap->getIsoSurfacePoints()) {
     const auto p_C = T_C_S * point.position;
     int u, v;
@@ -145,6 +149,13 @@ std::string ChangeDetector::checkSubmapVisibleByInputData(Submap* submap,
 
     projected_num++;
     float depth_value = depth_image.at<float>(v, u);
+
+    if (config_.limit_range) {
+      if (depth_value < camera_min_range || depth_value > camera_max_range) {
+        continue;
+      }
+    }
+
     if (depth_value != 0.f) {
       valid_depth_measurement_num++;
     }
@@ -188,7 +199,13 @@ std::string ChangeDetector::checkSubmapVisibleByInputData(Submap* submap,
       submap->setChangeState(ChangeState::kAbsent);
       std::stringstream info;
       info << "\nSubmap " << submap->getID() << " (" << submap->getName()
-           << ") conflicts with input data judged by weak. Marked as absent.";
+           << ") conflicts with input data judged by weak. Marked as absent."
+           << " Absent points: (" << strong_absent_num << "," << weak_absent_num
+           << ")"
+           << "/" << submap->getIsoSurfacePoints().size()
+           << ", weak distance sum: " << weak_absent_dis_sum << " m. "
+           << "valid_measurement_nums / projected_nums: "
+           << valid_depth_measurement_num << " / " << projected_num;
       return info.str();
     }
   }
@@ -224,6 +241,9 @@ std::string ChangeDetector::checkSubmapVisibleByInputDataWithClassification(
   // Simply limit the measurement values of the depth measurement
   float camera_visible_distance_max = 5.0 * camera.getConfig().max_range;
 
+  float camera_min_range = camera.getConfig().min_range;
+  float camera_max_range = camera.getConfig().max_range;
+
   std::unordered_map<int, int> projected_instance_nums;
   for (const auto& point : submap->getIsoSurfacePoints()) {
     const auto p_C = T_C_S * point.position;
@@ -234,6 +254,13 @@ std::string ChangeDetector::checkSubmapVisibleByInputDataWithClassification(
 
     projected_num++;
     float depth_value = depth_image.at<float>(v, u);
+
+    if (config_.limit_range) {
+      if (depth_value < camera_min_range || depth_value > camera_max_range) {
+        continue;
+      }
+    }
+
     if (depth_value != 0.f) {
       valid_depth_measurement_num++;
     }
@@ -311,8 +338,13 @@ std::string ChangeDetector::checkSubmapVisibleByInputDataWithClassification(
       info << "\nSubmap " << submap->getID() << " (" << submap->getName()
            << ") conflicts with input data judged by classification. ("
            << background_class_name << ") "
-           << " Marked as "
-              "absent.";
+           << " Marked as absent." << " Absent points: " << absent_num << "/"
+           << submap->getIsoSurfacePoints().size()
+           << ", distance sum: " << absent_dis_sum << " m. "
+           << "projected_on (" << background_class_name
+           << ") num: " << max_projected_num
+           << "valid_measurement_nums / projected_nums: "
+           << valid_depth_measurement_num << " / " << projected_num;
       return info.str();
     }
   }

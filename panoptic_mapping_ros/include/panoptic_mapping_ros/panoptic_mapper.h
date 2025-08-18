@@ -145,8 +145,10 @@ class PanopticMapper {
   // Update the meshes and publish the all visualizations of the current map.
   void publishVisualization();
 
-  // pulish instance segmented point cloud from depth image and id_image
+  // Pulish instance segmented point cloud from depth image and id_image
   void publishSegmentedPointCloud(InputData* input);
+  // Publish colored point cloud from depth image and color image
+  void publishColoredPointCloud(InputData* input);
 
   // Access.
   const SubmapCollection& getSubmapCollection() const { return *submaps_; }
@@ -188,6 +190,8 @@ class PanopticMapper {
   rclcpp::TimerBase::SharedPtr input_timer_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
       segmented_point_cloud_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
+      colored_point_cloud_pub_;
 
   // Members.
   YAML::Node root_yaml_;

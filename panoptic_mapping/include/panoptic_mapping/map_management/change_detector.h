@@ -19,6 +19,9 @@ class ChangeDetector {
   struct Config : public config_utilities::Config<Config> {
     int verbosity = 4;
 
+    // Limit range in valid depth to judge
+    bool limit_range = true;
+    
     // Allowed disappear distance in meters where a point is still considered
     // visible in input data. Negative values are multiples of the voxel_size.
     float strong_disappear_threshold = -10;
