@@ -40,7 +40,7 @@ submap_allocator:
   min_embedding_weight: 0.00001
   mesh:
     clear_foreign_voxels: true
-    required_belonging_corners: 4
+    required_belonging_corners: &required_belonging_corners 4
   classification:
     type: moving_binary_count
   
@@ -137,6 +137,7 @@ map_management:
   layer_manipulator:
       verbosity: 3
       use_instance_classification: *use_instance_classification
+      required_belonging_corners: *required_belonging_corners
   
 visualization:  
   submaps:

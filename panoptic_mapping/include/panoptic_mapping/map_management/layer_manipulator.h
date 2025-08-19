@@ -21,6 +21,8 @@ class LayerManipulator {
     bool use_instance_classification =
         false;  // How to interpret the class layer data.
 
+    // Use to remove isolated class voxels.
+    int required_belonging_corners = 0;
     Config() { setConfigName("LayerManipulator"); }
 
    protected:
@@ -49,7 +51,16 @@ class LayerManipulator {
   void unprojectTsdfLayer(TsdfLayer* layer) const;
 
  private:
+  // Get near corners num of same class
+  int belongingCornersNum(TsdfLayer* tsdf_layer, const ClassLayer& class_layer,
+                          const voxblox::BlockIndex& block_index,
+                          const voxblox::VoxelIndex& voxel_index) const;
+
+ private:
   const Config config_;
+
+  // Cached index map.
+  Eigen::Matrix<int, 3, 8> cube_index_offsets_;
 };
 
 }  // namespace panoptic_mapping

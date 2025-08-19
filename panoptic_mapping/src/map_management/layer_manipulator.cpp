@@ -9,16 +9,21 @@ namespace panoptic_mapping {
 
 void LayerManipulator::Config::checkParams() const {
   //  checkParamNE(error_threshold, 0.f, "error_threshold");
+  checkParamGE(required_belonging_corners, 0, "required_belonging_corners");
+  checkParamLE(required_belonging_corners, 8, "required_belonging_corners");
 }
 
 void LayerManipulator::Config::setupParamsAndPrinting() {
   setupParam("verbosity", &verbosity);
   setupParam("use_instance_classification", &use_instance_classification);
+  setupParam("required_belonging_corners", &required_belonging_corners);
 }
 
 LayerManipulator::LayerManipulator(const Config& config)
     : config_(config.checkValid()) {
   LOG_IF(INFO, config_.verbosity >= 1) << "\n" << config_.toString();
+  cube_index_offsets_ << 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0,
+      0, 0, 1, 1, 1, 1;
 }
 
 void LayerManipulator::applyClassificationLayer(
@@ -48,6 +53,8 @@ void LayerManipulator::applyClassificationLayer(
     float min_distance = truncation_distance;
     bool was_updated = false;
     for (size_t i = 0; i < tsdf_block.num_voxels(); ++i) {
+      voxblox::VoxelIndex voxel_index =
+          tsdf_block.computeVoxelIndexFromLinearIndex(i);
       TsdfVoxel& tsdf_voxel = tsdf_block.getVoxelByLinearIndex(i);
       if (tsdf_voxel.weight <= 1.0e-6) {
         continue;
@@ -58,6 +65,14 @@ void LayerManipulator::applyClassificationLayer(
         tsdf_voxel.distance = truncation_distance;
         was_updated = true;
       } else {
+        if (config_.required_belonging_corners > 0) {
+          int belonging_corners = belongingCornersNum(tsdf_layer, class_layer,
+                                                      block_index, voxel_index);
+          if (belonging_corners <= config_.required_belonging_corners) {
+            tsdf_voxel.distance = truncation_distance;
+            was_updated = true;
+          }
+        }
         min_distance = std::min(tsdf_voxel.distance, min_distance);
       }
     }
@@ -152,6 +167,71 @@ void LayerManipulator::unprojectTsdfLayer(TsdfLayer* tsdf_layer) const {
           esdf_block.getVoxelByLinearIndex(i).distance;
     }
   }
+}
+
+int LayerManipulator::belongingCornersNum(
+    TsdfLayer* tsdf_layer, const ClassLayer& class_layer,
+    const voxblox::BlockIndex& block_index,
+    const voxblox::VoxelIndex& voxel_index) const {
+  int belonging_corners_num = 0;
+  TsdfBlock& tsdf_block = tsdf_layer->getBlockByIndex(block_index);
+  const ClassBlock::ConstPtr class_block =
+      class_layer.getBlockConstPtrByIndex(block_index);
+  int voxels_per_side = tsdf_layer->voxels_per_side();
+  for (unsigned int i = 0; i < 8; ++i) {
+    voxblox::VoxelIndex corner_index = voxel_index + cube_index_offsets_.col(i);
+
+    if (tsdf_block.isValidVoxelIndex(corner_index)) {
+      const TsdfVoxel& voxel = tsdf_block.getVoxelByVoxelIndex(corner_index);
+      if (voxel.weight < 1.0e-6) {
+        continue;
+      }
+      if (class_block->getVoxelByVoxelIndex(corner_index).belongsToSubmap()) {
+        belonging_corners_num++;
+      }
+    } else {
+      // We have to access a different block.
+      voxblox::BlockIndex block_offset = voxblox::BlockIndex::Zero();
+
+      for (unsigned int j = 0u; j < 3u; j++) {
+        if (corner_index(j) < 0) {
+          block_offset(j) = -1;
+          corner_index(j) = corner_index(j) + voxels_per_side;
+        } else if (corner_index(j) >=
+                   static_cast<voxblox::IndexElement>(voxels_per_side)) {
+          block_offset(j) = 1;
+          corner_index(j) = corner_index(j) - voxels_per_side;
+        }
+      }
+
+      voxblox::BlockIndex neighbor_index =
+          tsdf_block.block_index() + block_offset;
+
+      if (tsdf_layer->hasBlock(neighbor_index)) {
+        const TsdfBlock& neighbor_block =
+            tsdf_layer->getBlockByIndex(neighbor_index);
+
+        CHECK(neighbor_block.isValidVoxelIndex(corner_index));
+        const TsdfVoxel& voxel =
+            neighbor_block.getVoxelByVoxelIndex(corner_index);
+
+        if (voxel.weight < 1.0e-6) {
+          continue;
+        }
+        // The class blocks should always exist but just make sure.
+        const ClassBlock::ConstPtr neighbor_class_block =
+            class_layer.getBlockConstPtrByIndex(neighbor_index);
+        if (!neighbor_class_block) {
+          continue;
+        }
+        if (neighbor_class_block->getVoxelByVoxelIndex(corner_index)
+                .belongsToSubmap()) {
+          belonging_corners_num++;
+        }
+      }
+    }
+  }
+  return belonging_corners_num;
 }
 
 }  // namespace panoptic_mapping
