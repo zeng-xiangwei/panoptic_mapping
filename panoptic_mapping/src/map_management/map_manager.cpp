@@ -39,6 +39,7 @@ void MapManager::Config::setupParamsAndPrinting() {
              "layer_manipulator");
   setupParam("change_detector_config", &change_detector_config,
              "change_detector");
+  setupParam("remove_absent_submaps", &remove_absent_submaps);
 }
 
 MapManager::MapManager(const Config& config, std::shared_ptr<Globals> globals)
@@ -176,6 +177,10 @@ void MapManager::performChangeDetection(SubmapCollection* submaps) {
   if (config_.detect_disappear_by_sensor_data && input_ != nullptr) {
     change_detector_->checkSubmapCollectionVisibleByInputData(submaps, input_);
   }
+
+  if (config_.remove_absent_submaps) {
+    removeAbsentSubmaps(submaps);
+  }
 }
 
 void MapManager::finishMapping(SubmapCollection* submaps) {
@@ -277,7 +282,8 @@ bool MapManager::mergeSubmapIfPossible(SubmapCollection* submaps, int submap_id,
             << "Merged Submap " << submap->getID() << " into " << other.getID()
             << ".";
         other.setChangeState(ChangeState::kPersistent);
-        other.updateEmbeddingVector(submap->getEmbeddingVector(), submap->getEmbeddingWeight());
+        other.updateEmbeddingVector(submap->getEmbeddingVector(),
+                                    submap->getEmbeddingWeight());
         submaps->removeSubmap(submap_id);
         if (merged_id) {
           *merged_id = other.getID();
@@ -364,6 +370,28 @@ void MapManager::Ticker::tick(SubmapCollection* submaps) {
   if (current_tick_ >= max_ticks_) {
     action_(submaps);
     current_tick_ = 0;
+  }
+}
+
+void MapManager::removeAbsentSubmaps(SubmapCollection* submaps) {
+  std::vector<int> absent_submaps;
+  for (const Submap& submap : *submaps) {
+    if (submap.getChangeState() == ChangeState::kAbsent) {
+      absent_submaps.push_back(submap.getID());
+    }
+  }
+
+  for (int id : absent_submaps) {
+    submaps->removeSubmap(id);
+  }
+
+  if (config_.verbosity >= 4) {
+    std::stringstream ss;
+    for (int id : absent_submaps) {
+      ss << id << " ";
+    }
+    LOG(INFO) << "Removed " << absent_submaps.size()
+              << " kAbsent submaps: " << ss.str();
   }
 }
 

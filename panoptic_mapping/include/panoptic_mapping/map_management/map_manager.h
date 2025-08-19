@@ -45,6 +45,9 @@ class MapManager : public MapManagerBase {
     // submap whether disappear
     bool detect_disappear_by_sensor_data = true;
 
+    // If true, remove submap if it is absent
+    bool remove_absent_submaps = false;
+
     // Member configs.
     TsdfRegistrator::Config tsdf_registrator_config;
     ActivityManager::Config activity_manager_config;
@@ -76,6 +79,7 @@ class MapManager : public MapManagerBase {
 
  protected:
   std::string pruneBlocks(Submap* submap) const;
+  void removeAbsentSubmaps(SubmapCollection* submaps);
 
  public:
   static config_utilities::Factory::RegistrationRos<MapManagerBase, MapManager,

@@ -17,10 +17,7 @@ bool MovingBinaryCountVoxel::isObserverd() const {
 bool MovingBinaryCountVoxel::belongsToSubmap() const {
   // In doubt we count the voxel as belonging. This also applies for unobserved
   // voxels.
-  if (!isObserverd()) {
-    return false;
-  }
-  return belongs_count >= foreign_count;
+  return belongs_count > foreign_count;
 }
 
 float MovingBinaryCountVoxel::getBelongingProbability() const {
