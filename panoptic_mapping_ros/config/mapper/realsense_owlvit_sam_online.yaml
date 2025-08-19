@@ -24,7 +24,7 @@ camera:
   vy: 243.792
   fx: 386.275
   fy: 385.776
-  max_range: 2.5  # m
+  max_range: 2.0  # m
   min_range: 0.5
   
 submap_allocator:
@@ -48,7 +48,7 @@ submap_allocator:
   small_instance_voxel_size: 0.02
   medium_instance_voxel_size: 0.03
   large_instance_voxel_size: 0.04
-  background_voxel_size: 0.05
+  background_voxel_size: 0.1
   unknown_voxel_size: 0.05
   
 freespace_allocator:
@@ -67,7 +67,7 @@ id_tracker:
   depth_tolerance: -2  # m, negative = #vs
   tracking_metric: IoU  # IoU, overlap
   match_acceptance_threshold: 0.2 
-  min_allocation_size: 400 # px, for submap allocation.
+  min_allocation_size: 300 # px, for submap allocation.
   use_class_data_for_matching: true
 
 tsdf_integrator:  

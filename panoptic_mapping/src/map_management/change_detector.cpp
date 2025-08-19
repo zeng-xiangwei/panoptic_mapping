@@ -118,6 +118,7 @@ std::string ChangeDetector::checkSubmapVisibleByInputData(Submap* submap,
   auto T_C_S = input->T_M_C().inverse() * submap->getT_M_S();
   const Camera& camera = *globals_->camera();
   const cv::Mat& depth_image = input->depthImage();
+  const cv::Mat& vertex_image = input->vertexMap();
 
   int strong_absent_num = 0;
   int weak_absent_num = 0;
@@ -159,8 +160,15 @@ std::string ChangeDetector::checkSubmapVisibleByInputData(Submap* submap,
     if (depth_value != 0.f) {
       valid_depth_measurement_num++;
     }
-    float distance = depth_image.at<float>(v, u) - p_C.z();
+
+    const cv::Vec3f& vertex = vertex_image.at<cv::Vec3f>(v, u);
+    float vertex_range_dis = std::sqrt(
+        vertex[0] * vertex[0] + vertex[1] * vertex[1] + vertex[2] * vertex[2]);
+    float p_C_dis =
+        std::sqrt(p_C.x() * p_C.x() + p_C.y() * p_C.y() + p_C.z() * p_C.z());
+    float distance = vertex_range_dis - p_C_dis;
     distance = std::min(distance, camera_visible_distance_max);
+
     if (distance >= strong_depth_tolerance) {
       strong_absent_num++;
       weak_absent_num++;
@@ -227,6 +235,7 @@ std::string ChangeDetector::checkSubmapVisibleByInputDataWithClassification(
   const Camera& camera = *globals_->camera();
   const cv::Mat& depth_image = input->depthImage();
   const cv::Mat& id_image_copy = input->idImageCopy();
+  const cv::Mat& vertex_image = input->vertexMap();
 
   int absent_num = 0;
   float absent_dis_sum = 0.0;
@@ -264,8 +273,15 @@ std::string ChangeDetector::checkSubmapVisibleByInputDataWithClassification(
     if (depth_value != 0.f) {
       valid_depth_measurement_num++;
     }
-    float distance = depth_image.at<float>(v, u) - p_C.z();
+
+    const cv::Vec3f& vertex = vertex_image.at<cv::Vec3f>(v, u);
+    float vertex_range_dis = std::sqrt(
+        vertex[0] * vertex[0] + vertex[1] * vertex[1] + vertex[2] * vertex[2]);
+    float p_C_dis =
+        std::sqrt(p_C.x() * p_C.x() + p_C.y() * p_C.y() + p_C.z() * p_C.z());
+    float distance = vertex_range_dis - p_C_dis;
     distance = std::min(distance, camera_visible_distance_max);
+
     if (distance >= depth_tolerance) {
       absent_num++;
       absent_dis_sum += distance;
