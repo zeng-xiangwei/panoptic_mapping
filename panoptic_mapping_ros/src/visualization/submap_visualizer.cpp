@@ -370,7 +370,11 @@ void SubmapVisualizer::generateClassificationMesh(
       // Coloring.
       const float probability = class_voxel.getBelongingProbability();
       tsdf_voxel.color.b = 0;
-      if (probability > 0.5) {
+      if (std::isnan(probability)) {
+        tsdf_voxel.color.r = 0;
+        tsdf_voxel.color.g = 0;
+        tsdf_voxel.color.b = 0;
+      } else if (probability > 0.5) {
         tsdf_voxel.color.r = ((1.f - probability) * 2.f * 255.f);
         tsdf_voxel.color.g = 255;
       } else {

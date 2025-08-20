@@ -85,7 +85,7 @@ tsdf_integrator:
   # Class Projective
   use_binary_classification: true
   use_instance_classification: &use_instance_classification true
-  update_only_tracked_submaps: true
+  update_only_tracked_submaps: false
   
 map_management:
   type: submaps
