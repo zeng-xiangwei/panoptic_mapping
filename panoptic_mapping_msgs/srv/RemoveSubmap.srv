@@ -1,0 +1,5 @@
+# 需要删除的 submap id，用逗号分割
+string submap_ids
+---
+# 成功删除的 submap id
+string removed_submap_ids

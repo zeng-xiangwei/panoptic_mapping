@@ -226,6 +226,12 @@ void PanopticMapper::setupRos() {
       "running_switch",
       std::bind(&PanopticMapper::runningSwitchCallback, this,
                 std::placeholders::_1, std::placeholders::_2));
+
+  remove_submap_srv_ =
+      node_->create_service<panoptic_mapping_msgs::srv::RemoveSubmap>(
+          "remove_submap",
+          std::bind(&PanopticMapper::removeSubmapCallback, this,
+                    std::placeholders::_1, std::placeholders::_2));
   // Publishers.
   segmented_point_cloud_pub_ =
       node_->create_publisher<sensor_msgs::msg::PointCloud2>(
@@ -741,6 +747,42 @@ YAML::Node PanopticMapper::loadYaml() {
   }
 
   return result;
+}
+
+bool PanopticMapper::removeSubmapCallback(
+    const panoptic_mapping_msgs::srv::RemoveSubmap::Request::SharedPtr request,
+    panoptic_mapping_msgs::srv::RemoveSubmap::Response::SharedPtr response) {
+  std::lock_guard<std::mutex> lock(node_mutex_);
+
+  std::string ids_str = request->submap_ids;
+  std::stringstream ss(ids_str);
+  std::string str;
+
+  std::set<int> submap_ids_to_remove;
+  while (std::getline(ss, str, ',')) {
+    if (!str.empty()) {
+      try {
+        int id = std::stoi(str);
+        submap_ids_to_remove.insert(id);
+      } catch (const std::invalid_argument& e) {
+        // Ignore invalid arguments (non-integer strings)
+      } catch (const std::out_of_range& e) {
+        // Ignore out of range integers
+      }
+    }
+  }
+
+  std::stringstream response_ss;
+  for (auto id : submap_ids_to_remove) {
+    if (submaps_->submapIdExists(id)) {
+      submaps_->removeSubmap(id);
+      response_ss << id << ",";
+    }
+  }
+  LOG(INFO) << "request to remove submap ids: " << request->submap_ids
+            << ", actually removed: " << response_ss.str();
+  response->removed_submap_ids = response_ss.str();
+  return true;
 }
 
 }  // namespace panoptic_mapping

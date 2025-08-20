@@ -19,6 +19,7 @@
 #include <panoptic_mapping/tools/planning_interface.h>
 #include <panoptic_mapping/tools/thread_safe_submap_collection.h>
 #include <panoptic_mapping/tracking/id_tracker_base.h>
+#include <panoptic_mapping_msgs/srv/remove_submap.hpp>
 #include <panoptic_mapping_msgs/srv/save_load_map.hpp>
 #include <panoptic_mapping_msgs/srv/set_visualization_mode.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -120,10 +121,15 @@ class PanopticMapper {
   bool finishMappingCallback(
       const std_srvs::srv::Empty::Request::SharedPtr request,  // NOLINT
       std_srvs::srv::Empty::Response::SharedPtr response);     // NOLINT
-  
+
   bool runningSwitchCallback(
       const std_srvs::srv::Empty::Request::SharedPtr request,  // NOLINT
       std_srvs::srv::Empty::Response::SharedPtr response);     // NOLINT
+
+  bool removeSubmapCallback(
+      const panoptic_mapping_msgs::srv::RemoveSubmap::Request::SharedPtr
+          request,
+      panoptic_mapping_msgs::srv::RemoveSubmap::Response::SharedPtr response);
 
   // Processing.
   // Integrate a set of input images. The input is usually gathered from ROS
@@ -184,6 +190,8 @@ class PanopticMapper {
   rclcpp::Service<std_srvs::srv::Empty>::SharedPtr print_timings_srv_;
   rclcpp::Service<std_srvs::srv::Empty>::SharedPtr finish_mapping_srv_;
   rclcpp::Service<std_srvs::srv::Empty>::SharedPtr running_switch_srv_;
+  rclcpp::Service<panoptic_mapping_msgs::srv::RemoveSubmap>::SharedPtr
+      remove_submap_srv_;
   rclcpp::TimerBase::SharedPtr visualization_timer_;
   rclcpp::TimerBase::SharedPtr data_logging_timer_;
   rclcpp::TimerBase::SharedPtr print_timing_timer_;
