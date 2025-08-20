@@ -430,4 +430,8 @@ std::unique_ptr<Submap> Submap::clone(
   return result;
 }
 
+void Submap::addDisappearCount(int add) {
+  disappear_count_ += add;
+}
+
 }  // namespace panoptic_mapping

@@ -126,8 +126,10 @@ class Submap {
     return &iso_surface_points_;
   }
   SubmapBoundingVolume* getBoundingVolumePtr() { return &bounding_volume_; }
+  int getDisappearCount() const { return disappear_count_; }
 
   // Setters.
+  void setDisappearCount(int count) { disappear_count_ = count; }
   void setT_M_S(const Transformation& T_M_S);
   void setInstanceID(int id) { instance_id_ = id; }
   void setLabel(PanopticLabel label) { label_ = label; }
@@ -151,6 +153,8 @@ class Submap {
    * 
    */
   void updateEmbeddingVector(const std::vector<float>& embedding_vector, float weight = 1.0);
+
+  void addDisappearCount(int add = 1);
 
   // Processing.
   /**
@@ -300,6 +304,9 @@ class Submap {
 
   // Processing.
   std::unique_ptr<MeshIntegrator> mesh_integrator_;
+
+  // Change detection.
+  int disappear_count_ = 0;
 };
 
 }  // namespace panoptic_mapping

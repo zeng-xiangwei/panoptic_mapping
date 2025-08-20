@@ -46,6 +46,8 @@ void ChangeDetector::Config::setupParamsAndPrinting() {
              &classification_projected_percentage);
   setupParam("classification_only_background", &classification_only_background);
   setupParam("limit_range", &limit_range);
+  setupParam("classification_disappear_frames_threshold",
+             &classification_disappear_frames_threshold);
 }
 
 ChangeDetector::ChangeDetector(const Config& config,
@@ -345,10 +347,19 @@ std::string ChangeDetector::checkSubmapVisibleByInputDataWithClassification(
           : -config_.classification_disappear_average_distance *
                 submap->getTsdfLayer().voxel_size();
 
+  bool disappear = false;
   if (max_projected_num > min_projected_other_type_num &&
       absent_num > disappear_num_threshold) {
     float absent_avg_distance = absent_dis_sum / absent_num;
     if (absent_avg_distance > avg_dis_threshold) {
+      disappear = true;
+    }
+  }
+
+  if (disappear) {
+    submap->addDisappearCount();
+    if (submap->getDisappearCount() >
+        config_.classification_disappear_frames_threshold) {
       submap->setChangeState(ChangeState::kAbsent);
       std::stringstream info;
       info << "\nSubmap " << submap->getID() << " (" << submap->getName()
@@ -359,7 +370,7 @@ std::string ChangeDetector::checkSubmapVisibleByInputDataWithClassification(
            << ", distance sum: " << absent_dis_sum << " m. "
            << "projected_on (" << background_class_name
            << ") num: " << max_projected_num
-           << "valid_measurement_nums / projected_nums: "
+           << ", valid_measurement_nums / projected_nums: "
            << valid_depth_measurement_num << " / " << projected_num;
       return info.str();
     }
@@ -372,8 +383,9 @@ std::string ChangeDetector::checkSubmapVisibleByInputDataWithClassification(
        << ", distance sum: " << absent_dis_sum << " m. "
        << "projected_on (" << background_class_name
        << ") num: " << max_projected_num
-       << "valid_measurement_nums / projected_nums: "
-       << valid_depth_measurement_num << " / " << projected_num;
+       << ", valid_measurement_nums / projected_nums: "
+       << valid_depth_measurement_num << " / " << projected_num
+       << ", disappear frame: " << submap->getDisappearCount();
   return info.str();
 }
 

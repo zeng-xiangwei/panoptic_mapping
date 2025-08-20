@@ -61,6 +61,9 @@ class ChangeDetector {
     // Min percentage of points belong to other type.
     float classification_projected_percentage = 0.9;
 
+    // For classification.
+    int classification_disappear_frames_threshold = 3;
+
     Config() { setConfigName("ChangeDetector"); }
 
    protected:
