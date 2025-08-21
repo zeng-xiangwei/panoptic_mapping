@@ -893,6 +893,7 @@ bool SubmapVisualizer::changeSubmapVisInfo(const Submap& submap) {
   SubmapVisInfo& info = vis_infos_[submap_id];
   info.name_space = std::to_string(submap_id) + "_" + submap.getName();
   info.republish_everything = true;
+  return true;
 }
 
 }  // namespace panoptic_mapping
