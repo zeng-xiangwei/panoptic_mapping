@@ -232,6 +232,11 @@ void PanopticMapper::setupRos() {
           "remove_submap",
           std::bind(&PanopticMapper::removeSubmapCallback, this,
                     std::placeholders::_1, std::placeholders::_2));
+  submap_class_name_change_srv_ =
+      node_->create_service<panoptic_mapping_msgs::srv::SubmapClassNameChange>(
+          "set_submap_class_name",
+          std::bind(&PanopticMapper::changeSubmapClassNameCallback, this,
+                    std::placeholders::_1, std::placeholders::_2));
   // Publishers.
   segmented_point_cloud_pub_ =
       node_->create_publisher<sensor_msgs::msg::PointCloud2>(
@@ -782,6 +787,27 @@ bool PanopticMapper::removeSubmapCallback(
   LOG(INFO) << "request to remove submap ids: " << request->submap_ids
             << ", actually removed: " << response_ss.str();
   response->removed_submap_ids = response_ss.str();
+  return true;
+}
+
+bool PanopticMapper::changeSubmapClassNameCallback(
+    const panoptic_mapping_msgs::srv::SubmapClassNameChange::Request::SharedPtr
+        request,
+    panoptic_mapping_msgs::srv::SubmapClassNameChange::Response::SharedPtr
+        response) {
+  std::lock_guard<std::mutex> lock(node_mutex_);
+
+  int submap_id = request->submap_id;
+  std::string new_class_name = request->new_class_name;
+
+  response->success = false;
+  if (submaps_->submapIdExists(submap_id)) {
+    Submap* submap = submaps_->getSubmapPtr(submap_id);
+    submap->setClassName(new_class_name);
+    submap->setName(new_class_name);
+    submap_visualizer_->changeSubmapVisInfo(*submap);
+    response->success = true;
+  }
   return true;
 }
 

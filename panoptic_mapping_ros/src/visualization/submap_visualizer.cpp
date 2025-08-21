@@ -884,4 +884,15 @@ void SubmapVisualizer::publishOccupancyCloud(const SubmapCollection& submaps) {
   }
 }
 
+bool SubmapVisualizer::changeSubmapVisInfo(const Submap& submap) {
+  int submap_id = submap.getID();
+  if (vis_infos_.count(submap_id) == 0) {
+    return false;
+  }
+
+  SubmapVisInfo& info = vis_infos_[submap_id];
+  info.name_space = std::to_string(submap_id) + "_" + submap.getName();
+  info.republish_everything = true;
+}
+
 }  // namespace panoptic_mapping

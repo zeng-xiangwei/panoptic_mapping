@@ -115,6 +115,8 @@ class SubmapVisualizer {
     global_frame_name_ = frame_name;
   }
 
+  bool changeSubmapVisInfo(const Submap& submap);
+
  protected:
   static const Color kUnknownColor_;
 

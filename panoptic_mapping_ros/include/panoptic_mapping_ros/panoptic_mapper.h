@@ -22,6 +22,7 @@
 #include <panoptic_mapping_msgs/srv/remove_submap.hpp>
 #include <panoptic_mapping_msgs/srv/save_load_map.hpp>
 #include <panoptic_mapping_msgs/srv/set_visualization_mode.hpp>
+#include <panoptic_mapping_msgs/srv/submap_class_name_change.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <std_srvs/srv/empty.hpp>
 
@@ -130,6 +131,12 @@ class PanopticMapper {
       const panoptic_mapping_msgs::srv::RemoveSubmap::Request::SharedPtr
           request,
       panoptic_mapping_msgs::srv::RemoveSubmap::Response::SharedPtr response);
+  
+  bool changeSubmapClassNameCallback(
+      const panoptic_mapping_msgs::srv::SubmapClassNameChange::Request::SharedPtr
+          request,
+      panoptic_mapping_msgs::srv::SubmapClassNameChange::Response::SharedPtr
+          response);
 
   // Processing.
   // Integrate a set of input images. The input is usually gathered from ROS
@@ -192,6 +199,8 @@ class PanopticMapper {
   rclcpp::Service<std_srvs::srv::Empty>::SharedPtr running_switch_srv_;
   rclcpp::Service<panoptic_mapping_msgs::srv::RemoveSubmap>::SharedPtr
       remove_submap_srv_;
+  rclcpp::Service<panoptic_mapping_msgs::srv::SubmapClassNameChange>::SharedPtr
+      submap_class_name_change_srv_;
   rclcpp::TimerBase::SharedPtr visualization_timer_;
   rclcpp::TimerBase::SharedPtr data_logging_timer_;
   rclcpp::TimerBase::SharedPtr print_timing_timer_;

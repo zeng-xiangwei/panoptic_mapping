@@ -1,0 +1,6 @@
+# submap 唯一 id
+int32 submap_id
+# 修改后的类别名
+string new_class_name
+---
+bool success

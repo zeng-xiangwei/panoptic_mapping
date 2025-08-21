@@ -106,13 +106,18 @@ class ChangedSubmapVisualizer {
    * @param points 点云数据
    * @return 返回计算得到的 OBB
    */
-  OrientedBoundingBox computeOBB(const std::vector<IsoSurfacePoint>& points);
+  OrientedBoundingBox computeOBB(const std::vector<IsoSurfacePoint>& points,
+                                 float voxel_size);
   OrientedBoundingBox computeZAlignedOBB(
-      const std::vector<IsoSurfacePoint>& points);
+      const std::vector<IsoSurfacePoint>& points, float voxel_size);
   OrientedBoundingBox computeStandardOBB(
       const std::vector<IsoSurfacePoint>& points);
   float computeOBBIoU(const OrientedBoundingBox& obb1,
                       const OrientedBoundingBox& obb2);
+  std::vector<IsoSurfacePoint> downsamplePointCloud2D(
+      const std::vector<IsoSurfacePoint>& points, float voxel_size);
+  Eigen::Matrix2f compute2DCloudCovariance(
+      const std::vector<IsoSurfacePoint>& points, float voxel_size);
 
   /**
    * @brief 与已有的 submap 进行比较，判断 box

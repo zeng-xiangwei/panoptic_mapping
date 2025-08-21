@@ -18,6 +18,7 @@ set(srv_files
   "srv/SaveLoadMap.srv"
   "srv/SetVisualizationMode.srv"
   "srv/RemoveSubmap.srv"
+  "srv/SubmapClassNameChange.srv"
 )
 
 rosidl_generate_interfaces(${PROJECT_NAME}

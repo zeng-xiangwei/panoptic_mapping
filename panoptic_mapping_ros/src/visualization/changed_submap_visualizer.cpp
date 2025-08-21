@@ -94,7 +94,7 @@ void ChangedSubmapVisualizer::findChangedSubmaps(SubmapCollection& submaps) {
     submap_infos_[id].change_type = ChangeType::kDeleted;
     submap_infos_[id].color = kDeletedColor;
   }
-  
+
   // New submaps.
   for (int id : new_ids) {
     Submap& submap = *(submaps.getSubmapPtr(id));
@@ -115,7 +115,8 @@ void ChangedSubmapVisualizer::findChangedSubmaps(SubmapCollection& submaps) {
     info.name = submap.getClassName();
     info.change_type = ChangeType::kAdded;
     info.surface_points_size = submap.getIsoSurfacePoints().size();
-    info.obb = computeOBB(submap.getIsoSurfacePoints());
+    info.obb =
+        computeOBB(submap.getIsoSurfacePoints(), submap.getConfig().voxel_size);
     info.color = kAddColor;
     info.embedding_vector = submap.getEmbeddingVector();
 
@@ -155,13 +156,19 @@ void ChangedSubmapVisualizer::findChangedSubmaps(SubmapCollection& submaps) {
                   << info.surface_points_size << " -> " << surface_points_size;
       }
       info.change_type = ChangeType::kChanged;
-      info.obb = computeOBB(submap.getIsoSurfacePoints());
+      info.obb = computeOBB(submap.getIsoSurfacePoints(),
+                            submap.getConfig().voxel_size);
       info.color = kChangedColor;
       info.surface_points_size = surface_points_size;
       info.embedding_vector = submap.getEmbeddingVector();
     } else {
       info.change_type = ChangeType::kUnChanged;
       info.color = kUnchangedColor;
+    }
+
+    if (info.name != submap.getClassName()) {
+      info.name = submap.getClassName();
+      info.change_type = ChangeType::kChanged;
     }
   }
 
@@ -213,7 +220,7 @@ void ChangedSubmapVisualizer::publishChanges(const SubmapCollection& submaps) {
     marker.color.r = info.color.r;
     marker.color.g = info.color.g;
     marker.color.b = info.color.b;
-    marker.color.a = 255;
+    marker.color.a = 0.3 * 255;
     marker.type = visualization_msgs::msg::Marker::CUBE;
     marker.id = info.id;
     marker.ns =
@@ -302,10 +309,10 @@ void ChangedSubmapVisualizer::publishChangesForVln(
 }
 
 ChangedSubmapVisualizer::OrientedBoundingBox
-ChangedSubmapVisualizer::computeOBB(
-    const std::vector<IsoSurfacePoint>& points) {
+ChangedSubmapVisualizer::computeOBB(const std::vector<IsoSurfacePoint>& points,
+                                    float voxel_size) {
   if (config_.box_only_align_z) {
-    return computeZAlignedOBB(points);
+    return computeZAlignedOBB(points, voxel_size);
   }
   return computeStandardOBB(points);
 }
@@ -338,7 +345,10 @@ ChangedSubmapVisualizer::computeStandardOBB(
   Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> solver(cov);
   Eigen::Vector3f eigenvalues = solver.eigenvalues();
   Eigen::Matrix3f eigenvectors = solver.eigenvectors();
-
+  if (eigenvectors.determinant() < 0) {
+    eigenvectors.col(0) = - eigenvectors.col(0);
+  }
+  
   OrientedBoundingBox obb;
 
   Eigen::Vector3f min_pt, max_pt;
@@ -393,9 +403,78 @@ ChangedSubmapVisualizer::computeStandardOBB(
   return obb;
 }
 
+std::vector<IsoSurfacePoint> ChangedSubmapVisualizer::downsamplePointCloud2D(
+    const std::vector<IsoSurfacePoint>& points, float voxel_size) {
+  if (voxel_size <= 0.0f || points.empty()) {
+    return points;
+  }
+
+  // 计算点云的边界
+  Eigen::Vector3f min_bound = points[0].position;
+  Eigen::Vector3f max_bound = points[0].position;
+
+  for (const auto& point : points) {
+    min_bound = min_bound.cwiseMin(point.position);
+    max_bound = max_bound.cwiseMax(point.position);
+  }
+
+  // 创建体素网格哈希表
+  std::unordered_map<std::string, std::vector<size_t>> voxel_map;
+
+  // 将点分配到体素网格中
+  for (size_t i = 0; i < points.size(); ++i) {
+    const auto& point = points[i].position;
+    // 计算体素索引
+    Eigen::Vector3f voxel_index =
+        ((point - min_bound) / voxel_size).array().floor().matrix();
+
+    // 创建体素键
+    std::string voxel_key = std::to_string(static_cast<int>(voxel_index.x())) +
+                            "," +
+                            std::to_string(static_cast<int>(voxel_index.y()));
+
+    voxel_map[voxel_key].push_back(i);
+  }
+
+  // 从每个体素中选择一个点（这里选择第一个点）
+  std::vector<IsoSurfacePoint> downsampled_points;
+  downsampled_points.reserve(voxel_map.size());
+
+  for (const auto& voxel : voxel_map) {
+    // 取体素中的第一个点
+    size_t point_index = voxel.second[0];
+    downsampled_points.push_back(points[point_index]);
+  }
+
+  return downsampled_points;
+}
+
+Eigen::Matrix2f ChangedSubmapVisualizer::compute2DCloudCovariance(
+    const std::vector<IsoSurfacePoint>& points, float voxel_size) {
+  std::vector<IsoSurfacePoint> downsampled_points =
+      downsamplePointCloud2D(points, voxel_size);
+  if (points.size() < 3) {
+    return Eigen::Matrix2f::Identity();
+  }
+
+  Eigen::Vector2f centroid_xy = Eigen::Vector2f::Zero();
+  for (const auto& pt : downsampled_points) {
+    centroid_xy += pt.position.head<2>();
+  }
+  centroid_xy /= static_cast<float>(downsampled_points.size());
+
+  // Step 2: Compute the covariance matrix in XY plane
+  Eigen::Matrix2f cov_xy = Eigen::Matrix2f::Zero();
+  for (const auto& pt : downsampled_points) {
+    Eigen::Vector2f diff = pt.position.head<2>() - centroid_xy;
+    cov_xy += diff * diff.transpose();
+  }
+  return cov_xy;
+}
+
 ChangedSubmapVisualizer::OrientedBoundingBox
 ChangedSubmapVisualizer::computeZAlignedOBB(
-    const std::vector<IsoSurfacePoint>& points) {
+    const std::vector<IsoSurfacePoint>& points, float voxel_size) {
   const float kEpsilon = 1e-6f;
 
   if (points.size() < 3) {
@@ -411,36 +490,46 @@ ChangedSubmapVisualizer::computeZAlignedOBB(
   centroid_xy /= static_cast<float>(points.size());
 
   // Step 2: Compute the covariance matrix in XY plane
-  Eigen::Matrix2f cov_xy = Eigen::Matrix2f::Zero();
-  for (const auto& pt : points) {
-    Eigen::Vector2f diff = pt.position.head<2>() - centroid_xy;
-    cov_xy += diff * diff.transpose();
-  }
+  Eigen::Matrix2f cov_xy = compute2DCloudCovariance(points, voxel_size);
 
   // Step 3: Perform eigen decomposition to get principal axes in XY plane
   Eigen::SelfAdjointEigenSolver<Eigen::Matrix2f> solver(cov_xy);
   Eigen::Vector2f eigenvalues = solver.eigenvalues();
   Eigen::Matrix2f eigenvectors_xy = solver.eigenvectors();
-
-  // 计算盒体中心
-  Eigen::Vector2f min_pt, max_pt;
-  min_pt = max_pt = points[0].position.head<2>();
-  for (const auto& pt : points) {
-    const Eigen::Vector2f& pt_pos = pt.position.head<2>();
-    for (int i = 0; i < 2; ++i) {
-      if (pt_pos(i) < min_pt(i)) min_pt(i) = pt_pos(i);
-      if (pt_pos(i) > max_pt(i)) max_pt(i) = pt_pos(i);
-    }
+  float det = eigenvectors_xy.determinant();
+  if (det < 0) {
+    eigenvectors_xy.col(0) = -eigenvectors_xy.col(0);
   }
-  Eigen::Vector2f box_center = (min_pt + max_pt) / 2.0f;
+
+  // Extend Z-axis dimensions
+  float min_z = std::numeric_limits<float>::max();
+  float max_z = -std::numeric_limits<float>::max();
+  for (const auto& pt : points) {
+    if (pt.position.z() < min_z) min_z = pt.position.z();
+    if (pt.position.z() > max_z) max_z = pt.position.z();
+  }
 
   // Check if eigenvalues are too small, use AABB instead
   if (config_.only_use_aabb || eigenvalues(0) < kEpsilon ||
       eigenvalues(1) < kEpsilon) {
+    // 计算盒体中心
+    Eigen::Vector2f min_pt, max_pt;
+    min_pt = max_pt = points[0].position.head<2>();
+    for (const auto& pt : points) {
+      const Eigen::Vector2f& pt_pos = pt.position.head<2>();
+      for (int i = 0; i < 2; ++i) {
+        if (pt_pos(i) < min_pt(i)) min_pt(i) = pt_pos(i);
+        if (pt_pos(i) > max_pt(i)) max_pt(i) = pt_pos(i);
+      }
+    }
+    Eigen::Vector2f box_center = (min_pt + max_pt) / 2.0f;
     OrientedBoundingBox obb;
     obb.centroid.head<2>() = centroid_xy;
+    obb.centroid.z() = (min_z + max_z) / 2.0f;
     obb.box_center.head<2>() = box_center;
+    obb.box_center.z() = (min_z + max_z) / 2.0f;
     obb.extents.head<2>() = (max_pt - min_pt);
+    obb.extents.z() = max_z - min_z;
     obb.rotation.block<2, 2>(0, 0) = Eigen::Matrix2f::Identity();
     obb.box_type = "AABB";
     obb.valid = true;
@@ -448,13 +537,8 @@ ChangedSubmapVisualizer::computeZAlignedOBB(
   }
 
   // Project points onto the XY plane and compute OBB
-  Eigen::Vector3f centroid = Eigen::Vector3f::Zero();
   Eigen::Matrix3f rotation = Eigen::Matrix3f::Identity();
-
-  // Compute the angle from the principal axis
-  float angle = std::atan2(eigenvectors_xy(1, 0), eigenvectors_xy(0, 0));
-  rotation.block<2, 2>(0, 0) << std::cos(angle), -std::sin(angle),
-      std::sin(angle), std::cos(angle);
+  rotation.block<2, 2>(0, 0) = eigenvectors_xy;
 
   // Calculate extents in XY plane
   Eigen::Vector2f min_proj =
@@ -471,13 +555,12 @@ ChangedSubmapVisualizer::computeZAlignedOBB(
     }
   }
 
-  // Extend Z-axis dimensions
-  float min_z = std::numeric_limits<float>::max();
-  float max_z = -std::numeric_limits<float>::max();
-  for (const auto& pt : points) {
-    if (pt.position.z() < min_z) min_z = pt.position.z();
-    if (pt.position.z() > max_z) max_z = pt.position.z();
-  }
+  Eigen::Vector2f box_center_in_local = (min_proj + max_proj) / 2.0f;
+  // p^{box_center} = T^{w}_{local} * p^{box_center_local}
+  // R^{w}_{local} = rotation
+  // t^{w}_{local} = p^{centroid}
+  Eigen::Vector2f box_center =
+      rotation.block<2, 2>(0, 0) * box_center_in_local + centroid_xy;
 
   // Build final OBB
   OrientedBoundingBox obb;
