@@ -61,7 +61,7 @@ freespace_allocator:
 id_tracker:
   type: detectron # ground_truth, projective, detectron, single_tsdf
   verbosity: 3
-  # whitelist_classes: toy,doll,vegetable toy,vegetable doll    
+  # whitelist_classes: toy,doll,vegetable,vegetable toy,vegetable doll,chilli doll,bitter gourd doll,eggplant doll    
   
   # Projective ID tracker
   depth_tolerance: -2  # m, negative = #vs
@@ -128,6 +128,7 @@ map_management:
     detection_threads: 1
     use_classification_for_tiny: true
     classification_only_background: true
+    classification_use_no_class: true
     limit_range: true
     classification_disappear_frames_threshold: 5
     classification_disappear_threshold: 0.01 # m, negative = #vs

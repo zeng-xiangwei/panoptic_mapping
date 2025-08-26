@@ -51,6 +51,8 @@ class ChangeDetector {
     bool use_classification_for_tiny = false;
     // Only handle tiny objects on background
     bool classification_only_background = true;
+    // Use no class as a type of class
+    bool classification_use_no_class = false;
     // Allowed disappear distance in meters where a point is still considered
     // visible in input data. Negative values are multiples of the voxel_size.
     float classification_disappear_threshold = -1;
@@ -83,6 +85,8 @@ class ChangeDetector {
   std::string checkSubmapVisibleByInputData(Submap* submap, InputData* input);
   std::string checkSubmapVisibleByInputDataWithClassification(Submap* submap,
                                                               InputData* input);
+  bool validWithClassification(int projected_instance_id, Submap* submap, const DetectronLabels* labels, std::string& info,
+                               std::string& background_class_name);
 
   const Config config_;
   const std::shared_ptr<Globals> globals_;

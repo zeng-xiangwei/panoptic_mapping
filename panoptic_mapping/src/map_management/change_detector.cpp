@@ -48,6 +48,7 @@ void ChangeDetector::Config::setupParamsAndPrinting() {
   setupParam("limit_range", &limit_range);
   setupParam("classification_disappear_frames_threshold",
              &classification_disappear_frames_threshold);
+  setupParam("classification_use_no_class", &classification_use_no_class);
 }
 
 ChangeDetector::ChangeDetector(const Config& config,
@@ -301,36 +302,13 @@ std::string ChangeDetector::checkSubmapVisibleByInputDataWithClassification(
       max_instance_id = pair.first;
     }
   }
-  if (max_instance_id == -1 || max_instance_id == 0) {
-    std::stringstream info;
-    info << "\nSubmap " << submap->getID() << " (" << submap->getName()
-         << ") not project on detected instance(instance_id: "
-         << max_instance_id << ").";
-    return info.str();
-  }
 
   const DetectronLabels* labels = &(input->detectronLabels());
-  auto it = labels->find(max_instance_id);
-  if (it == labels->end()) {
-    std::stringstream info;
-    info << "\nSubmap " << submap->getID() << " (" << submap->getName()
-         << ") not project on detected instance(instance_id: "
-         << max_instance_id << " not found).";
-    return info.str();
-  }
-
-  // Find background to judge
-  if (config_.classification_only_background && it->second.is_thing) {
-    std::stringstream info;
-    info << "\nSubmap " << submap->getID() << " (" << submap->getName()
-         << ") not project on detected instance(instance_id: "
-         << max_instance_id << " is a thing not background).";
-    return info.str();
-  }
-
-  std::string background_class_name = it->second.category_name;
-  if (background_class_name == submap->getClassName()) {
-    return "";
+  std::string info_str;
+  std::string background_class_name;
+  if (!validWithClassification(max_instance_id, submap, labels, info_str,
+                               background_class_name)) {
+    return info_str;
   }
 
   int disappear_num_threshold =
@@ -387,6 +365,68 @@ std::string ChangeDetector::checkSubmapVisibleByInputDataWithClassification(
        << valid_depth_measurement_num << " / " << projected_num
        << ", disappear frame: " << submap->getDisappearCount();
   return info.str();
+}
+
+bool ChangeDetector::validWithClassification(
+    int projected_instance_id, Submap* submap, const DetectronLabels* labels,
+    std::string& info_str, std::string& background_class_name) {
+  if (projected_instance_id < 0) {
+    std::stringstream info;
+    info << "\nSubmap " << submap->getID() << " (" << submap->getName()
+         << ") not project on detected instance(instance_id: "
+         << projected_instance_id << ").";
+    info_str = info.str();
+    return false;
+  }
+
+  if (config_.classification_use_no_class) {
+    if (projected_instance_id == 0) {
+      std::stringstream info;
+      info << "\nSubmap " << submap->getID() << " (" << submap->getName()
+           << ") project on non class area(instance_id: "
+           << projected_instance_id << ").";
+      info_str = info.str();
+      background_class_name = "no_class";
+      return true;
+    }
+  }
+
+  if (projected_instance_id == 0) {
+    std::stringstream info;
+    info << "\nSubmap " << submap->getID() << " (" << submap->getName()
+         << ") not project on detected instance(instance_id: "
+         << projected_instance_id << ").";
+    info_str = info.str();
+    return false;
+  }
+
+  auto it = labels->find(projected_instance_id);
+  if (it == labels->end()) {
+    std::stringstream info;
+    info << "\nSubmap " << submap->getID() << " (" << submap->getName()
+         << ") not project on detected instance(instance_id: "
+         << projected_instance_id << " not found).";
+    info_str = info.str();
+    return false;
+  }
+
+  // Find background to judge
+  if (config_.classification_only_background && it->second.is_thing) {
+    std::stringstream info;
+    info << "\nSubmap " << submap->getID() << " (" << submap->getName()
+         << ") not project on detected instance(instance_id: "
+         << projected_instance_id << " is a thing not background).";
+    info_str = info.str();
+    return false;
+  }
+
+  background_class_name = it->second.category_name;
+  if (background_class_name == submap->getClassName()) {
+    info_str = "";
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace panoptic_mapping
