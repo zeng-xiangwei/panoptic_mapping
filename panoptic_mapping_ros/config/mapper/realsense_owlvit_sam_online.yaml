@@ -100,7 +100,7 @@ map_management:
   merge_deactivated_submaps_if_possible: true
   apply_class_layer_when_deactivating_submaps: true
   detect_disappear_by_sensor_data: true
-  remove_absent_submaps: false
+  remove_absent_submaps: true
   
   activity_manager:
     required_reobservations: 5 # Consecutive observations to keep new submaps.
@@ -127,10 +127,10 @@ map_management:
     match_weak_average_distance: -4 # m, negative = #vs
     detection_threads: 1
     use_classification_for_tiny: true
-    classification_only_background: true
+    classification_only_background: false
     classification_use_no_class: true
     limit_range: true
-    classification_disappear_frames_threshold: 5
+    classification_disappear_frames_threshold: 3
     classification_disappear_threshold: 0.01 # m, negative = #vs
     classification_disappear_percentage: 0.5
     classification_disappear_average_distance: -1 # m, negative = #vs
@@ -146,7 +146,7 @@ visualization:
     type: submaps  # submaps, single_tsdf
     verbosity: 1
     color_mode: instances # submaps, instances, color, normals, classes, change, classification
-    visualization_mode: persistent  # all, active, active_only, inactive, persistent
+    visualization_mode: all  # all, active, active_only, inactive, persistent
     visualize_other_mode: false
     submap_color_discretization: 20
     visualize_mesh: true
