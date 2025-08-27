@@ -49,6 +49,7 @@ void ChangeDetector::Config::setupParamsAndPrinting() {
   setupParam("classification_disappear_frames_threshold",
              &classification_disappear_frames_threshold);
   setupParam("classification_use_no_class", &classification_use_no_class);
+  setupParam("min_isolated_points_size", &min_isolated_points_size);
 }
 
 ChangeDetector::ChangeDetector(const Config& config,
@@ -234,6 +235,14 @@ std::string ChangeDetector::checkSubmapVisibleByInputData(Submap* submap,
 
 std::string ChangeDetector::checkSubmapVisibleByInputDataWithClassification(
     Submap* submap, InputData* input) {
+  if (submap->getIsoSurfacePoints().size() > config_.min_isolated_points_size) {
+    std::stringstream info;
+    info << "\nSubmap " << submap->getID() << " (" << submap->getName()
+         << ") points size: " << submap->getIsoSurfacePoints().size() << " > "
+         << config_.min_isolated_points_size;
+    return info.str();
+  }
+
   auto T_C_S = input->T_M_C().inverse() * submap->getT_M_S();
   const Camera& camera = *globals_->camera();
   const cv::Mat& depth_image = input->depthImage();
@@ -300,6 +309,12 @@ std::string ChangeDetector::checkSubmapVisibleByInputDataWithClassification(
     if (pair.second > max_projected_num) {
       max_projected_num = pair.second;
       max_instance_id = pair.first;
+    }
+  }
+
+  if (config_.classification_use_no_class) {
+    if (projected_instance_nums.count(0) != 0) {
+      max_projected_num += projected_instance_nums[0];
     }
   }
 

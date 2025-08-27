@@ -49,6 +49,7 @@ class ChangeDetector {
     // Whether to use the classification information in input data to detect
     // change for tiny object
     bool use_classification_for_tiny = false;
+    int min_isolated_points_size = 500;
     // Only handle tiny objects on background
     bool classification_only_background = true;
     // Use no class as a type of class

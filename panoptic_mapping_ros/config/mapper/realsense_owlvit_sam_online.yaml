@@ -20,10 +20,10 @@ camera:
   verbosity: 1
   width: 640  # Px
   height: 480
-  vx: 326.478
-  vy: 243.792
-  fx: 386.275
-  fy: 385.776
+  vx: 322.398
+  vy: 240.039
+  fx: 387.449
+  fy: 386.943
   max_range: 2.0  # m
   min_range: 0.5
   
@@ -61,7 +61,7 @@ freespace_allocator:
 id_tracker:
   type: detectron # ground_truth, projective, detectron, single_tsdf
   verbosity: 3
-  # whitelist_classes: toy,doll,vegetable,vegetable toy,vegetable doll,chilli doll,bitter gourd doll,eggplant doll    
+  whitelist_classes: toy,doll,vegetable,vegetable toy,vegetable doll,chilli doll,bitter gourd doll,eggplant doll    
   
   # Projective ID tracker
   depth_tolerance: -2  # m, negative = #vs
@@ -94,7 +94,7 @@ map_management:
   # Frequencies
   prune_active_blocks_frequency: 1 
   activity_management_frequency: 1
-  change_detection_frequency: 5
+  change_detection_frequency: 1
   
   # Behavior
   merge_deactivated_submaps_if_possible: true
@@ -127,6 +127,7 @@ map_management:
     match_weak_average_distance: -4 # m, negative = #vs
     detection_threads: 1
     use_classification_for_tiny: true
+    min_isolated_points_size: 3000
     classification_only_background: false
     classification_use_no_class: true
     limit_range: true
