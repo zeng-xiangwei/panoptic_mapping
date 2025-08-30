@@ -5,6 +5,7 @@ from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.substitutions import FindPackageShare
 from launch.conditions import IfCondition, UnlessCondition
+import os
 
 
 def generate_launch_description():
@@ -44,7 +45,8 @@ def generate_launch_description():
                 LaunchConfiguration('config')
             ]),
             'load_map': LaunchConfiguration('load_map'),
-            'load_file': LaunchConfiguration('load_file')
+            'load_file': LaunchConfiguration('load_file'),
+            # 'log_dir': os.path.expanduser('~/.ros/log')
         }],
         remappings=[
             ('color_image_in', '/camera/camera/color/image_raw'),

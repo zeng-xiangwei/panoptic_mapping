@@ -9,6 +9,7 @@ class PanopticMapperNode : public rclcpp::Node {
     this->declare_parameter<std::string>("config_path", "");
     this->declare_parameter<bool>("load_map", false);
     this->declare_parameter<std::string>("load_file", "");
+    this->declare_parameter<std::string>("log_dir", "");
   }
 };
 
@@ -26,6 +27,12 @@ int main(int argc, char** argv) {
 
   // Setup node.
   auto node = std::make_shared<PanopticMapperNode>("panoptic_mapper");
+  std::string log_dir;
+  node->get_parameter("log_dir", log_dir);
+  if (!log_dir.empty()) {
+    FLAGS_log_dir = log_dir;
+    LOG(INFO) << "Logging to " << log_dir;
+  }
   panoptic_mapping::PanopticMapper mapper(node);
 
   // Setup spinning.
