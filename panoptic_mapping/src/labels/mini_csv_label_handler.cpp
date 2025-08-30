@@ -20,6 +20,8 @@ config_utilities::Factory::RegistrationRos<LabelHandlerBase,
 void MiniCsvLabelHandler::Config::setupParamsAndPrinting() {
   setupParam("verbosity", &verbosity);
   setupParam("file_name", &file_name);
+  setupParam("use_whitelist", &use_whitelist);
+  setupParam("whitelist_file_name", &whitelist_file_name);
 }
 
 void MiniCsvLabelHandler::Config::checkParams() const {
@@ -36,6 +38,10 @@ MiniCsvLabelHandler::MiniCsvLabelHandler(const Config& config,
                                                        << config_.toString();
   // Setup the labels from csv file.
   readLabelsFromFile();
+
+  if (config_.use_whitelist && !config_.whitelist_file_name.empty()) {
+    readWhiteListFromFile();
+  }
 }
 
 void MiniCsvLabelHandler::readLabelsFromFile() {
@@ -97,6 +103,32 @@ void MiniCsvLabelHandler::readLabelsFromFile() {
            << field_count[i] / static_cast<float>(num_labels) * 100.f << "%)";
     }
   }
+  LOG_IF(INFO, config_.verbosity >= 1) << info.str();
+}
+
+void MiniCsvLabelHandler::readWhiteListFromFile() {
+  io::CSVReader<1> in(config_.whitelist_file_name);
+  in.read_header(io::ignore_extra_column, "ClassName");
+
+  bool read_row = true;
+  int missed_count = -1;  // The header is also counter.
+  while (read_row) {
+    std::string name;
+    read_row = in.read_row(name);
+
+    // Write all found values to the label.
+    LabelEntry label;
+    if (!name.empty()) {
+      whitelist_classes_.insert(name);
+    } else {
+      missed_count += 1;
+      continue;
+    }
+  }
+
+  std::stringstream info;
+  info << "Read whitelist from " << config_.whitelist_file_name << ".Found "
+       << whitelist_classes_.size() << " classes in whitelist.\n";
   LOG_IF(INFO, config_.verbosity >= 1) << info.str();
 }
 

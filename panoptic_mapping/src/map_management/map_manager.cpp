@@ -173,7 +173,7 @@ void MapManager::manageSubmapActivity(SubmapCollection* submaps) {
 }
 
 void MapManager::performChangeDetection(SubmapCollection* submaps) {
-  tsdf_registrator_->checkSubmapCollectionForChange(submaps);
+  tsdf_registrator_->checkSubmapCollectionForChange(submaps, globals_->getWhiteList());
   if (config_.detect_disappear_by_sensor_data && input_ != nullptr) {
     change_detector_->checkSubmapCollectionVisibleByInputData(submaps, input_);
   }

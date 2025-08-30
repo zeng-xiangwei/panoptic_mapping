@@ -175,7 +175,7 @@ class SubmapVisualizer {
   tf2_ros::TransformBroadcaster tf_broadcaster_;
 
   // Occupancy
-  std::set<std::string> classes_to_pub_for_occ_;
+  std::unordered_set<std::string> classes_to_pub_for_occ_;
 
  private:
   const Config config_;

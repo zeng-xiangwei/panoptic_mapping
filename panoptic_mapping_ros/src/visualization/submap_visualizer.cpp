@@ -63,7 +63,7 @@ SubmapVisualizer::SubmapVisualizer(const Config& config,
   setColorMode(colorModeFromString(config_.color_mode));
   id_color_map_.setItemsPerRevolution(config_.submap_color_discretization);
   
-  parseClasses(config_.class_type_to_pub_for_occ, classes_to_pub_for_occ_);
+  classes_to_pub_for_occ_ = globals_->getWhiteList();
   LOG(INFO) << "Classes to publish for occupancy size: " << classes_to_pub_for_occ_.size();
   for (auto class_name : classes_to_pub_for_occ_) {
     LOG(INFO) << "Classes name: " << class_name;

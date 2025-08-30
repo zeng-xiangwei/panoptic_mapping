@@ -67,7 +67,9 @@ class TsdfRegistrator {
   explicit TsdfRegistrator(const Config& config);
   virtual ~TsdfRegistrator() = default;
 
-  void checkSubmapCollectionForChange(SubmapCollection* submaps) const;
+  void checkSubmapCollectionForChange(
+      SubmapCollection* submaps,
+      const std::unordered_set<std::string>& whitelist) const;
 
   void mergeMatchingSubmaps(SubmapCollection* submaps);
 

@@ -67,6 +67,8 @@ void ChangeDetector::checkSubmapCollectionVisibleByInputData(
   std::vector<int> id_list;
   const Camera& camera = *globals_->camera();
   const Transformation& T_M_C = input->T_M_C();
+
+  const std::unordered_set<std::string> whitelist = globals_->getWhiteList();
   for (const Submap& submap : *submaps) {
     if (!submap.isActive() && submap.getLabel() != PanopticLabel::kFreeSpace &&
         !submap.getIsoSurfacePoints().empty() &&
@@ -74,6 +76,10 @@ void ChangeDetector::checkSubmapCollectionVisibleByInputData(
       const Point center_C = T_M_C.inverse() * submap.getT_M_S() *
                              submap.getBoundingVolume().getCenter();
       if (!camera.pointIsInViewFrustum(center_C)) {
+        continue;
+      }
+
+      if (!whitelist.empty() && whitelist.count(submap.getClassName()) == 0) {
         continue;
       }
       id_list.emplace_back(submap.getID());

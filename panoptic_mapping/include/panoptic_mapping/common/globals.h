@@ -25,6 +25,9 @@ class Globals {
   const std::shared_ptr<LabelHandlerBase>& labelHandler() const {
     return label_handler_;
   }
+  const std::unordered_set<std::string> getWhiteList() const {
+    return label_handler_->getWhiteList();
+  }
 
  private:
   // Components.

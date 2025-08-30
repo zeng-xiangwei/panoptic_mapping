@@ -33,6 +33,7 @@ class LabelHandlerBase {
   const voxblox::Color& getColor(int segmentation_id) const;
   const std::string& getName(int segmentation_id) const;
   const LabelEntry& getLabelEntry(int segmentation_id) const;
+  const std::unordered_set<std::string> getWhiteList() const;
 
   /**
    * @brief Get the LabelEntry if it exists in a combined lookup.
@@ -51,6 +52,9 @@ class LabelHandlerBase {
   // List of the labels associated with each segmentation ID. Labels are stored
   // by pointer such that derived label types can also be stored here.
   std::unordered_map<int, std::unique_ptr<LabelEntry>> labels_;
+
+  // Whitelist of classes to build map. Only operate classes in whitelist
+  std::unordered_set<std::string> whitelist_classes_;
 };
 
 }  // namespace panoptic_mapping

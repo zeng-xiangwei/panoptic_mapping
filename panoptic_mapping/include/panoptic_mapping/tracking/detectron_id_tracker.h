@@ -18,7 +18,6 @@ class DetectronIDTracker : public ProjectiveIDTracker {
   struct Config : public config_utilities::Config<Config> {
     int verbosity = 4;
     ProjectiveIDTracker::Config projective_id_tracker;
-    std::string whitelist_classes = "";
 
     Config() { setConfigName("DetectronIDTracker"); }
 
@@ -37,7 +36,6 @@ class DetectronIDTracker : public ProjectiveIDTracker {
                          InputData* input) override;
   bool classesMatch(int input_id, int submap_class_id) override;
   std::vector<float> getEmbeddingVector(int input_id) override;
-  void parseWhitelist(const std::string& whitelist);
 
  public:
   static config_utilities::Factory::RegistrationRos<

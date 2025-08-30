@@ -16,6 +16,9 @@ use_saved_embeddings: true
 labels:
   type: mini_csv
   file_name: /home/xiangweizeng/3D_slam/sematic-mapping/panoptic_mapping_ws/src/panoptic_mapping/panoptic_mapping_ros/config/classes/realsense_labels_mini.csv
+  use_whitelist: false
+  whitelist_file_name: /home/xiangweizeng/3D_slam/sematic-mapping/panoptic_mapping_ws/src/panoptic_mapping/panoptic_mapping_ros/config/classes/realsense_whitelist.csv
+
 camera:
   verbosity: 1
   width: 640  # Px
@@ -60,8 +63,7 @@ freespace_allocator:
 
 id_tracker:
   type: detectron # ground_truth, projective, detectron, single_tsdf
-  verbosity: 3
-  whitelist_classes: toy,doll,vegetable,vegetable toy,vegetable doll,chilli doll,bitter gourd doll,eggplant doll    
+  verbosity: 3  
   
   # Projective ID tracker
   depth_tolerance: -2  # m, negative = #vs
@@ -156,7 +158,6 @@ visualization:
     visualize_bounding_volumes: true
     include_free_space: false
     mesh_min_weight: 0.000001
-    class_type_to_pub_for_occ: toy,doll,vegetable toy,vegetable doll
   
   planning:
     verbosity: 1

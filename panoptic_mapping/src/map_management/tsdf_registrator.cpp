@@ -50,7 +50,8 @@ TsdfRegistrator::TsdfRegistrator(const Config& config)
 }
 
 void TsdfRegistrator::checkSubmapCollectionForChange(
-    SubmapCollection* submaps) const {
+    SubmapCollection* submaps,
+    const std::unordered_set<std::string>& whitelist) const {
   auto t_start = std::chrono::high_resolution_clock::now();
   std::string info;
 
@@ -60,6 +61,9 @@ void TsdfRegistrator::checkSubmapCollectionForChange(
     if (!submap.isActive() && submap.getLabel() != PanopticLabel::kFreeSpace &&
         !submap.getIsoSurfacePoints().empty() &&
         submap.getChangeState() != ChangeState::kAbsent) {
+      if (!whitelist.empty() && whitelist.count(submap.getClassName()) == 0) {
+        continue;
+      }
       id_list.emplace_back(submap.getID());
     }
   }

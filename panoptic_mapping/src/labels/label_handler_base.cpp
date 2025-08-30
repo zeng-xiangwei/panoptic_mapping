@@ -57,4 +57,8 @@ bool LabelHandlerBase::getLabelEntryIfExists(int segmentation_id,
 
 size_t LabelHandlerBase::numberOfLabels() const { return labels_.size(); }
 
+const std::unordered_set<std::string> LabelHandlerBase::getWhiteList() const {
+  return whitelist_classes_;
+}
+
 }  // namespace panoptic_mapping

@@ -20,7 +20,6 @@ void DetectronIDTracker::Config::checkParams() const {
 void DetectronIDTracker::Config::setupParamsAndPrinting() {
   setupParam("verbosity", &verbosity);
   setupParam("projective_id_tracker", &projective_id_tracker);
-  setupParam("whitelist_classes", &whitelist_classes);
 }
 
 DetectronIDTracker::DetectronIDTracker(const Config& config,
@@ -30,7 +29,13 @@ DetectronIDTracker::DetectronIDTracker(const Config& config,
                           false) {
   LOG_IF(INFO, config_.verbosity >= 1) << "\n" << config_.toString();
   addRequiredInput(InputData::InputType::kDetectronLabels);
-  parseWhitelist(config_.whitelist_classes);
+  whitelist_classes_ = globals_->getWhiteList();
+
+  std::stringstream info;
+  for (auto class_name : whitelist_classes_) {
+    info << class_name << ",";
+  }
+  LOG_IF(INFO, config_.verbosity >= 1) << "Whitelist: " << info.str();
 }
 
 void DetectronIDTracker::processInput(SubmapCollection* submaps,
@@ -114,23 +119,6 @@ std::vector<float> DetectronIDTracker::getEmbeddingVector(int input_id) {
   }
 
   return it->second.embedding_vector;
-}
-
-void DetectronIDTracker::parseWhitelist(const std::string& whitelist_string) {
-  whitelist_classes_.clear();
-
-  if (whitelist_string.empty()) {
-    return;
-  }
-
-  std::stringstream ss(whitelist_string);
-  std::string class_name;
-
-  while (std::getline(ss, class_name, ',')) {
-    if (!class_name.empty()) {
-      whitelist_classes_.insert(class_name);
-    }
-  }
 }
 
 }  // namespace panoptic_mapping
