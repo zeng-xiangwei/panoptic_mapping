@@ -304,7 +304,15 @@ void ChangedSubmapVisualizer::publishChangesForVln(
     }
   }
 
-  vln_map_update_pub_->publish(result);
+  bool updated = false;
+  if (result.add_objects.size() > 0 || result.del_objects.size() > 0 ||
+      result.update_objects.size() > 0) {
+    updated = true;
+  }
+
+  if (updated) {
+    vln_map_update_pub_->publish(result);
+  }
 #endif
 }
 
@@ -346,9 +354,9 @@ ChangedSubmapVisualizer::computeStandardOBB(
   Eigen::Vector3f eigenvalues = solver.eigenvalues();
   Eigen::Matrix3f eigenvectors = solver.eigenvectors();
   if (eigenvectors.determinant() < 0) {
-    eigenvectors.col(0) = - eigenvectors.col(0);
+    eigenvectors.col(0) = -eigenvectors.col(0);
   }
-  
+
   OrientedBoundingBox obb;
 
   Eigen::Vector3f min_pt, max_pt;
