@@ -38,6 +38,17 @@ ChangedSubmapVisualizer::ChangedSubmapVisualizer(const Config& config,
 
 void ChangedSubmapVisualizer::visualizeChangedSubmaps(
     SubmapCollection* submaps) {
+#ifdef VLN_MSGS_FOUND
+  if (!subscriber_is_active_) {
+    if (vln_map_update_pub_->get_subscription_count() > 0) {
+      subscriber_is_active_ = true;
+    } else {
+      LOG(WARNING) << "No subscriber for vln_map_update";
+      return;
+    }
+  }
+#endif
+
   std::chrono::system_clock::time_point t0 = std::chrono::system_clock::now();
   // 检测变化的物体
   findChangedSubmaps(*submaps);
@@ -311,6 +322,7 @@ void ChangedSubmapVisualizer::publishChangesForVln(
   }
 
   if (updated) {
+    LOG(INFO) << "Publishing changes for VLN.";
     vln_map_update_pub_->publish(result);
   }
 #endif

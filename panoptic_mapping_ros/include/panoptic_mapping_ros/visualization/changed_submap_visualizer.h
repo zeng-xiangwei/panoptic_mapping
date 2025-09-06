@@ -144,6 +144,9 @@ class ChangedSubmapVisualizer {
   std::unordered_map<int, SubmapInfo> submap_infos_;
   const SubmapCollection* previous_submaps_ =
       nullptr;  // Only for tracking, not for use!
+  
+  // 发布 vln 物体变化消息时，需要等待接收着就绪再发布
+  bool subscriber_is_active_ = false;
 };
 
 }  // namespace panoptic_mapping
