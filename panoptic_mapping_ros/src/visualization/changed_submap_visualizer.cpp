@@ -97,6 +97,9 @@ void ChangedSubmapVisualizer::findChangedSubmaps(SubmapCollection& submaps) {
   ids.reserve(submap_infos_.size());
   for (const auto& id_info_pair : submap_infos_) {
     ids.emplace_back(id_info_pair.first);
+    if (id_info_pair.first != id_info_pair.second.id) {
+      LOG(ERROR) << "key: " << id_info_pair.first << " != id: " << id_info_pair.second.id;
+    }
   }
   submaps.updateIDList(ids, &new_ids, &deleted_ids);
 
@@ -143,6 +146,12 @@ void ChangedSubmapVisualizer::findChangedSubmaps(SubmapCollection& submaps) {
 
   // Check updated Submaps in old.
   for (int id : ids) {
+    if (submap_infos_.count(id) == 0) {
+      // 因为在新增判断中，会删除空间重复物体，因此这里变化判断时，需要先判断一下物体是否存在
+      LOG(INFO) << "id: " << id << " not in submap_infos_ for update";
+      continue;
+    }
+
     if (submap_infos_[id].change_type == ChangeType::kDeleted) {
       continue;
     }
@@ -190,19 +199,19 @@ void ChangedSubmapVisualizer::findChangedSubmaps(SubmapCollection& submaps) {
       switch (kv.second.change_type) {
         case ChangeType::kAdded:
           add_count++;
-          ss_add << kv.first << " ";
+          ss_add << kv.second.id << "(key:" << kv.first << ")" << " ";
           break;
         case ChangeType::kDeleted:
           del_count++;
-          ss_del << kv.first << " ";
+          ss_del << kv.second.id << "(key:" << kv.first << ")" << " ";
           break;
         case ChangeType::kChanged:
           change_count++;
-          ss_change << kv.first << " ";
+          ss_change << kv.second.id << "(key:" << kv.first << ")"  << " ";
           break;
         case ChangeType::kUnChanged:
           unchange_count++;
-          ss_unchange << kv.first << " ";
+          ss_unchange << kv.second.id << "(key:" << kv.first << ")" << " ";
           break;
         default:
           break;
@@ -308,10 +317,13 @@ void ChangedSubmapVisualizer::publishChangesForVln(
     obj.embedding_vector = info.embedding_vector;
     if (info.change_type == ChangeType::kAdded) {
       result.add_objects.push_back(obj);
+      LOG(INFO) << "add submap: " << obj.id << "(" << info.id << ")" << ", name: " << obj.name << "(" << info.name << ")";
     } else if (info.change_type == ChangeType::kDeleted) {
       result.del_objects.push_back(obj);
+      LOG(INFO) << "del submap: " << obj.id << "(" << info.id << ")" << ", name: " << obj.name << "(" << info.name << ")";
     } else if (info.change_type == ChangeType::kChanged) {
       result.update_objects.push_back(obj);
+      LOG(INFO) << "change submap: " << obj.id  << "(" << info.id << ")" << ", name: " << obj.name << "(" << info.name << ")";
     }
   }
 
