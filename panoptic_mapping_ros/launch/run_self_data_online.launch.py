@@ -24,7 +24,7 @@ def generate_launch_description():
     load_file_arg = DeclareLaunchArgument(
         'load_file',
         default_value=
-        '/mnt/data/3d-lidar/semantic/panoptic_mapping/test_result/run1.panmap')
+        '/home/diana/Code/panoptic_mapping_ws/data/map.panmap')
 
     # 包路径查找
     panoptic_mapping_ros_pkg = FindPackageShare('panoptic_mapping_ros')
