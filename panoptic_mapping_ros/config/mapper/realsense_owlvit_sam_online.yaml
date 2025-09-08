@@ -15,9 +15,9 @@ use_saved_embeddings: true
 
 labels:
   type: mini_csv
-  file_name: /home/xiangweizeng/3D_slam/sematic-mapping/panoptic_mapping_ws/src/panoptic_mapping/panoptic_mapping_ros/config/classes/realsense_labels_mini.csv
-  use_whitelist: false
-  whitelist_file_name: /home/xiangweizeng/3D_slam/sematic-mapping/panoptic_mapping_ws/src/panoptic_mapping/panoptic_mapping_ros/config/classes/realsense_whitelist.csv
+  file_name: /home/diana/Code/panoptic_mapping_ws/install/panoptic_mapping_ros/share/panoptic_mapping_ros/config/classes/realsense_labels_mini.csv
+  use_whitelist: true
+  whitelist_file_name: /home/diana/Code/panoptic_mapping_ws/install/panoptic_mapping_ros/share/panoptic_mapping_ros/config/classes/realsense_whitelist.csv
 
 camera:
   verbosity: 1
