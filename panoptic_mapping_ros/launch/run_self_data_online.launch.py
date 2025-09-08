@@ -20,7 +20,7 @@ def generate_launch_description():
     shutdown_when_finished_arg = DeclareLaunchArgument(
         'shutdown_when_finished', default_value='false')
 
-    load_map_arg = DeclareLaunchArgument('load_map', default_value='false')
+    load_map_arg = DeclareLaunchArgument('load_map', default_value='true')
     load_file_arg = DeclareLaunchArgument(
         'load_file',
         default_value=
