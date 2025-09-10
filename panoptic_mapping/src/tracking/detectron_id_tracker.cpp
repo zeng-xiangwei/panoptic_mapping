@@ -121,4 +121,18 @@ std::vector<float> DetectronIDTracker::getEmbeddingVector(int input_id) {
   return it->second.embedding_vector;
 }
 
+float DetectronIDTracker::getEmbeddingScore(int input_id) {
+  if (input_id == 0) {
+    // The id 0 is used to denote no-predictions by detectron.
+    return 0.0f;
+  }
+  auto it = labels_->find(input_id);
+  if (it == labels_->end()) {
+    // No known input label.
+    return 0.0f;
+  }
+
+  return it->second.score;
+}
+
 }  // namespace panoptic_mapping

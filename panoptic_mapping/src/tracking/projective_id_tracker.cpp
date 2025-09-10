@@ -143,14 +143,16 @@ void ProjectiveIDTracker::processInput(SubmapCollection* submaps,
       input_to_output[input_id] = submap_id;
       submaps->getSubmapPtr(submap_id)->setWasTracked(true);
       embedding_vector = getEmbeddingVector(input_id);
-      submaps->getSubmapPtr(submap_id)->updateEmbeddingVector(embedding_vector);
+      float embedding_score = getEmbeddingScore(input_id);
+      submaps->getSubmapPtr(submap_id)->updateEmbeddingVector(embedding_vector, embedding_score);
     } else if (allocate_new_submap) {
       n_new++;
       Submap* new_submap = allocateSubmap(input_id, submaps, input);
       if (new_submap) {
         input_to_output[input_id] = new_submap->getID();
         embedding_vector = getEmbeddingVector(input_id);
-        new_submap->setEmbeddingVector(embedding_vector);
+        float embedding_score = getEmbeddingScore(input_id);
+        new_submap->setEmbeddingVector(embedding_vector, embedding_score);
       } else {
         input_to_output[input_id] = -1;
       }
@@ -242,6 +244,10 @@ bool ProjectiveIDTracker::classesMatch(int input_id, int submap_class_id) {
 
 std::vector<float> ProjectiveIDTracker::getEmbeddingVector(int input_id) {
   return std::vector<float>();
+}
+
+float ProjectiveIDTracker::getEmbeddingScore(int input_id) {
+  return 0.0f;
 }
 
 TrackingInfoAggregator ProjectiveIDTracker::computeTrackingData(

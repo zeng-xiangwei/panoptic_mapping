@@ -14,6 +14,7 @@ message SubmapProto {
   optional int32 change_state = 11;
   repeated float embedding_vector = 17;
   optional int32 embedding_weight = 18;
+  optional float embedding_score = 19;
 
   // Tsdf Layer.
   optional uint32 num_blocks = 2;

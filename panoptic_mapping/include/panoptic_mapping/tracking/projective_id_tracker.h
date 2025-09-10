@@ -81,6 +81,7 @@ class ProjectiveIDTracker : public IDTrackerBase {
   virtual Submap* allocateSubmap(int input_id, SubmapCollection* submaps,
                                  InputData* input);
   virtual std::vector<float> getEmbeddingVector(int input_id);
+  virtual float getEmbeddingScore(int input_id);
   TrackingInfoAggregator computeTrackingData(SubmapCollection* submaps,
                                              InputData* input);
   TrackingInfo renderTrackingInfo(const Submap& submap,

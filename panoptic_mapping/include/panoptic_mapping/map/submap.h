@@ -95,6 +95,7 @@ class Submap {
     return embedding_vector_;
   }
   float getEmbeddingWeight() const { return embedding_weight_; }
+  float getEmbeddingScore() const { return embedding_score_; }
   PanopticLabel getLabel() const { return label_; }
   const std::string& getName() const { return name_; }
   const std::string& getFrameName() const { return frame_name_; }
@@ -146,13 +147,13 @@ class Submap {
    * @param class_name
    */
   void setClassName(const std::string& class_name);
-  void setEmbeddingVector(const std::vector<float>& embedding_vector, float weight = 1.0);
+  void setEmbeddingVector(const std::vector<float>& embedding_vector, float score = 0.0);
 
   /**
    * @brief Update embedding vector. By average.
    * 
    */
-  void updateEmbeddingVector(const std::vector<float>& embedding_vector, float weight = 1.0);
+  void updateEmbeddingVector(const std::vector<float>& embedding_vector, float score = 0.0);
 
   void addDisappearCount(int add = 1);
 
@@ -279,7 +280,8 @@ class Submap {
   PanopticLabel label_ = PanopticLabel::kUnknown;
   std::string name_ = "Unknown";
   std::vector<float> embedding_vector_;
-  float embedding_weight_ = 0.f;
+  float embedding_score_ = 0.f;
+  float embedding_weight_ = 0.f;  // 废弃该字段
 
   // State.
   bool is_active_ = true;

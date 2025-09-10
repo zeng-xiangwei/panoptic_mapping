@@ -125,6 +125,7 @@ void Submap::getProto(SubmapProto* proto) const {
     proto->add_embedding_vector(embedding_vector_[i]);
   }
   proto->set_embedding_weight(embedding_weight_);
+  proto->set_embedding_score(embedding_score_);
 
   // Store TSDF data.
   proto->set_num_blocks(tsdf_layer_->getNumberOfAllocatedBlocks());
@@ -231,6 +232,9 @@ std::unique_ptr<Submap> Submap::loadFromStream(
     submap->embedding_vector_.push_back(submap_proto.embedding_vector(i));
   }
   submap->embedding_weight_ = submap_proto.embedding_weight();
+  if (submap_proto.has_embedding_score()) {
+    submap->embedding_score_ = submap_proto.embedding_score();
+  }
 
   // Load the TSDF layer.
   if (!voxblox::io::LoadBlocksFromStream(
@@ -282,19 +286,19 @@ void Submap::setClassName(const std::string& class_name) {
 }
 
 void Submap::setEmbeddingVector(const std::vector<float>& embedding_vector,
-                                float weight) {
+                                float score) {
   embedding_vector_ = embedding_vector;
-  embedding_weight_ = weight;
+  embedding_score_ = score;
 }
 
 void Submap::updateEmbeddingVector(const std::vector<float>& input_vec,
-                                   float weight) {
+                                   float score) {
   if (input_vec.empty()) {
     return;
   }
   if (embedding_vector_.empty()) {
     embedding_vector_ = input_vec;
-    embedding_weight_ = weight;
+    embedding_score_ = score;
     return;
   }
 
@@ -304,14 +308,10 @@ void Submap::updateEmbeddingVector(const std::vector<float>& input_vec,
     return;
   }
 
-  float weight_sum = embedding_weight_ + weight;
-  for (int i = 0; i < input_vec.size(); ++i) {
-    embedding_vector_[i] =
-        (embedding_vector_[i] * embedding_weight_ + input_vec[i] * weight) /
-        weight_sum;
+  if (score > embedding_score_) {
+    // 保留得分最高的特征向量
+    embedding_vector_ = input_vec;
   }
-  embedding_weight_ += weight;
-  embedding_weight_ = std::min(embedding_weight_, config_.max_embedding_weight);
 }
 
 void Submap::finishActivePeriod() {
@@ -398,6 +398,7 @@ std::unique_ptr<Submap> Submap::clone(
   result->class_name_ = class_name_;
   result->embedding_vector_ = embedding_vector_;
   result->embedding_weight_ = embedding_weight_;
+  result->embedding_score_ = embedding_score_;
   result->label_ = label_;
   result->name_ = name_;
   result->is_active_ = is_active_;

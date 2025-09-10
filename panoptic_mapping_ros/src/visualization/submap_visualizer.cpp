@@ -155,7 +155,7 @@ void SubmapVisualizer::visualizeAll(SubmapCollection* submaps) {
       ss << ")";
       LOG(INFO) << "Submap id: " << submap.getID()
                 << ", embedding vector: " << ss.str()
-                << ", embedding weight: " << submap.getEmbeddingWeight();
+                << ", embedding score: " << submap.getEmbeddingScore();
     }
   }
 }
