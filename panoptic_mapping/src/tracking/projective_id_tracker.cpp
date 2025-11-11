@@ -144,7 +144,8 @@ void ProjectiveIDTracker::processInput(SubmapCollection* submaps,
       submaps->getSubmapPtr(submap_id)->setWasTracked(true);
       embedding_vector = getEmbeddingVector(input_id);
       float embedding_score = getEmbeddingScore(input_id);
-      submaps->getSubmapPtr(submap_id)->updateEmbeddingVector(embedding_vector, embedding_score);
+      submaps->getSubmapPtr(submap_id)->updateEmbeddingVector(embedding_vector,
+                                                              embedding_score);
     } else if (allocate_new_submap) {
       n_new++;
       Submap* new_submap = allocateSubmap(input_id, submaps, input);
@@ -186,6 +187,16 @@ void ProjectiveIDTracker::processInput(SubmapCollection* submaps,
   // Translate the id image.
   for (auto it = input->idImagePtr()->begin<int>();
        it != input->idImagePtr()->end<int>(); ++it) {
+    if (input_to_output.count(*it) == 0) {
+      // tracking_data.getInputIDs()
+      // 中由于限制了深度范围，因此不能保证所有的输入分割id都有对应的输出id（submap
+      // id），因此要将未处理的 id 的输出标记为 -1 如果不做处理，可能会对 submap id
+      // = 0 的物体造成影响。但是考虑到后面使用 idImage 时还会结合深度范围使用，因此
+      // 就算不修改也不会对建图造成影响
+      LOG(WARNING) << "input segment id " << *it
+                   << " not found in output submap ids.";
+      input_to_output[*it] = -1;
+    }
     *it = input_to_output[*it];
   }
 
@@ -246,9 +257,7 @@ std::vector<float> ProjectiveIDTracker::getEmbeddingVector(int input_id) {
   return std::vector<float>();
 }
 
-float ProjectiveIDTracker::getEmbeddingScore(int input_id) {
-  return 0.0f;
-}
+float ProjectiveIDTracker::getEmbeddingScore(int input_id) { return 0.0f; }
 
 TrackingInfoAggregator ProjectiveIDTracker::computeTrackingData(
     SubmapCollection* submaps, InputData* input) {

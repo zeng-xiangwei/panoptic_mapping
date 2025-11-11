@@ -771,12 +771,6 @@ bool ChangedSubmapVisualizer::deleteRepeatByOBB(
     std::stringstream ss;
     for (int delete_id : delete_ids) {
       ss << delete_id << " ";
-      if (submap_infos_[delete_id].change_type == ChangeType::kAdded) {
-        // 保证 KDelete 属性的是之前已经存在的，如果是 kAdded
-        // 则说明之前不存在，可以直接删除
-        submap_infos_.erase(delete_id);
-        continue;
-      }
       submap_infos_[delete_id].change_type = ChangeType::kDeleted;
     }
     LOG_IF(INFO, config_.verbosity >= 4)

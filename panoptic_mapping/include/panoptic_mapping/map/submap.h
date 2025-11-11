@@ -128,6 +128,9 @@ class Submap {
   }
   SubmapBoundingVolume* getBoundingVolumePtr() { return &bounding_volume_; }
   int getDisappearCount() const { return disappear_count_; }
+  std::vector<std::string> getDescriptsByVllm() const {
+    return descripts_by_vllm_;
+  };
 
   // Setters.
   void setDisappearCount(int count) { disappear_count_ = count; }
@@ -140,6 +143,9 @@ class Submap {
   void setIsActive(bool is_active) { is_active_ = is_active; }
   void setWasTracked(bool was_tracked) { was_tracked_ = was_tracked; }
   void setMatchRedetection(bool match) { match_redetection_ = match; }
+  void setDescriptsByVllm(const std::vector<std::string>& descripts) {
+    descripts_by_vllm_ = descripts;
+  }
 
   /**
    * @brief Set the Class Name, auto generate unique class id
@@ -147,13 +153,15 @@ class Submap {
    * @param class_name
    */
   void setClassName(const std::string& class_name);
-  void setEmbeddingVector(const std::vector<float>& embedding_vector, float score = 0.0);
+  void setEmbeddingVector(const std::vector<float>& embedding_vector,
+                          float score = 0.0);
 
   /**
    * @brief Update embedding vector. By average.
-   * 
+   *
    */
-  void updateEmbeddingVector(const std::vector<float>& embedding_vector, float score = 0.0);
+  void updateEmbeddingVector(const std::vector<float>& embedding_vector,
+                             float score = 0.0);
 
   void addDisappearCount(int add = 1);
 
@@ -309,6 +317,9 @@ class Submap {
 
   // Change detection.
   int disappear_count_ = 0;
+
+  // VLLM
+  std::vector<std::string> descripts_by_vllm_;
 };
 
 }  // namespace panoptic_mapping
