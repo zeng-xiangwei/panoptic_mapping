@@ -39,6 +39,7 @@ target_link_libraries(${PROJECT_NAME}_proto ${PROTOBUF_LIBRARIES})
 add_library(${PROJECT_NAME} SHARED
         src/common/camera.cpp
         src/common/input_data_user.cpp
+        src/common/input_data.cpp
         src/map/submap.cpp
         src/map/submap_collection.cpp
         src/map/submap_id.cpp
@@ -84,6 +85,7 @@ add_library(${PROJECT_NAME} SHARED
         src/tools/serialization.cpp
         src/tools/coloring.cpp
         src/tools/quat_transformation_protobuf_utils.cpp
+        src/tools/image_data_manager.cpp
         )
 target_link_libraries(${PROJECT_NAME}
     ${PROJECT_NAME}_proto

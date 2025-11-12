@@ -20,13 +20,13 @@ namespace panoptic_mapping {
 struct ImageData {
   int image_id;                                // 图像唯一ID
   double timestamp;                            // 图像时间戳
-  std::string image_file_path;                 // RGB图像文件路径
+  std::string rbg_image_file_path;             // RGB图像文件路径
   std::string id_image_file_path;              // ID图像文件路径
   std::unordered_set<int> associated_submaps;  // 关联的submap IDs
   bool is_processed = false;                   // 是否已被VL大模型处理
 
   // 内存中的实际图像数据（仅在缓存中存在）
-  cv::Mat image_data;     // RGB图像数据（内存中）
+  cv::Mat rgb_data;       // RGB图像数据（内存中）
   cv::Mat id_image_data;  // ID图像数据（内存中）
 
   // 默认构造函数
@@ -94,15 +94,25 @@ class ImageDataManager {
                    const DetectronLabels& detectron_labels, double timestamp,
                    const SubmapCollection& submaps);
 
-  // 获取图像数据（仅元数据）
-  std::shared_ptr<ImageData> getImageData(int image_id);
-
   // 获取第一个未处理图像数据，用于VL大模型输入
   std::shared_ptr<ImageData> getFirstNotProcessedImageDataForVLLM();
 
   // 处理VL大模型输出
   void processVLLMOutput(const VLLMOutputData& vllm_output,
                          SubmapCollection& submaps);
+
+  // 根据submap ID获取所有关联的图像
+  std::shared_ptr<ImageData> getImageForSubmap(int submap_id);
+
+  // 序列化图像信息到文件
+  void saveMappingsToFile(const std::string& filepath) const;
+
+  // 从文件加载图像信息
+  void loadMappingsFromFile(const std::string& filepath);
+
+  int unprocessedImageDataSize() const { return unprocessed_images_.size(); }
+
+ private:
   void updateSubmap(BoundingBoxInfoByVLLM box_info, Submap* submap);
 
   // 标记图像已被处理
@@ -113,49 +123,13 @@ class ImageDataManager {
 
   // 解除submap和图像之间的关联
   void dissociateSubmapFromImage(int submap_id, int image_id);
-
-  // 根据submap ID获取所有关联的图像
-  std::vector<int> getImagesForSubmap(int submap_id) const;
-
-  // 根据图像ID获取所有关联的submap
-  std::unordered_set<int> getSubmapsForImage(int image_id) const;
-
   // 当submap被删除时，清理相关联的图像数据
   void handleSubmapRemoval(int submap_id);
 
   // 清理不关联任何submap的图像数据
   void cleanupUnassociatedImages();
-
- private:
-  const Config config_;
-
-  // 图像数据存储（仅元数据，无实际图像数据）
-  std::unordered_map<int, std::shared_ptr<ImageData>> image_data_;
-
-  // Submap到图像的映射（一对多）
-  std::unordered_map<int, std::unordered_set<int>> submap_to_images_;
-
-  // 图像到Submap的映射（一对多）
-  std::unordered_map<int, std::unordered_set<int>> image_to_submaps_;
-
-  // 内存中的实际图像数据缓存（用于提高访问效率）
-  std::unordered_map<int, std::shared_ptr<ImageData>> image_cache_;
-
-  // 未处理图像ID集合
-  std::unordered_set<int> unprocessed_images_;
-
-  // 图像访问历史（用于LRU缓存策略）
-  std::list<int> image_access_history_;
-
-  // 当前图像ID计数器
-  int current_image_id_ = 0;
-
-  // 互斥锁保护线程安全
-  mutable std::mutex mutex_;
-
-  // 存储上一轮的 submap id，用于检测变化
-  std::set<int> last_submap_ids_;
-
+  // 获取图像数据（仅元数据）
+  std::shared_ptr<ImageData> getImageData(int image_id);
   // 判断是否需要保留图像
   bool needToRetainImageData(const SubmapCollection& submaps);
 
@@ -192,6 +166,36 @@ class ImageDataManager {
   // 创建仅包含元数据的图像数据副本
   std::shared_ptr<ImageData> createMetadataCopy(
       const std::shared_ptr<ImageData>& source);
+
+ private:
+  const Config config_;
+
+  // 图像数据存储（仅元数据，无实际图像数据）
+  std::unordered_map<int, std::shared_ptr<ImageData>> image_data_;
+
+  // Submap到图像的映射（一对多）
+  std::unordered_map<int, std::unordered_set<int>> submap_to_images_;
+
+  // 图像到Submap的映射（一对多）
+  std::unordered_map<int, std::unordered_set<int>> image_to_submaps_;
+
+  // 内存中的实际图像数据缓存（用于提高访问效率）
+  std::unordered_map<int, std::shared_ptr<ImageData>> image_cache_;
+
+  // 未处理图像ID集合
+  std::unordered_set<int> unprocessed_images_;
+
+  // 图像访问历史（用于LRU缓存策略）
+  std::list<int> image_access_history_;
+
+  // 当前图像ID计数器
+  int current_image_id_ = 0;
+
+  // 互斥锁保护线程安全
+  mutable std::mutex mutex_;
+
+  // 存储上一轮的 submap id，用于检测变化
+  std::set<int> last_submap_ids_;
 };
 
 }  // namespace panoptic_mapping

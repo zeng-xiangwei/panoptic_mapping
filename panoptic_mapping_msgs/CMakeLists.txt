@@ -8,10 +8,14 @@ find_package(rosidl_default_generators REQUIRED)
 
 find_package(builtin_interfaces REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 
 set(msg_files
   "msg/DetectronLabel.msg"
   "msg/DetectronLabels.msg"
+  "msg/BoxInfo.msg"
+  "msg/BoxRelationship.msg"
+  "msg/VllmProcessingMode.msg"
 )
 
 set(srv_files
@@ -19,12 +23,14 @@ set(srv_files
   "srv/SetVisualizationMode.srv"
   "srv/RemoveSubmap.srv"
   "srv/SubmapClassNameChange.srv"
+  "srv/GetSubmapImageData.srv"
+  "srv/VllmProcessing.srv"
 )
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   ${msg_files}
   ${srv_files}
-  DEPENDENCIES builtin_interfaces std_msgs
+  DEPENDENCIES builtin_interfaces std_msgs sensor_msgs
   ADD_LINTER_TESTS
 )
 

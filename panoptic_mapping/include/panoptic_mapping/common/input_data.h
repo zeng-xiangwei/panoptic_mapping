@@ -72,6 +72,9 @@ class InputData {
   InputData() = default;
   virtual ~InputData() = default;
 
+  InputData(const InputData& other);
+  InputData& operator=(const InputData& other);
+
   /* Data input */
   void setT_M_C(const Transformation& T_M_C) { T_M_C_ = T_M_C; }
   void setTimeStamp(double timestamp) { timestamp_ = timestamp; }

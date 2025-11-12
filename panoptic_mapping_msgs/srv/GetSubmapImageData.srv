@@ -1,0 +1,5 @@
+int32 submap_id
+---
+bool success
+sensor_msgs/Image rgb_image
+float64 img_timestamp

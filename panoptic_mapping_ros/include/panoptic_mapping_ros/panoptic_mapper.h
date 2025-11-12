@@ -26,6 +26,9 @@
 #include <rclcpp/rclcpp.hpp>
 #include <std_srvs/srv/empty.hpp>
 
+#include "panoptic_mapping/tools/image_data_manager.h"
+#include "panoptic_mapping_msgs/srv/get_submap_image_data.hpp"
+#include "panoptic_mapping_msgs/srv/vllm_processing.hpp"
 #include "panoptic_mapping_ros/input/input_synchronizer.h"
 #include "panoptic_mapping_ros/visualization/changed_submap_visualizer.h"
 #include "panoptic_mapping_ros/visualization/planning_visualizer.h"
@@ -35,6 +38,9 @@
 namespace panoptic_mapping {
 
 class PanopticMapper {
+  using GetSubmapImageData = panoptic_mapping_msgs::srv::GetSubmapImageData;
+  using VLLMProcessing = panoptic_mapping_msgs::srv::VllmProcessing;
+
  public:
   // Config.
   struct Config : public config_utilities::Config<Config> {
@@ -82,6 +88,9 @@ class PanopticMapper {
     // 是否使用文件保存的embedding向量，如果保存的地图文件与当前使用的检测分割模型不一致，则该变量应该置为false
     bool use_saved_embeddings = true;
 
+    // 调用 VL 大模型服务的超时时间，单位秒
+    float vllm_service_timeout = 60.0;
+
     Config() { setConfigName("PanopticMapper"); }
 
    protected:
@@ -91,7 +100,7 @@ class PanopticMapper {
 
   // Construction.
   PanopticMapper(rclcpp::Node::SharedPtr node);
-  virtual ~PanopticMapper() = default;
+  virtual ~PanopticMapper();
 
   // ROS callbacks.
   // Timers.
@@ -131,12 +140,16 @@ class PanopticMapper {
       const panoptic_mapping_msgs::srv::RemoveSubmap::Request::SharedPtr
           request,
       panoptic_mapping_msgs::srv::RemoveSubmap::Response::SharedPtr response);
-  
+
   bool changeSubmapClassNameCallback(
-      const panoptic_mapping_msgs::srv::SubmapClassNameChange::Request::SharedPtr
-          request,
+      const panoptic_mapping_msgs::srv::SubmapClassNameChange::Request::
+          SharedPtr request,
       panoptic_mapping_msgs::srv::SubmapClassNameChange::Response::SharedPtr
           response);
+
+  bool getSubmapImageDataCallback(
+      const GetSubmapImageData::Request::SharedPtr request,
+      GetSubmapImageData::Response::SharedPtr response);
 
   // Processing.
   // Integrate a set of input images. The input is usually gathered from ROS
@@ -182,6 +195,12 @@ class PanopticMapper {
   void setupRos();
   bool saveIsoSurfacePoints(const std::string& file_path);
 
+  // 图像管理线程函数
+  void imageManagementThread();
+  void vllmProcessingResponse(VLLMProcessing::Response::SharedPtr response);
+  // 获取图像管理模块未处理的图像数据，并调用VL大模型服务进行处理
+  void processNotProcessedImageDataForVLLM();
+
  private:
   // Node handles.
   rclcpp::Node::SharedPtr node_;
@@ -201,6 +220,7 @@ class PanopticMapper {
       remove_submap_srv_;
   rclcpp::Service<panoptic_mapping_msgs::srv::SubmapClassNameChange>::SharedPtr
       submap_class_name_change_srv_;
+  rclcpp::Service<GetSubmapImageData>::SharedPtr get_submap_image_data_srv_;
   rclcpp::TimerBase::SharedPtr visualization_timer_;
   rclcpp::TimerBase::SharedPtr data_logging_timer_;
   rclcpp::TimerBase::SharedPtr print_timing_timer_;
@@ -209,6 +229,8 @@ class PanopticMapper {
       segmented_point_cloud_pub_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
       colored_point_cloud_pub_;
+
+  rclcpp::Client<VLLMProcessing>::SharedPtr vllm_processing_client_;
 
   // Members.
   YAML::Node root_yaml_;
@@ -259,6 +281,15 @@ class PanopticMapper {
 
   // Run or stop, controled by service
   bool stop_running_ = false;
+  rclcpp::CallbackGroup::SharedPtr submap_service_callback_group_;
+
+  // 图像管理相关成员
+  std::unique_ptr<ImageDataManager> image_data_manager_;
+  std::mutex image_management_queue_mutex_;
+  std::condition_variable image_management_cv_;
+  std::thread image_management_thread_;
+  bool image_management_thread_running_ = true;
+  rclcpp::CallbackGroup::SharedPtr image_service_callback_group_;
 };
 
 }  // namespace panoptic_mapping

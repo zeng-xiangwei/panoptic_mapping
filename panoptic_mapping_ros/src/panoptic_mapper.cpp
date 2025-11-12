@@ -15,6 +15,8 @@
 
 #include "panoptic_mapping_ros/conversions/conversions.h"
 
+#include "cv_bridge/cv_bridge.h"
+
 namespace panoptic_mapping {
 
 // Modules that don't have a default type will be required to be explicitly set.
@@ -32,7 +34,8 @@ const std::map<std::string, std::pair<std::string, std::string>>
         {"vis_tracking", {"visualization/tracking", ""}},
         {"vis_planning", {"visualization/planning", ""}},
         {"vis_changed_submaps", {"visualization/changed_submaps", ""}},
-        {"data_writer", {"data_writer", "null"}}};
+        {"data_writer", {"data_writer", "null"}},
+        {"image_data_manager", {"image_data_manager", ""}}};
 
 void PanopticMapper::Config::checkParams() const {
   checkParamCond(!global_frame_name.empty(),
@@ -58,6 +61,7 @@ void PanopticMapper::Config::setupParamsAndPrinting() {
   setupParam("display_config_units", &display_config_units);
   setupParam("indicate_default_values", &indicate_default_values);
   setupParam("use_saved_embeddings", &use_saved_embeddings);
+  setupParam("vllm_service_timeout", &vllm_service_timeout);
 }
 
 PanopticMapper::PanopticMapper(rclcpp::Node::SharedPtr node)
@@ -78,6 +82,19 @@ PanopticMapper::PanopticMapper(rclcpp::Node::SharedPtr node)
   // Setup all components of the panoptic mapper.
   setupMembersFromYaml();
   setupRos();
+}
+
+PanopticMapper::~PanopticMapper() {
+  // 停止图像管理线程
+  {
+    std::lock_guard<std::mutex> lock(image_management_queue_mutex_);
+    image_management_thread_running_ = false;
+  }
+  image_management_cv_.notify_all();
+
+  if (image_management_thread_.joinable()) {
+    image_management_thread_.join();
+  }
 }
 
 void PanopticMapper::setupMembersFromYaml() {
@@ -150,6 +167,11 @@ void PanopticMapper::setupMembersFromYaml() {
   data_logger_ = config_utilities::FactoryYaml::create<DataWriterBase>(
       root_yaml_, defaultYamlKeyPath("data_writer"));
 
+  // 图像管理器
+  image_data_manager_ = std::make_unique<ImageDataManager>(
+      config_utilities::getConfigFromYaml<ImageDataManager::Config>(
+          root_yaml_, defaultYamlKeyPath("image_data_manager")));
+
   // Setup all requested inputs from all modules.
   InputData::InputTypes requested_inputs;
   std::vector<InputDataUser*> input_data_users = {
@@ -197,46 +219,73 @@ void PanopticMapper::setupRos() {
     }
   }
 
+  // 创建独立的回调组用于图像服务
+  image_service_callback_group_ =
+      node_->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
+  submap_service_callback_group_ =
+      node_->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
+
   // Setup all input topics.
   input_synchronizer_->advertiseInputTopics();
 
   // Services.
   save_map_srv_ =
       node_->create_service<panoptic_mapping_msgs::srv::SaveLoadMap>(
-          "save_map", std::bind(&PanopticMapper::saveMapCallback, this,
-                                std::placeholders::_1, std::placeholders::_2));
+          "save_map",
+          std::bind(&PanopticMapper::saveMapCallback, this,
+                    std::placeholders::_1, std::placeholders::_2),
+          rmw_qos_profile_services_default, submap_service_callback_group_);
 
   set_visualization_mode_srv_ =
       node_->create_service<panoptic_mapping_msgs::srv::SetVisualizationMode>(
           "set_visualization_mode",
           std::bind(&PanopticMapper::setVisualizationModeCallback, this,
-                    std::placeholders::_1, std::placeholders::_2));
+                    std::placeholders::_1, std::placeholders::_2),
+          rmw_qos_profile_services_default, submap_service_callback_group_);
   print_timings_srv_ = node_->create_service<std_srvs::srv::Empty>(
       "print_timings",
       [this](const std_srvs::srv::Empty::Request::SharedPtr req,
              std_srvs::srv::Empty::Response::SharedPtr res) -> bool {
         return printTimingsCallback(req, res);
-      });
+      },
+      rmw_qos_profile_services_default, submap_service_callback_group_);
   finish_mapping_srv_ = node_->create_service<std_srvs::srv::Empty>(
       "finish_mapping",
       std::bind(&PanopticMapper::finishMappingCallback, this,
-                std::placeholders::_1, std::placeholders::_2));
+                std::placeholders::_1, std::placeholders::_2),
+      rmw_qos_profile_services_default, submap_service_callback_group_);
 
   running_switch_srv_ = node_->create_service<std_srvs::srv::Empty>(
       "running_switch",
       std::bind(&PanopticMapper::runningSwitchCallback, this,
-                std::placeholders::_1, std::placeholders::_2));
+                std::placeholders::_1, std::placeholders::_2),
+      rmw_qos_profile_services_default, submap_service_callback_group_);
 
   remove_submap_srv_ =
       node_->create_service<panoptic_mapping_msgs::srv::RemoveSubmap>(
           "remove_submap",
           std::bind(&PanopticMapper::removeSubmapCallback, this,
-                    std::placeholders::_1, std::placeholders::_2));
+                    std::placeholders::_1, std::placeholders::_2),
+          rmw_qos_profile_services_default, submap_service_callback_group_);
   submap_class_name_change_srv_ =
       node_->create_service<panoptic_mapping_msgs::srv::SubmapClassNameChange>(
           "set_submap_class_name",
           std::bind(&PanopticMapper::changeSubmapClassNameCallback, this,
-                    std::placeholders::_1, std::placeholders::_2));
+                    std::placeholders::_1, std::placeholders::_2),
+          rmw_qos_profile_services_default, submap_service_callback_group_);
+
+  // 新增的图像管理服务（作为服务端）
+  get_submap_image_data_srv_ = node_->create_service<GetSubmapImageData>(
+      "get_submap_image_data",
+      std::bind(&PanopticMapper::getSubmapImageDataCallback, this,
+                std::placeholders::_1, std::placeholders::_2),
+      rmw_qos_profile_services_default, image_service_callback_group_);
+
+  // VL大模型客户端
+  vllm_processing_client_ = node_->create_client<VLLMProcessing>(
+      "request_vl_processing", rmw_qos_profile_services_default,
+      image_service_callback_group_);
+
   // Publishers.
   segmented_point_cloud_pub_ =
       node_->create_publisher<sensor_msgs::msg::PointCloud2>(
@@ -264,6 +313,12 @@ void PanopticMapper::setupRos() {
   input_timer_ = node_->create_wall_timer(
       std::chrono::duration<double>(config_.check_input_interval),
       [this]() { inputCallback(); });
+
+  // 启动图像管理线程
+  if (image_data_manager_) {
+    image_management_thread_ =
+        std::thread(&PanopticMapper::imageManagementThread, this);
+  }
 }
 
 void PanopticMapper::inputCallback() {
@@ -276,6 +331,21 @@ void PanopticMapper::inputCallback() {
         last_input_ = node_->get_clock()->now();
         got_a_frame_ = true;
       }
+      // 保存输入数据
+      {
+        std::chrono::system_clock::time_point t0 =
+            std::chrono::system_clock::now();
+        image_data_manager_->addImageData(data->colorImage(), data->idImage(),
+                                          data->detectronLabels(),
+                                          data->timestamp(), *submaps_);
+        std::chrono::system_clock::time_point t1 =
+            std::chrono::system_clock::now();
+        LOG(INFO) << "Adding one image data took "
+                  << std::chrono::duration_cast<std::chrono::milliseconds>(t1 -
+                                                                           t0)
+                         .count();
+      }
+      image_management_cv_.notify_one();
     }
   } else {
     if (config_.shutdown_when_finished && got_a_frame_ &&
@@ -389,6 +459,144 @@ void PanopticMapper::processInput(InputData* input) {
   previous_frame_time_ = std::chrono::system_clock::now();
   LOG_IF(INFO, config_.verbosity >= 2) << info.str();
   LOG_IF(INFO, config_.print_timing_interval < 0.0) << "\n" << Timing::Print();
+}
+
+// 图像管理线程函数
+void PanopticMapper::imageManagementThread() {
+  while (image_management_thread_running_) {
+    {
+      std::unique_lock<std::mutex> lock(image_management_queue_mutex_);
+      image_management_cv_.wait(lock, [this] {
+        // vl 大模型服务可用且有未处理图像数据  或者  线程被要求停止
+        return (vllm_processing_client_->service_is_ready() &&
+                image_data_manager_->unprocessedImageDataSize() > 0) ||
+               !image_management_thread_running_;
+      });
+    }
+
+    if (!image_management_thread_running_) {
+      break;
+    }
+
+    std::chrono::system_clock::time_point t0 = std::chrono::system_clock::now();
+
+    // 将未处理的图像调用 VL 大模型
+    processNotProcessedImageDataForVLLM();
+
+    std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
+    LOG(INFO) << "Image management thread: one cycle took "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0)
+                     .count()
+              << " ms";
+  }
+}
+
+void PanopticMapper::processNotProcessedImageDataForVLLM() {
+  if (!vllm_processing_client_ ||
+      !vllm_processing_client_->service_is_ready()) {
+    LOG(WARNING) << "VLLM processing service not available.";
+    return;
+  }
+  // 获取需要处理的图像数据
+  LOG(INFO) << "unprocessed image data size: "
+            << image_data_manager_->unprocessedImageDataSize()
+            << ", start processing";
+  while (image_data_manager_->unprocessedImageDataSize() > 0) {
+    auto image_data =
+        image_data_manager_->getFirstNotProcessedImageDataForVLLM();
+    if (image_data) {
+      // 创建服务请求
+      // TODO: 完善请求内容
+      auto request = std::make_shared<VLLMProcessing::Request>();
+      request->image_id = image_data->image_id;
+
+      // 定义回调函数处理VL大模型的响应
+      LOG(INFO) << "Processing image " << image_data->image_id
+                << ", call async service";
+
+      // 调用VL处理服务并设置回调函数
+      std::chrono::system_clock::time_point t_service_0 =
+          std::chrono::system_clock::now();
+
+      // 异步调用VL大模型服务，并等待结果，达到与同步一样的效果
+      auto result_future = vllm_processing_client_->async_send_request(request);
+      auto response = result_future.get();
+      vllmProcessingResponse(response);
+
+      std::chrono::system_clock::time_point t_service_1 =
+          std::chrono::system_clock::now();
+      LOG(INFO) << "VLLM processing service finished. cost "
+                << std::chrono::duration_cast<std::chrono::milliseconds>(
+                       t_service_1 - t_service_0)
+                       .count()
+                << " ms";
+    }
+  }
+}
+
+// VL大模型服务响应的回调函数
+void PanopticMapper::vllmProcessingResponse(
+    VLLMProcessing::Response::SharedPtr response) {
+  // 获取响应结果
+  std::chrono::system_clock::time_point t0 = std::chrono::system_clock::now();
+
+  // 检查服务调用是否成功
+  if (!response->success) {
+    LOG(WARNING) << "VL processing service call failed: ";
+    return;
+  }
+
+  // 将ROS服务响应数据转换为内部数据格式
+  VLLMOutputData vllm_output;
+  vllm_output.image_id = response->image_id;
+
+  // 转换边界框信息
+  for (const auto& bbox_msg : response->bounding_boxes) {
+    BoundingBoxInfoByVLLM bbox_info;
+    bbox_info.id = bbox_msg.id;
+    bbox_info.bounding_box =
+        cv::Rect(bbox_msg.x, bbox_msg.y, bbox_msg.width, bbox_msg.height);
+    bbox_info.description.push_back(bbox_msg.descriptions);
+    vllm_output.bounding_boxes_info.push_back(bbox_info);
+  }
+
+  // 调用图像管理模块处理函数
+  {
+    std::lock_guard<std::mutex> lock(node_mutex_);
+    image_data_manager_->processVLLMOutput(vllm_output, *submaps_);
+  }
+
+  std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
+  LOG(INFO)
+      << "Processing VLLM output took "
+      << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count()
+      << " ms.";
+}
+
+// 获取submap对应的图像数据服务回调（作为服务端）
+bool PanopticMapper::getSubmapImageDataCallback(
+    const GetSubmapImageData::Request::SharedPtr request,
+    GetSubmapImageData::Response::SharedPtr response) {
+  // 获取与submap关联的图像
+  auto image_data = image_data_manager_->getImageForSubmap(request->submap_id);
+  if (!image_data) {
+    response->success = false;
+    return true;
+  }
+
+  response->success = true;
+
+  cv_bridge::CvImage cv_image;
+  cv_image.header.stamp =
+      rclcpp::Time(static_cast<int64_t>(image_data->timestamp * 1e9));
+  cv_image.header.frame_id = "image";
+  cv_image.encoding = "bgr8";
+  cv_image.image = image_data->rgb_data;
+
+  response->rgb_image = *cv_image.toImageMsg();
+
+  response->img_timestamp = image_data->timestamp;
+  return true;
 }
 
 void PanopticMapper::finishMapping() {
