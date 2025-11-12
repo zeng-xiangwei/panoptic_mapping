@@ -335,9 +335,11 @@ void PanopticMapper::inputCallback() {
       {
         std::chrono::system_clock::time_point t0 =
             std::chrono::system_clock::now();
+        Timer timer("addImageData");
         image_data_manager_->addImageData(data->colorImage(), data->idImage(),
                                           data->detectronLabels(),
                                           data->timestamp(), *submaps_);
+        timer.Stop();
         std::chrono::system_clock::time_point t1 =
             std::chrono::system_clock::now();
         LOG(INFO) << "Adding one image data took "

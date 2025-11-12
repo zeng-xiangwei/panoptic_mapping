@@ -14,8 +14,8 @@ namespace panoptic_mapping {
 ImageData::ImageData(const ImageData& other)
     : image_id(other.image_id),
       timestamp(other.timestamp),
-      rbg_image_file_path(other.rbg_image_file_path),
-      id_image_file_path(other.id_image_file_path),
+      rbg_image_file_name(other.rbg_image_file_name),
+      id_image_file_name(other.id_image_file_name),
       associated_submaps(other.associated_submaps),
       is_processed(other.is_processed) {
   // 深拷贝图像数据
@@ -32,8 +32,8 @@ ImageData& ImageData::operator=(const ImageData& other) {
   if (this != &other) {
     image_id = other.image_id;
     timestamp = other.timestamp;
-    rbg_image_file_path = other.rbg_image_file_path;
-    id_image_file_path = other.id_image_file_path;
+    rbg_image_file_name = other.rbg_image_file_name;
+    id_image_file_name = other.id_image_file_name;
     associated_submaps = other.associated_submaps;
     is_processed = other.is_processed;
 
@@ -58,6 +58,9 @@ void ImageDataManager::Config::setupParamsAndPrinting() {
   setupParam("image_save_directory", &image_save_directory);
   setupParam("max_images_in_memory", &max_images_in_memory);
   setupParam("enable_image_management", &enable_image_management);
+  setupParam("load_image_data_info_on_startup",
+             &load_image_data_info_on_startup);
+  setupParam("meta_infos_file_name", &meta_infos_file_name);
 }
 
 void ImageDataManager::Config::checkParams() const {
@@ -74,6 +77,11 @@ ImageDataManager::ImageDataManager(const Config& config)
     std::filesystem::create_directories(config_.image_save_directory);
 
     // 初始化ID计数器
+    if (config_.load_image_data_info_on_startup) {
+      std::string meta_file_path = getImageDataInfoPath();
+      LOG(INFO) << "Loading image data info from " << meta_file_path;
+      loadMappingsFromFile(meta_file_path);
+    }
     initializeImageIdCounter();
   }
 }
@@ -82,20 +90,8 @@ void ImageDataManager::initializeImageIdCounter() {
   // 扫描保存目录中的文件，找出最大的ID
   int max_id = 0;
 
-  try {
-    for (const auto& entry :
-         std::filesystem::directory_iterator(config_.image_save_directory)) {
-      if (entry.is_regular_file()) {
-        std::string filename = entry.path().filename().string();
-        int id = extractIdFromFilename(filename);
-        if (id > max_id) {
-          max_id = id;
-        }
-      }
-    }
-  } catch (const std::filesystem::filesystem_error& e) {
-    LOG_IF(WARNING, config_.verbosity >= 1)
-        << "Failed to scan image directory for ID initialization: " << e.what();
+  for (auto& img_data : image_data_) {
+    max_id = std::max(img_data.second->image_id, max_id);
   }
 
   current_image_id_ = max_id;
@@ -141,14 +137,14 @@ int ImageDataManager::addImageData(const cv::Mat& image,
   auto image_data = std::make_shared<ImageData>();
   image_data->image_id = ++current_image_id_;
   image_data->timestamp = timestamp;
-  image_data->rbg_image_file_path = config_.image_save_directory + "/rbg_image_" +
-                                std::to_string(image_data->image_id) + ".png";
-  image_data->id_image_file_path = config_.image_save_directory + "/id_image_" +
-                                   std::to_string(image_data->image_id) +
-                                   ".bin";
+  image_data->rbg_image_file_name =
+      "rbg_image_" + std::to_string(image_data->image_id) + ".png";
+  image_data->id_image_file_name =
+      "id_image_" + std::to_string(image_data->image_id) + ".bin";
 
   // 直接保存图像到磁盘
-  if (!saveImageToDisk(image, id_image, image_data->image_id)) {
+  if (!saveImageToDisk(image, id_image, image_data->rbg_image_file_name,
+                       image_data->id_image_file_name)) {
     LOG_IF(ERROR, config_.verbosity >= 1)
         << "Failed to save image data with ID " << image_data->image_id
         << " to disk.";
@@ -530,14 +526,14 @@ void ImageDataManager::cleanupUnassociatedImages() {
 }
 
 bool ImageDataManager::saveImageToDisk(const cv::Mat& image,
-                                       const cv::Mat& id_image, int image_id) {
-  try {
-    // 创建文件路径
-    std::string image_file = config_.image_save_directory + "/rgb_image_" +
-                             std::to_string(image_id) + ".png";
-    std::string id_image_file = config_.image_save_directory + "/id_image_" +
-                                std::to_string(image_id) + ".bin";
+                                       const cv::Mat& id_image,
+                                       const std::string& rgb_image_name,
+                                       const std::string& id_image_name) {
+  // 创建文件路径
+  std::string image_file = getImagePath(rgb_image_name);
+  std::string id_image_file = getImagePath(id_image_name);
 
+  try {
     // 保存RGB图像为PNG
     bool image_saved = cv::imwrite(image_file, image);
 
@@ -561,7 +557,8 @@ bool ImageDataManager::saveImageToDisk(const cv::Mat& image,
     return image_saved && id_image_saved;
   } catch (const std::exception& e) {
     LOG_IF(ERROR, config_.verbosity >= 1)
-        << "Failed to save image " << image_id << " to disk: " << e.what();
+        << "Failed to save image (" << image_file << ", " << id_image_file
+        << ") to disk: " << e.what();
   }
 
   return false;
@@ -569,17 +566,19 @@ bool ImageDataManager::saveImageToDisk(const cv::Mat& image,
 
 bool ImageDataManager::loadImageFromDisk(
     const std::shared_ptr<ImageData>& image_data) {
-  if (image_data->rbg_image_file_path.empty() ||
-      image_data->id_image_file_path.empty()) {
+  if (image_data->rbg_image_file_name.empty() ||
+      image_data->id_image_file_name.empty()) {
     return false;
   }
 
   try {
     // 从磁盘加载RGB图像
-    image_data->rgb_data = cv::imread(image_data->rbg_image_file_path);
+    image_data->rgb_data =
+        cv::imread(getImagePath(image_data->rbg_image_file_name));
 
     // 从磁盘加载ID图像（二进制文件）
-    std::ifstream id_file(image_data->id_image_file_path, std::ios::binary);
+    std::ifstream id_file(getImagePath(image_data->id_image_file_name),
+                          std::ios::binary);
     if (id_file.is_open()) {
       // 读取图像尺寸信息
       int rows, cols;
@@ -616,14 +615,15 @@ bool ImageDataManager::deleteImageFromDisk(
     bool id_image_deleted = true;
 
     // 删除RGB图像文件
-    if (!image_data->rbg_image_file_path.empty()) {
-      image_deleted = std::filesystem::remove(image_data->rbg_image_file_path);
+    if (!image_data->rbg_image_file_name.empty()) {
+      image_deleted = std::filesystem::remove(
+          getImagePath(image_data->rbg_image_file_name));
     }
 
     // 删除ID图像文件
-    if (!image_data->id_image_file_path.empty()) {
+    if (!image_data->id_image_file_name.empty()) {
       id_image_deleted =
-          std::filesystem::remove(image_data->id_image_file_path);
+          std::filesystem::remove(getImagePath(image_data->id_image_file_name));
     }
 
     LOG_IF(INFO, config_.verbosity >= 3)
@@ -725,8 +725,8 @@ std::shared_ptr<ImageData> ImageDataManager::createMetadataCopy(
   auto copy = std::make_shared<ImageData>();
   copy->image_id = source->image_id;
   copy->timestamp = source->timestamp;
-  copy->rbg_image_file_path = source->rbg_image_file_path;
-  copy->id_image_file_path = source->id_image_file_path;
+  copy->rbg_image_file_name = source->rbg_image_file_name;
+  copy->id_image_file_name = source->id_image_file_name;
   copy->associated_submaps = source->associated_submaps;
   copy->is_processed = source->is_processed;
   return copy;
@@ -746,49 +746,59 @@ void ImageDataManager::saveMappingsToFile(const std::string& filepath) const {
 
   // 保存 image_data_ 映射
   uint32_t image_data_count = image_data_.size();
-  file.write(reinterpret_cast<const char*>(&image_data_count), sizeof(image_data_count));
-  
+  file.write(reinterpret_cast<const char*>(&image_data_count),
+             sizeof(image_data_count));
+
   for (const auto& pair : image_data_) {
     int image_id = pair.first;
     const std::shared_ptr<ImageData>& image_data = pair.second;
-    
+
     file.write(reinterpret_cast<const char*>(&image_id), sizeof(image_id));
-    file.write(reinterpret_cast<const char*>(&image_data->timestamp), sizeof(image_data->timestamp));
-    
+    file.write(reinterpret_cast<const char*>(&image_data->timestamp),
+               sizeof(image_data->timestamp));
+
     // 写入字符串长度和字符串内容
-    uint32_t image_file_path_length = image_data->rbg_image_file_path.length();
-    file.write(reinterpret_cast<const char*>(&image_file_path_length), sizeof(image_file_path_length));
-    file.write(image_data->rbg_image_file_path.c_str(), image_file_path_length);
-    
-    uint32_t id_image_file_path_length = image_data->id_image_file_path.length();
-    file.write(reinterpret_cast<const char*>(&id_image_file_path_length), sizeof(id_image_file_path_length));
-    file.write(image_data->id_image_file_path.c_str(), id_image_file_path_length);
-    
+    uint32_t image_file_path_length = image_data->rbg_image_file_name.length();
+    file.write(reinterpret_cast<const char*>(&image_file_path_length),
+               sizeof(image_file_path_length));
+    file.write(image_data->rbg_image_file_name.c_str(), image_file_path_length);
+
+    uint32_t id_image_file_path_length =
+        image_data->id_image_file_name.length();
+    file.write(reinterpret_cast<const char*>(&id_image_file_path_length),
+               sizeof(id_image_file_path_length));
+    file.write(image_data->id_image_file_name.c_str(),
+               id_image_file_path_length);
+
     // 写入关联的submap数量和ID列表
     uint32_t associated_submaps_count = image_data->associated_submaps.size();
-    file.write(reinterpret_cast<const char*>(&associated_submaps_count), sizeof(associated_submaps_count));
-    
+    file.write(reinterpret_cast<const char*>(&associated_submaps_count),
+               sizeof(associated_submaps_count));
+
     for (int submap_id : image_data->associated_submaps) {
       file.write(reinterpret_cast<const char*>(&submap_id), sizeof(submap_id));
     }
-    
+
     // 写入处理状态
-    file.write(reinterpret_cast<const char*>(&image_data->is_processed), sizeof(image_data->is_processed));
+    file.write(reinterpret_cast<const char*>(&image_data->is_processed),
+               sizeof(image_data->is_processed));
   }
 
   // 保存 submap_to_images_ 映射
   uint32_t submap_count = submap_to_images_.size();
-  file.write(reinterpret_cast<const char*>(&submap_count), sizeof(submap_count));
-  
+  file.write(reinterpret_cast<const char*>(&submap_count),
+             sizeof(submap_count));
+
   for (const auto& pair : submap_to_images_) {
     int submap_id = pair.first;
     const std::unordered_set<int>& image_ids = pair.second;
-    
+
     file.write(reinterpret_cast<const char*>(&submap_id), sizeof(submap_id));
-    
+
     uint32_t image_count = image_ids.size();
-    file.write(reinterpret_cast<const char*>(&image_count), sizeof(image_count));
-    
+    file.write(reinterpret_cast<const char*>(&image_count),
+               sizeof(image_count));
+
     for (int image_id : image_ids) {
       file.write(reinterpret_cast<const char*>(&image_id), sizeof(image_id));
     }
@@ -797,27 +807,28 @@ void ImageDataManager::saveMappingsToFile(const std::string& filepath) const {
   // 保存 image_to_submaps_ 映射
   uint32_t image_count = image_to_submaps_.size();
   file.write(reinterpret_cast<const char*>(&image_count), sizeof(image_count));
-  
+
   for (const auto& pair : image_to_submaps_) {
     int image_id = pair.first;
     const std::unordered_set<int>& submap_ids = pair.second;
-    
+
     file.write(reinterpret_cast<const char*>(&image_id), sizeof(image_id));
-    
+
     uint32_t submap_count_inner = submap_ids.size();
-    file.write(reinterpret_cast<const char*>(&submap_count_inner), sizeof(submap_count_inner));
-    
+    file.write(reinterpret_cast<const char*>(&submap_count_inner),
+               sizeof(submap_count_inner));
+
     for (int submap_id : submap_ids) {
       file.write(reinterpret_cast<const char*>(&submap_id), sizeof(submap_id));
     }
   }
 
   file.close();
-  
+
   LOG_IF(INFO, config_.verbosity >= 2)
-      << "Saved mappings to " << filepath 
+      << "Saved mappings to " << filepath
       << " (image data: " << image_data_.size()
-      << ", submap mappings: " << submap_to_images_.size() 
+      << ", submap mappings: " << submap_to_images_.size()
       << ", image mappings: " << image_to_submaps_.size() << ")";
 }
 
@@ -825,7 +836,7 @@ void ImageDataManager::loadMappingsFromFile(const std::string& filepath) {
   std::ifstream file(filepath, std::ios::binary);
   if (!file.is_open()) {
     LOG_IF(WARNING, config_.verbosity >= 2)
-        << "Failed to open file for reading mappings: " << filepath 
+        << "Failed to open file for reading mappings: " << filepath
         << " (file may not exist yet)";
     return;
   }
@@ -838,7 +849,7 @@ void ImageDataManager::loadMappingsFromFile(const std::string& filepath) {
   // 读取文件版本标识
   uint32_t version;
   file.read(reinterpret_cast<char*>(&version), sizeof(version));
-  
+
   if (version != 1) {
     LOG_IF(ERROR, config_.verbosity >= 1)
         << "Unsupported mappings file version: " << version;
@@ -848,39 +859,46 @@ void ImageDataManager::loadMappingsFromFile(const std::string& filepath) {
 
   // 读取 image_data_ 映射
   uint32_t image_data_count;
-  file.read(reinterpret_cast<char*>(&image_data_count), sizeof(image_data_count));
-  
+  file.read(reinterpret_cast<char*>(&image_data_count),
+            sizeof(image_data_count));
+
   for (uint32_t i = 0; i < image_data_count; ++i) {
     auto image_data = std::make_shared<ImageData>();
-    
-    file.read(reinterpret_cast<char*>(&image_data->image_id), sizeof(image_data->image_id));
-    file.read(reinterpret_cast<char*>(&image_data->timestamp), sizeof(image_data->timestamp));
-    
+
+    file.read(reinterpret_cast<char*>(&image_data->image_id),
+              sizeof(image_data->image_id));
+    file.read(reinterpret_cast<char*>(&image_data->timestamp),
+              sizeof(image_data->timestamp));
+
     // 读取图像文件路径
     uint32_t image_file_path_length;
-    file.read(reinterpret_cast<char*>(&image_file_path_length), sizeof(image_file_path_length));
-    image_data->rbg_image_file_path.resize(image_file_path_length);
-    file.read(&image_data->rbg_image_file_path[0], image_file_path_length);
-    
+    file.read(reinterpret_cast<char*>(&image_file_path_length),
+              sizeof(image_file_path_length));
+    image_data->rbg_image_file_name.resize(image_file_path_length);
+    file.read(&image_data->rbg_image_file_name[0], image_file_path_length);
+
     // 读取ID图像文件路径
     uint32_t id_image_file_path_length;
-    file.read(reinterpret_cast<char*>(&id_image_file_path_length), sizeof(id_image_file_path_length));
-    image_data->id_image_file_path.resize(id_image_file_path_length);
-    file.read(&image_data->id_image_file_path[0], id_image_file_path_length);
-    
+    file.read(reinterpret_cast<char*>(&id_image_file_path_length),
+              sizeof(id_image_file_path_length));
+    image_data->id_image_file_name.resize(id_image_file_path_length);
+    file.read(&image_data->id_image_file_name[0], id_image_file_path_length);
+
     // 读取关联的submap ID列表
     uint32_t associated_submaps_count;
-    file.read(reinterpret_cast<char*>(&associated_submaps_count), sizeof(associated_submaps_count));
-    
+    file.read(reinterpret_cast<char*>(&associated_submaps_count),
+              sizeof(associated_submaps_count));
+
     for (uint32_t j = 0; j < associated_submaps_count; ++j) {
       int submap_id;
       file.read(reinterpret_cast<char*>(&submap_id), sizeof(submap_id));
       image_data->associated_submaps.insert(submap_id);
     }
-    
+
     // 读取处理状态
-    file.read(reinterpret_cast<char*>(&image_data->is_processed), sizeof(image_data->is_processed));
-    
+    file.read(reinterpret_cast<char*>(&image_data->is_processed),
+              sizeof(image_data->is_processed));
+
     // 将数据添加到映射中
     image_data_[image_data->image_id] = image_data;
   }
@@ -888,14 +906,14 @@ void ImageDataManager::loadMappingsFromFile(const std::string& filepath) {
   // 读取 submap_to_images_ 映射
   uint32_t submap_count;
   file.read(reinterpret_cast<char*>(&submap_count), sizeof(submap_count));
-  
+
   for (uint32_t i = 0; i < submap_count; ++i) {
     int submap_id;
     file.read(reinterpret_cast<char*>(&submap_id), sizeof(submap_id));
-    
+
     uint32_t image_count;
     file.read(reinterpret_cast<char*>(&image_count), sizeof(image_count));
-    
+
     for (uint32_t j = 0; j < image_count; ++j) {
       int image_id;
       file.read(reinterpret_cast<char*>(&image_id), sizeof(image_id));
@@ -906,14 +924,15 @@ void ImageDataManager::loadMappingsFromFile(const std::string& filepath) {
   // 读取 image_to_submaps_ 映射
   uint32_t image_count;
   file.read(reinterpret_cast<char*>(&image_count), sizeof(image_count));
-  
+
   for (uint32_t i = 0; i < image_count; ++i) {
     int image_id;
     file.read(reinterpret_cast<char*>(&image_id), sizeof(image_id));
-    
+
     uint32_t submap_count_inner;
-    file.read(reinterpret_cast<char*>(&submap_count_inner), sizeof(submap_count_inner));
-    
+    file.read(reinterpret_cast<char*>(&submap_count_inner),
+              sizeof(submap_count_inner));
+
     for (uint32_t j = 0; j < submap_count_inner; ++j) {
       int submap_id;
       file.read(reinterpret_cast<char*>(&submap_id), sizeof(submap_id));
@@ -922,13 +941,20 @@ void ImageDataManager::loadMappingsFromFile(const std::string& filepath) {
   }
 
   file.close();
-  
+
   LOG_IF(INFO, config_.verbosity >= 2)
-      << "Loaded mappings from " << filepath 
+      << "Loaded mappings from " << filepath
       << " (image data: " << image_data_.size()
-      << ", submap mappings: " << submap_to_images_.size() 
+      << ", submap mappings: " << submap_to_images_.size()
       << ", image mappings: " << image_to_submaps_.size() << ")";
 }
 
+std::string ImageDataManager::getImagePath(const std::string& file_name) const {
+  return config_.image_save_directory + "/" + file_name;
+}
+
+std::string ImageDataManager::getImageDataInfoPath() const {
+  return config_.image_save_directory + "/" + config_.meta_infos_file_name;
+}
 
 }  // namespace panoptic_mapping

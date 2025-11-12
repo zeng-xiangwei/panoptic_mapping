@@ -18,10 +18,10 @@ namespace panoptic_mapping {
 
 // 存储单个图像的信息
 struct ImageData {
-  int image_id;                                // 图像唯一ID
-  double timestamp;                            // 图像时间戳
-  std::string rbg_image_file_path;             // RGB图像文件路径
-  std::string id_image_file_path;              // ID图像文件路径
+  int image_id;                     // 图像唯一ID
+  double timestamp;                 // 图像时间戳
+  std::string rbg_image_file_name;  // RGB图像文件名（具体路径由其他参数给定）
+  std::string id_image_file_name;   // ID图像文件名
   std::unordered_set<int> associated_submaps;  // 关联的submap IDs
   bool is_processed = false;                   // 是否已被VL大模型处理
 
@@ -72,12 +72,17 @@ class ImageDataManager {
 
     // 图像保存路径
     std::string image_save_directory = "/tmp/panoptic_mapping_images";
+    // 图像管理数据的文件名，这里保存的就是图片地图信息。该文件需要与图像文件在同一文件夹下
+    std::string meta_infos_file_name = "images_meta_infos.bin";
 
     // 内存中最多保存的图像数量
     int max_images_in_memory = 10;
 
     // 是否启用图像管理
     bool enable_image_management = true;
+
+    // 是否读取历史保存的信息（作为地图的一部分）
+    bool load_image_data_info_on_startup = false;
 
     Config() { setConfigName("ImageDataManager"); }
 
@@ -107,12 +112,13 @@ class ImageDataManager {
   // 序列化图像信息到文件
   void saveMappingsToFile(const std::string& filepath) const;
 
-  // 从文件加载图像信息
-  void loadMappingsFromFile(const std::string& filepath);
-
   int unprocessedImageDataSize() const { return unprocessed_images_.size(); }
 
  private:
+  // 从文件加载图像信息
+  void loadMappingsFromFile(const std::string& filepath);
+
+  // 根据 VL 大模型返回的数据，更新 submap 描述信息
   void updateSubmap(BoundingBoxInfoByVLLM box_info, Submap* submap);
 
   // 标记图像已被处理
@@ -139,7 +145,8 @@ class ImageDataManager {
 
   // 保存图像到磁盘
   bool saveImageToDisk(const cv::Mat& image, const cv::Mat& id_image,
-                       int image_id);
+                       const std::string& rgb_image_name,
+                       const std::string& id_image_name);
 
   // 从磁盘加载图像
   bool loadImageFromDisk(const std::shared_ptr<ImageData>& image_data);
@@ -162,6 +169,11 @@ class ImageDataManager {
   void removeFromCache(int image_id);
   void updateCacheAccess(int image_id);
   void evictCacheIfNeeded();
+
+  // 根据文件名获取图像路径
+  std::string getImagePath(const std::string& file_name) const;
+  // 图像管理信息的文件路径
+  std::string getImageDataInfoPath() const;
 
   // 创建仅包含元数据的图像数据副本
   std::shared_ptr<ImageData> createMetadataCopy(
