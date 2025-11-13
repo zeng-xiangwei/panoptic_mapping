@@ -72,16 +72,19 @@ Submap* DetectronIDTracker::allocateSubmap(int input_id,
 
   // Parse detectron label.
   LabelEntry label;
-  const int class_id = it->second.category_id;
+  label.name = it->second.category_name;
+  const int class_id = ClassNameManager::getGlobalInstance()->getClassID(label.name);;
   if (globals_->labelHandler()->segmentationIdExists(class_id)) {
     label = globals_->labelHandler()->getLabelEntry(class_id);
   }
-  if (it->second.is_thing) {
-    label.label = PanopticLabel::kInstance;
-  } else {
-    label.label = PanopticLabel::kBackground;
+
+  if (label.label == PanopticLabel::kUnknown) {
+    if (it->second.is_thing) {
+      label.label = PanopticLabel::kInstance;
+    } else {
+      label.label = PanopticLabel::kBackground;
+    }
   }
-  label.name = it->second.category_name;
 
   // Allocate new submap.
   Submap* new_submap =

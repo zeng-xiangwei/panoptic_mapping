@@ -45,15 +45,16 @@ MiniCsvLabelHandler::MiniCsvLabelHandler(const Config& config,
 }
 
 void MiniCsvLabelHandler::readLabelsFromFile() {
-  io::CSVReader<2> in(config_.file_name);
-  in.read_header(io::ignore_extra_column, "ClassName", "Size");
+  io::CSVReader<3> in(config_.file_name);
+  in.read_header(io::ignore_extra_column, "ClassName", "Size", "Is_thing");
 
   bool read_row = true;
-  std::vector<float> field_count(2, 0.f);
+  std::vector<float> field_count(3, 0.f);
   int missed_count = -1;  // The header is also counter.
   while (read_row) {
     std::string name, size;
-    read_row = in.read_row(name, size);
+    int is_thing = -1;
+    read_row = in.read_row(name, size, is_thing);
 
     // Write all found values to the label.
     LabelEntry label;
@@ -69,6 +70,10 @@ void MiniCsvLabelHandler::readLabelsFromFile() {
       label.size = size;
       field_count[1] += 1.f;
     }
+    if (is_thing != -1) {
+      label.label = is_thing ? PanopticLabel::kInstance : PanopticLabel::kBackground;
+    }
+    LOG(INFO) << "name: " << label.name << ": " << panopticLabelToString(label.label);
     labels_[label.class_id] = std::make_unique<LabelEntry>(label);
   }
 

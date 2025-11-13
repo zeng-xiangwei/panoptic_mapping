@@ -1,24 +1,26 @@
-ClassName,Size
-water bottle,S
-laptop,S
-mouse,S
-desk,S
-chair,S
-trash can,S
-bedside table,S
-bed,S
-sofa,S
-tea table,S
-microwave,S
-toy,S
-snack,S
-cup,S
-keyboard,S
-waste,S
-paper trash,S
-spoon,S
-chopsticks,S
-pot,S
-pillow,S
-telephone,S
-floor,S
+ClassName,Size,Is_thing
+water bottle,S,1
+laptop,S,1
+mouse,S,1
+desk,S,1
+chair,S,1
+trash can,S,1
+bedside table,S,1
+bed,S,1
+sofa,S,1
+tea table,S,1
+microwave,S,1
+toy,S,1
+snack,S,1
+cup,S,1
+keyboard,S,1
+waste,S,1
+paper trash,S,1
+spoon,S,1
+chopsticks,S,1
+pot,S,1
+pillow,S,1
+telephone,S,1
+floor,L,0
+wall,L,0
+stair,S,0

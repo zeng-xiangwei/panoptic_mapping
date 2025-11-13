@@ -205,7 +205,8 @@ void ImageDataManager::getAndRemoveSubmapUnderLock(
 bool ImageDataManager::needToRetainImageData(const SubmapCollection& submaps) {
   std::unordered_set<int> activate_submap_ids;
   for (const Submap& submap : submaps) {
-    if (submap.isActive() && submap.matchRedetection()) {
+    if (submap.isActive() && submap.matchRedetection() &&
+        submap.getLabel() == PanopticLabel::kInstance) {
       // 满足重复观测条件的活跃 submap
       activate_submap_ids.insert(submap.getID());
     }
@@ -726,6 +727,9 @@ void ImageDataManager::autoAssociateSubmaps(int image_id,
   for (int submap_id : unique_ids) {
     if (submaps.submapIdExists(submap_id)) {
       const Submap& submap = submaps.getSubmap(submap_id);
+      if (submap.getLabel() != PanopticLabel::kInstance) {
+        continue;
+      }
       associateSubmapWithImage(submap_id, image_id);
     }
   }
@@ -1033,105 +1037,115 @@ std::string ImageDataManager::getVllmMiddleResultsDir() const {
 }
 
 void ImageDataManager::visualVllmOutput(const VLLMOutputData& vllm_output,
-                        std::shared_ptr<ImageData> image_data) {
-    // 创建RGB图像的副本用于绘制
-    cv::Mat visualization_image;
-    image_data->rgb_data.copyTo(visualization_image);
-    
-    // 在RGB图像上绘制检测到的边界框
-    for (size_t i = 0; i < vllm_output.bounding_boxes_info.size(); ++i) {
-        const auto& bbox_info = vllm_output.bounding_boxes_info[i];
-        const cv::Rect& bbox = bbox_info.bounding_box;
-        
-        // 使用generateColor方法为每个边界框生成颜色
-        Color color = generateColor(bbox_info.id);
-        cv::Scalar cv_color(color.b, color.g, color.r); // OpenCV使用BGR顺序
-        
-        // 绘制边界框
-        cv::rectangle(visualization_image, bbox, cv_color, 2);
-        
-        // 准备标签文本
-        std::string label = "ID: " + std::to_string(bbox_info.id);
-        
-        // 计算标签尺寸并绘制标签背景
-        int baseline = 0;
-        cv::Size label_size = cv::getTextSize(label, cv::FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseline);
-        cv::Rect label_rect(bbox.x, bbox.y - label_size.height - baseline - 2, 
-                           label_size.width, label_size.height + baseline + 2);
-        
-        // 确保标签不会超出图像边界
-        label_rect.x = std::max(0, std::min(label_rect.x, visualization_image.cols - label_rect.width));
-        label_rect.y = std::max(0, std::min(label_rect.y, visualization_image.rows - label_rect.height));
-        
-        // 绘制标签背景和文字
-        cv::rectangle(visualization_image, label_rect, cv_color, -1); // 填充矩形
-        cv::putText(visualization_image, label, 
-                   cv::Point(label_rect.x, label_rect.y + label_size.height + baseline/2),
-                   cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 255), 1);
-    }
-    
-    // 创建mask可视化图像
-    cv::Mat mask_visualization;
-    visualization_image.copyTo(mask_visualization);
-    
-    // 在图像上绘制mask
-    std::unordered_map<int, Color> color_map;
-    for (int y = 0; y < image_data->id_image_data.rows; ++y) {
-        for (int x = 0; x < image_data->id_image_data.cols; ++x) {
-            int submap_id = image_data->id_image_data.at<int>(y, x);
-            if (submap_id >= 0) { // 有效mask像素
-                // 使用generateColor方法为每个submap ID生成颜色
-                if (color_map.count(submap_id) == 0) {
-                  color_map[submap_id] = generateColor(submap_id);
-                }
-                Color& color = color_map[submap_id];
-                
-                // 在mask可视化图像上绘制半透明的mask
-                cv::Vec3b& pixel = mask_visualization.at<cv::Vec3b>(y, x);
-                pixel[0] = static_cast<unsigned char>(0.6 * pixel[0] + 0.4 * color.b); // Blue
-                pixel[1] = static_cast<unsigned char>(0.6 * pixel[1] + 0.4 * color.g); // Green
-                pixel[2] = static_cast<unsigned char>(0.6 * pixel[2] + 0.4 * color.r); // Red
-            }
-        }
-    }
-    
-    // 保存可视化结果
-    std::string dir = getVllmMiddleResultsDir();
-    int image_id = image_data->image_id;
-    std::string rgb_output_path = dir + "/" + std::to_string(image_id) + "_boxes.png";
-    std::string mask_output_path = dir + "/" + std::to_string(image_id) + "_boxes_and_mask.png";
-    
-    cv::imwrite(rgb_output_path, visualization_image);
-    cv::imwrite(mask_output_path, mask_visualization);
-    
-    LOG(INFO) << "Saved VLLM RGB visualization to: " << rgb_output_path;
-    LOG(INFO) << "Saved VLLM mask visualization to: " << mask_output_path;
-    
-    // 将VLLMOutputData中的description信息输出到文本文件中
-    std::string description_output_path = dir + "/" + std::to_string(image_id) + "_vllm_description.txt";
-    std::ofstream description_file(description_output_path);
-    if (description_file.is_open()) {
-        description_file << "Bounding Boxes Information:\n";
-        description_file << "==========================\n\n";
-        
-        for (size_t i = 0; i < vllm_output.bounding_boxes_info.size(); ++i) {
-            const auto& bbox_info = vllm_output.bounding_boxes_info[i];
-            description_file << "Box\n";
-            description_file << "  ID: " << bbox_info.id << "\n";
-            std::stringstream ss;
-            for (const std::string& desc : bbox_info.description) {
-              ss << desc << ",";
-            }
-            description_file << "  Description: " << ss.str() << "\n";
-            description_file << "\n";
-        }
-        
-        description_file.close();
-        LOG(INFO) << "Saved VLLM description to: " << description_output_path;
-    } else {
-        LOG(ERROR) << "Failed to open file for writing VLLM description: " << description_output_path;
-    }
-}
+                                        std::shared_ptr<ImageData> image_data) {
+  // 创建RGB图像的副本用于绘制
+  cv::Mat visualization_image;
+  image_data->rgb_data.copyTo(visualization_image);
 
+  // 在RGB图像上绘制检测到的边界框
+  for (size_t i = 0; i < vllm_output.bounding_boxes_info.size(); ++i) {
+    const auto& bbox_info = vllm_output.bounding_boxes_info[i];
+    const cv::Rect& bbox = bbox_info.bounding_box;
+
+    // 使用generateColor方法为每个边界框生成颜色
+    Color color = generateColor(bbox_info.id);
+    cv::Scalar cv_color(color.b, color.g, color.r);  // OpenCV使用BGR顺序
+
+    // 绘制边界框
+    cv::rectangle(visualization_image, bbox, cv_color, 2);
+
+    // 准备标签文本
+    std::string label = "ID: " + std::to_string(bbox_info.id);
+
+    // 计算标签尺寸并绘制标签背景
+    int baseline = 0;
+    cv::Size label_size =
+        cv::getTextSize(label, cv::FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseline);
+    cv::Rect label_rect(bbox.x, bbox.y - label_size.height - baseline - 2,
+                        label_size.width, label_size.height + baseline + 2);
+
+    // 确保标签不会超出图像边界
+    label_rect.x = std::max(
+        0, std::min(label_rect.x, visualization_image.cols - label_rect.width));
+    label_rect.y = std::max(0, std::min(label_rect.y, visualization_image.rows -
+                                                          label_rect.height));
+
+    // 绘制标签背景和文字
+    cv::rectangle(visualization_image, label_rect, cv_color, -1);  // 填充矩形
+    cv::putText(visualization_image, label,
+                cv::Point(label_rect.x,
+                          label_rect.y + label_size.height + baseline / 2),
+                cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 255), 1);
+  }
+
+  // 创建mask可视化图像
+  cv::Mat mask_visualization;
+  visualization_image.copyTo(mask_visualization);
+
+  // 在图像上绘制mask
+  std::unordered_map<int, Color> color_map;
+  for (int y = 0; y < image_data->id_image_data.rows; ++y) {
+    for (int x = 0; x < image_data->id_image_data.cols; ++x) {
+      int submap_id = image_data->id_image_data.at<int>(y, x);
+      if (submap_id >= 0) {  // 有效mask像素
+        // 使用generateColor方法为每个submap ID生成颜色
+        if (color_map.count(submap_id) == 0) {
+          color_map[submap_id] = generateColor(submap_id);
+        }
+        Color& color = color_map[submap_id];
+
+        // 在mask可视化图像上绘制半透明的mask
+        cv::Vec3b& pixel = mask_visualization.at<cv::Vec3b>(y, x);
+        pixel[0] =
+            static_cast<unsigned char>(0.6 * pixel[0] + 0.4 * color.b);  // Blue
+        pixel[1] = static_cast<unsigned char>(0.6 * pixel[1] +
+                                              0.4 * color.g);  // Green
+        pixel[2] =
+            static_cast<unsigned char>(0.6 * pixel[2] + 0.4 * color.r);  // Red
+      }
+    }
+  }
+
+  // 保存可视化结果
+  std::string dir = getVllmMiddleResultsDir();
+  int image_id = image_data->image_id;
+  std::string rgb_output_path =
+      dir + "/" + std::to_string(image_id) + "_boxes.png";
+  std::string mask_output_path =
+      dir + "/" + std::to_string(image_id) + "_boxes_and_mask.png";
+
+  cv::imwrite(rgb_output_path, visualization_image);
+  cv::imwrite(mask_output_path, mask_visualization);
+
+  LOG(INFO) << "Saved VLLM RGB visualization to: " << rgb_output_path;
+  LOG(INFO) << "Saved VLLM mask visualization to: " << mask_output_path;
+
+  // 将VLLMOutputData中的description信息输出到文本文件中
+  std::string description_output_path =
+      dir + "/" + std::to_string(image_id) + "_vllm_description.txt";
+  std::ofstream description_file(description_output_path);
+  if (description_file.is_open()) {
+    description_file << "Bounding Boxes Information:\n";
+    description_file << "==========================\n\n";
+
+    for (size_t i = 0; i < vllm_output.bounding_boxes_info.size(); ++i) {
+      const auto& bbox_info = vllm_output.bounding_boxes_info[i];
+      description_file << "Box\n";
+      description_file << "  ID: " << bbox_info.id << "\n";
+      std::stringstream ss;
+      for (const std::string& desc : bbox_info.description) {
+        ss << desc << ",";
+      }
+      description_file << "  Description: " << ss.str() << "\n";
+      description_file << "\n";
+    }
+
+    description_file.close();
+    LOG(INFO) << "Saved VLLM description to: " << description_output_path;
+  } else {
+    LOG(ERROR) << "Failed to open file for writing VLLM description: "
+               << description_output_path;
+  }
+}
 
 }  // namespace panoptic_mapping
