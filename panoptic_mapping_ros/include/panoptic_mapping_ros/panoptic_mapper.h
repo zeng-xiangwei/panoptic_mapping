@@ -87,7 +87,9 @@ class PanopticMapper {
 
     // 是否使用文件保存的embedding向量，如果保存的地图文件与当前使用的检测分割模型不一致，则该变量应该置为false
     bool use_saved_embeddings = true;
-
+    
+    // 是否使用图像管理功能，包括 VLLM 的调用、图像管理
+    bool use_image_data_manager = true;
     // 调用 VL 大模型服务的超时时间，单位秒
     float vllm_service_timeout = 60.0;
 

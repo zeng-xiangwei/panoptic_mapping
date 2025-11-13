@@ -186,6 +186,9 @@ void ImageDataManager::getAndRemoveSubmap(const SubmapCollection& submaps) {
   getDeletedSubmaps(submaps, deleted_submap_ids);
   for (int submap_id : deleted_submap_ids) {
     handleSubmapRemoval(submap_id);
+    if (last_added_active_submaps_.count(submap_id) > 0) {
+      last_added_active_submaps_.erase(submap_id);
+    }
   }
 }
 
@@ -208,16 +211,21 @@ bool ImageDataManager::needToRetainImageData(const SubmapCollection& submaps) {
     }
   }
 
+  bool need_to_retain = false;
   for (auto k : activate_submap_ids) {
-    if (submap_to_images_.count(k) == 0) {
+    if (last_added_active_submaps_.count(k) == 0) {
       LOG(INFO) << "Submap " << k
-                << " is active but not in the image data manager, this "
-                   "ImageData will be retained.";
-      return true;
+                << " is new valid object, will add this image";
+      need_to_retain = true;
+      break;
     }
   }
 
-  return false;
+  for (auto k : activate_submap_ids) {
+    last_added_active_submaps_.insert(k);
+  }
+
+  return need_to_retain;
 }
 
 void ImageDataManager::getDeletedSubmaps(const SubmapCollection& submaps,

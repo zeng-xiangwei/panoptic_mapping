@@ -62,6 +62,7 @@ void PanopticMapper::Config::setupParamsAndPrinting() {
   setupParam("indicate_default_values", &indicate_default_values);
   setupParam("use_saved_embeddings", &use_saved_embeddings);
   setupParam("vllm_service_timeout", &vllm_service_timeout);
+  setupParam("use_image_data_manager", &use_image_data_manager);
 }
 
 PanopticMapper::PanopticMapper(rclcpp::Node::SharedPtr node)
@@ -168,9 +169,11 @@ void PanopticMapper::setupMembersFromYaml() {
       root_yaml_, defaultYamlKeyPath("data_writer"));
 
   // 图像管理器
-  image_data_manager_ = std::make_unique<ImageDataManager>(
+  if (config_.use_image_data_manager) {
+    image_data_manager_ = std::make_unique<ImageDataManager>(
       config_utilities::getConfigFromYaml<ImageDataManager::Config>(
           root_yaml_, defaultYamlKeyPath("image_data_manager")));
+  }
 
   // Setup all requested inputs from all modules.
   InputData::InputTypes requested_inputs;
@@ -217,7 +220,10 @@ void PanopticMapper::setupRos() {
     if (!loadMap(load_file)) {
       CHECK(false) << "Failed to load map from " << load_file;
     }
-    image_data_manager_->loadMap();
+
+    if (image_data_manager_) {
+      image_data_manager_->loadMap();
+    }
   }
 
   // 创建独立的回调组用于图像服务
@@ -333,7 +339,7 @@ void PanopticMapper::inputCallback() {
         got_a_frame_ = true;
       }
       // 保存输入数据
-      {
+      if (image_data_manager_) {
         std::chrono::system_clock::time_point t0 =
             std::chrono::system_clock::now();
         Timer timer("addImageData");
@@ -584,6 +590,12 @@ bool PanopticMapper::getSubmapImageDataCallback(
     const GetSubmapImageData::Request::SharedPtr request,
     GetSubmapImageData::Response::SharedPtr response) {
   // 获取与submap关联的图像
+  if (!image_data_manager_) {
+    LOG(ERROR) << "No image data manager set!";
+    response->success = false;
+    return true;
+  }
+
   auto image_data = image_data_manager_->getImageForSubmap(request->submap_id);
   if (!image_data) {
     response->success = false;
@@ -735,15 +747,16 @@ bool PanopticMapper::saveMap(const std::string& file_path) {
   // 保存地图时先 finish，否则保存的地图可能有问题
   map_manager_->finishMapping(submaps_.get());
 
-  image_data_manager_->getAndRemoveSubmapUnderLock(*submaps_);
-
   bool success = submaps_->saveToFile(file_path);
   LOG_IF(INFO, success) << "Successfully saved " << submaps_->size()
                         << " submaps to '" << file_path << "'.";
 
   saveIsoSurfacePoints(file_path + "_point_label_cloud.csv");
 
-  image_data_manager_->saveMappingsToFile(file_path + "_images_meta_infos.bin");
+  if (image_data_manager_) {
+    image_data_manager_->getAndRemoveSubmapUnderLock(*submaps_);
+    image_data_manager_->saveMappingsToFile(file_path + "_images_meta_infos.bin");
+  }
   return success;
 }
 

@@ -221,6 +221,9 @@ class ImageDataManager {
   // 图像访问历史（用于LRU缓存策略）
   std::list<int> image_access_history_;
 
+  // 记录目前已经观察的有效物体，用于判断图像是否应该被接收
+  std::unordered_set<int> last_added_active_submaps_;
+
   // 当前图像ID计数器
   int current_image_id_ = 0;
 
