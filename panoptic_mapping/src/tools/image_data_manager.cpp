@@ -7,6 +7,9 @@
 #include <set>
 
 #include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
+
+#include "panoptic_mapping/tools/coloring.h"
 
 namespace panoptic_mapping {
 
@@ -61,6 +64,8 @@ void ImageDataManager::Config::setupParamsAndPrinting() {
   setupParam("load_image_data_info_on_startup",
              &load_image_data_info_on_startup);
   setupParam("meta_infos_file_name", &meta_infos_file_name);
+  setupParam("min_IoU_for_box_matching", &min_IoU_for_box_matching);
+  setupParam("vllm_middle_result_dir_name", &vllm_middle_result_dir_name);
 }
 
 void ImageDataManager::Config::checkParams() const {
@@ -75,6 +80,7 @@ ImageDataManager::ImageDataManager(const Config& config)
   // 创建图像保存目录
   if (config_.enable_image_management) {
     std::filesystem::create_directories(config_.image_save_directory);
+    std::filesystem::create_directories(getVllmMiddleResultsDir());
   }
 }
 
@@ -161,7 +167,7 @@ int ImageDataManager::addImageData(const cv::Mat& image,
 
   // 自动关联图像中的submap
   autoAssociateSubmaps(image_data->image_id, id_image, submaps);
-  unprocessed_images_.insert(image_data->image_id);
+  unprocessed_images_.push(image_data->image_id);
 
   LOG_IF(INFO, config_.verbosity >= 2)
       << "Added image data with ID " << image_data->image_id
@@ -286,17 +292,17 @@ ImageDataManager::getFirstNotProcessedImageDataForVLLM() {
   }
 
   // 获取第一个未处理的图像ID
-  int image_id = *unprocessed_images_.begin();
+  int image_id = unprocessed_images_.front();
 
   // 获取图像数据
   auto image_data = getImageData(image_id);
   if (!image_data) {
     // 如果获取失败，从未处理集合中移除
-    unprocessed_images_.erase(image_id);
+    unprocessed_images_.pop();
     return nullptr;
   }
 
-  unprocessed_images_.erase(image_id);
+  unprocessed_images_.pop();
 
   return image_data;
 }
@@ -316,73 +322,113 @@ void ImageDataManager::processVLLMOutput(const VLLMOutputData& vllm_output,
   // 标记图像为已处理
   markImageAsProcessed(vllm_output.image_id);
 
-  // TODO: 根据bounding_boxes为相关submap添加描述信息
-  // 这里需要根据具体需求实现，例如:
-  // 1.
-  // 将bounding_boxes与id_image中对应的部分做关联，id_image中每个像素的值对应一个submap
-  // ID，可以使用IoU的方式来匹配，这样就将 VLLM 输出的box与 submap
-  // 关联到一起了。
-  // 2. 为每个submap添加语义描述信息
-  // 3. 更新submap的相关属性
-  // 为每个边界框找到最佳匹配的submap
+  // 根据 mask 图像，计算每个 submap 的 box，vector 中存储的是 xmin ymin xmax
+  // ymax
+  std::unordered_map<int, Eigen::Vector4i> submap_with_boxes;
+  for (int x = 0; x < image_data->id_image_data.cols; ++x) {
+    for (int y = 0; y < image_data->id_image_data.rows; ++y) {
+      int submap_id = image_data->id_image_data.at<int32_t>(y, x);
+      if (submap_id < 0) {
+        continue;
+      }
+
+      if (submap_with_boxes.count(submap_id) == 0) {
+        submap_with_boxes[submap_id] = Eigen::Vector4i(0, 0, 0, 0);
+      }
+      Eigen::Vector4i& bbox = submap_with_boxes[submap_id];
+      bbox[0] = std::min(bbox[0], x);
+      bbox[1] = std::min(bbox[1], y);
+      bbox[2] = std::max(bbox[2], x);
+      bbox[3] = std::max(bbox[3], y);
+    }
+  }
+
+  if (config_.verbosity >= 3) {
+    for (const auto& [submap_id, bbox] : submap_with_boxes) {
+      LOG(INFO) << "Submap " << submap_id
+                << " has box(xymin xymax): " << bbox.transpose();
+    }
+  }
+
   for (const auto& bbox_info : vllm_output.bounding_boxes_info) {
-    const cv::Rect& bbox = bbox_info.bounding_box;
+    const cv::Rect& vllm_bbox = bbox_info.bounding_box;
 
     // 计算每个关联submap与边界框的IoU
     std::unordered_map<int, float> submap_ious;
-    for (int submap_id : image_data->associated_submaps) {
-      // 计算submap在ID图像中的覆盖区域
-      int submap_pixel_count = 0;
-      int intersection_count = 0;
+    // 统计 box 与 submap 的匹配关系
+    std::unordered_map<int, std::unordered_set<int>> box_submap_associations;
+    for (const auto& [submap_id, submap_bbox] : submap_with_boxes) {
+      // submap_bbox: [xmin, ymin, xmax, ymax]
+      cv::Rect submap_rect(submap_bbox[0], submap_bbox[1],
+                           submap_bbox[2] - submap_bbox[0] + 1,
+                           submap_bbox[3] - submap_bbox[1] + 1);
 
-      // 遍历边界框区域内的所有像素
-      for (int y = std::max(0, bbox.y);
-           y < std::min(bbox.y + bbox.height, image_data->id_image_data.rows);
-           ++y) {
-        for (int x = std::max(0, bbox.x);
-             x < std::min(bbox.x + bbox.width, image_data->id_image_data.cols);
-             ++x) {
-          int pixel_submap_id = image_data->id_image_data.at<int>(y, x);
-          if (pixel_submap_id == submap_id) {
-            intersection_count++;
-            submap_pixel_count++;
-          } else if (pixel_submap_id >= 0) {
-            submap_pixel_count++;
-          }
-        }
-      }
+      // 计算两个边界框的交集区域
+      cv::Rect intersection = submap_rect & vllm_bbox;
+
+      // 计算各个区域面积
+      float submap_area = submap_rect.area();
+      float detected_area = vllm_bbox.area();
+      float intersection_area = intersection.area();
 
       // 计算IoU
-      if (submap_pixel_count > 0) {
-        int bbox_area = bbox.width * bbox.height;
-        float iou = static_cast<float>(intersection_count) /
-                    (submap_pixel_count + bbox_area - intersection_count);
+      if (intersection_area > 0) {
+        float union_area = submap_area + detected_area - intersection_area;
+        float iou = intersection_area / union_area;
         submap_ious[submap_id] = iou;
+
+        if (config_.verbosity >= 3) {
+          LOG(INFO) << "Submap " << submap_id << " vs detection box "
+                    << bbox_info.id << " IoU: " << iou
+                    << " (Intersection: " << intersection_area
+                    << ", Union: " << union_area << ")";
+        }
       }
+    }
+
+    if (submap_ious.empty()) {
+      continue;
     }
 
     // 找到具有最高IoU的submap
-    if (!submap_ious.empty()) {
-      int best_submap_id = -1;
-      float max_iou = -1.0f;
+    int best_submap_id = -1;
+    float max_iou = -1.0f;
 
-      for (const auto& pair : submap_ious) {
-        if (pair.second > max_iou) {
-          max_iou = pair.second;
-          best_submap_id = pair.first;
-        }
+    for (const auto& pair : submap_ious) {
+      if (pair.second > max_iou) {
+        max_iou = pair.second;
+        best_submap_id = pair.first;
       }
+    }
 
-      // 如果找到了匹配的submap且IoU足够高，则更新submap信息
-      if (best_submap_id != -1 && max_iou > 0.1f) {  // IoU阈值可根据需要调整
-        LOG(INFO) << "Associating bounding box " << bbox_info.id
-                  << " with submap " << best_submap_id << " (IoU: " << max_iou
-                  << ")";
+    box_submap_associations[bbox_info.id].insert(best_submap_id);
+    if (box_submap_associations[bbox_info.id].size() > 1) {
+      std::stringstream ss;
+      for (const auto& submap_id : box_submap_associations[bbox_info.id]) {
+        ss << submap_id << ",";
+      }
+      LOG(WARNING)
+          << "Multiple submap associations for same bounding box, box id:"
+          << bbox_info.id << ", submap ids:" << ss.str();
+    }
 
+    // 如果找到了匹配的submap且IoU足够高，则更新submap信息
+    if (best_submap_id != -1 && max_iou > config_.min_IoU_for_box_matching) {
+      LOG(INFO) << "Associating bounding box " << bbox_info.id
+                << " with submap " << best_submap_id << " (IoU: " << max_iou
+                << ")";
+
+      if (submaps.submapIdExists(best_submap_id)) {
         updateSubmap(bbox_info, submaps.getSubmapPtr(best_submap_id));
+      } else {
+        LOG(WARNING)
+            << "Submap " << best_submap_id
+            << " matched with vllm box does not exist in submap collection.";
       }
     }
   }
+
+  visualVllmOutput(vllm_output, image_data);
 
   LOG(INFO) << "Processed VLLM output for image ID: " << vllm_output.image_id
             << " with " << vllm_output.bounding_boxes_info.size()
@@ -393,6 +439,15 @@ void ImageDataManager::updateSubmap(BoundingBoxInfoByVLLM box_info,
                                     Submap* submap) {
   submap->setDescriptsByVllm(box_info.description);
   submap->setHasNewVllmDescripts(true);
+
+  std::stringstream ss;
+  for (const auto& desc : submap->getDescriptsByVllm()) {
+    ss << desc << ";";
+  }
+  LOG(INFO) << "Updating submap " << submap->getID()
+            << " with bounding box (id:" << box_info.id
+            << ") (Rect: " << box_info.bounding_box << ")"
+            << ", and description: " << ss.str();
 }
 
 void ImageDataManager::markImageAsProcessed(int image_id) {
@@ -462,23 +517,16 @@ void ImageDataManager::dissociateSubmapFromImage(int submap_id, int image_id) {
 std::shared_ptr<ImageData> ImageDataManager::getImageForSubmap(int submap_id) {
   std::lock_guard<std::mutex> lock(mutex_);
 
-  // TODO: 返回时间戳最新的数据
-  std::vector<std::shared_ptr<ImageData>> result;
+  std::shared_ptr<ImageData> result = nullptr;
   auto it = submap_to_images_.find(submap_id);
   if (it != submap_to_images_.end()) {
-    result.reserve(it->second.size());
-    for (const auto& image_id : it->second) {
-      const auto image_data = getImageData(image_id);
-      if (image_data) {
-        result.push_back(image_data);
-      }
-    }
+    // 获取该 submaps 最新的 image
+    int image_id = *it->second.rbegin();
+    // 返回的是ImageData带有图像数据的深拷贝结果，因此直接返回即可
+    result = getImageData(image_id);
   }
 
-  if (result.empty()) {
-    return nullptr;
-  }
-  return result[0];
+  return result;
 }
 
 void ImageDataManager::handleSubmapRemoval(int submap_id) {
@@ -805,7 +853,7 @@ void ImageDataManager::saveMappingsToFile(const std::string& filepath) const {
 
   for (const auto& pair : submap_to_images_) {
     int submap_id = pair.first;
-    const std::unordered_set<int>& image_ids = pair.second;
+    const auto& image_ids = pair.second;
 
     file.write(reinterpret_cast<const char*>(&submap_id), sizeof(submap_id));
 
@@ -970,5 +1018,112 @@ std::string ImageDataManager::getImagePath(const std::string& file_name) const {
 std::string ImageDataManager::getImageDataInfoPath() const {
   return config_.image_save_directory + "/" + config_.meta_infos_file_name;
 }
+
+std::string ImageDataManager::getVllmMiddleResultsDir() const {
+  return config_.image_save_directory + "/" +
+         config_.vllm_middle_result_dir_name;
+}
+
+void ImageDataManager::visualVllmOutput(const VLLMOutputData& vllm_output,
+                        std::shared_ptr<ImageData> image_data) {
+    // 创建RGB图像的副本用于绘制
+    cv::Mat visualization_image;
+    image_data->rgb_data.copyTo(visualization_image);
+    
+    // 在RGB图像上绘制检测到的边界框
+    for (size_t i = 0; i < vllm_output.bounding_boxes_info.size(); ++i) {
+        const auto& bbox_info = vllm_output.bounding_boxes_info[i];
+        const cv::Rect& bbox = bbox_info.bounding_box;
+        
+        // 使用generateColor方法为每个边界框生成颜色
+        Color color = generateColor(bbox_info.id);
+        cv::Scalar cv_color(color.b, color.g, color.r); // OpenCV使用BGR顺序
+        
+        // 绘制边界框
+        cv::rectangle(visualization_image, bbox, cv_color, 2);
+        
+        // 准备标签文本
+        std::string label = "ID: " + std::to_string(bbox_info.id);
+        
+        // 计算标签尺寸并绘制标签背景
+        int baseline = 0;
+        cv::Size label_size = cv::getTextSize(label, cv::FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseline);
+        cv::Rect label_rect(bbox.x, bbox.y - label_size.height - baseline - 2, 
+                           label_size.width, label_size.height + baseline + 2);
+        
+        // 确保标签不会超出图像边界
+        label_rect.x = std::max(0, std::min(label_rect.x, visualization_image.cols - label_rect.width));
+        label_rect.y = std::max(0, std::min(label_rect.y, visualization_image.rows - label_rect.height));
+        
+        // 绘制标签背景和文字
+        cv::rectangle(visualization_image, label_rect, cv_color, -1); // 填充矩形
+        cv::putText(visualization_image, label, 
+                   cv::Point(label_rect.x, label_rect.y + label_size.height + baseline/2),
+                   cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 255), 1);
+    }
+    
+    // 创建mask可视化图像
+    cv::Mat mask_visualization;
+    visualization_image.copyTo(mask_visualization);
+    
+    // 在图像上绘制mask
+    std::unordered_map<int, Color> color_map;
+    for (int y = 0; y < image_data->id_image_data.rows; ++y) {
+        for (int x = 0; x < image_data->id_image_data.cols; ++x) {
+            int submap_id = image_data->id_image_data.at<int>(y, x);
+            if (submap_id >= 0) { // 有效mask像素
+                // 使用generateColor方法为每个submap ID生成颜色
+                if (color_map.count(submap_id) == 0) {
+                  color_map[submap_id] = generateColor(submap_id);
+                }
+                Color& color = color_map[submap_id];
+                
+                // 在mask可视化图像上绘制半透明的mask
+                cv::Vec3b& pixel = mask_visualization.at<cv::Vec3b>(y, x);
+                pixel[0] = static_cast<unsigned char>(0.6 * pixel[0] + 0.4 * color.b); // Blue
+                pixel[1] = static_cast<unsigned char>(0.6 * pixel[1] + 0.4 * color.g); // Green
+                pixel[2] = static_cast<unsigned char>(0.6 * pixel[2] + 0.4 * color.r); // Red
+            }
+        }
+    }
+    
+    // 保存可视化结果
+    std::string dir = getVllmMiddleResultsDir();
+    int image_id = image_data->image_id;
+    std::string rgb_output_path = dir + "/" + std::to_string(image_id) + "_boxes.png";
+    std::string mask_output_path = dir + "/" + std::to_string(image_id) + "_boxes_and_mask.png";
+    
+    cv::imwrite(rgb_output_path, visualization_image);
+    cv::imwrite(mask_output_path, mask_visualization);
+    
+    LOG(INFO) << "Saved VLLM RGB visualization to: " << rgb_output_path;
+    LOG(INFO) << "Saved VLLM mask visualization to: " << mask_output_path;
+    
+    // 将VLLMOutputData中的description信息输出到文本文件中
+    std::string description_output_path = dir + "/" + std::to_string(image_id) + "_vllm_description.txt";
+    std::ofstream description_file(description_output_path);
+    if (description_file.is_open()) {
+        description_file << "Bounding Boxes Information:\n";
+        description_file << "==========================\n\n";
+        
+        for (size_t i = 0; i < vllm_output.bounding_boxes_info.size(); ++i) {
+            const auto& bbox_info = vllm_output.bounding_boxes_info[i];
+            description_file << "Box\n";
+            description_file << "  ID: " << bbox_info.id << "\n";
+            std::stringstream ss;
+            for (const std::string& desc : bbox_info.description) {
+              ss << desc << ",";
+            }
+            description_file << "  Description: " << ss.str() << "\n";
+            description_file << "\n";
+        }
+        
+        description_file.close();
+        LOG(INFO) << "Saved VLLM description to: " << description_output_path;
+    } else {
+        LOG(ERROR) << "Failed to open file for writing VLLM description: " << description_output_path;
+    }
+}
+
 
 }  // namespace panoptic_mapping

@@ -74,6 +74,8 @@ class ImageDataManager {
     std::string image_save_directory = "/tmp/panoptic_mapping_images";
     // 图像管理数据的文件名，这里保存的就是图片地图信息。该文件需要与图像文件在同一文件夹下
     std::string meta_infos_file_name = "images_meta_infos.bin";
+    // 存储VLLM中间结果，放在 image_save_directory 文件夹下
+    std::string vllm_middle_result_dir_name = "vllm_middle_result";
 
     // 内存中最多保存的图像数量
     int max_images_in_memory = 10;
@@ -83,6 +85,9 @@ class ImageDataManager {
 
     // 是否读取历史保存的信息（作为地图的一部分）
     bool load_image_data_info_on_startup = false;
+
+    // vllm 返回的 box 与物体 box 匹配是的 IoU 阈值
+    float min_IoU_for_box_matching = 0.5f;
 
     Config() { setConfigName("ImageDataManager"); }
 
@@ -183,10 +188,16 @@ class ImageDataManager {
   std::string getImagePath(const std::string& file_name) const;
   // 图像管理信息的文件路径
   std::string getImageDataInfoPath() const;
+  // 获取VLLM中间结果文件夹路径
+  std::string getVllmMiddleResultsDir() const;
 
   // 创建仅包含元数据的图像数据副本
   std::shared_ptr<ImageData> createMetadataCopy(
       const std::shared_ptr<ImageData>& source);
+
+  // 将VLLM的输出可视化
+  void visualVllmOutput(const VLLMOutputData& vllm_output,
+                        std::shared_ptr<ImageData> image_data);
 
  private:
   const Config config_;
@@ -194,8 +205,9 @@ class ImageDataManager {
   // 图像数据存储（仅元数据，无实际图像数据）
   std::unordered_map<int, std::shared_ptr<ImageData>> image_data_;
 
-  // Submap到图像的映射（一对多）
-  std::unordered_map<int, std::unordered_set<int>> submap_to_images_;
+  // Submap到图像的映射（一对多），使用set是为了按照 id
+  // 顺序存储，id顺序代表了时间戳顺序
+  std::unordered_map<int, std::set<int>> submap_to_images_;
 
   // 图像到Submap的映射（一对多）
   std::unordered_map<int, std::unordered_set<int>> image_to_submaps_;
@@ -203,8 +215,8 @@ class ImageDataManager {
   // 内存中的实际图像数据缓存（用于提高访问效率）
   std::unordered_map<int, std::shared_ptr<ImageData>> image_cache_;
 
-  // 未处理图像ID集合
-  std::unordered_set<int> unprocessed_images_;
+  // 未处理图像ID集合，不需要提供随机查询功能，先入先出即可
+  std::queue<int> unprocessed_images_;
 
   // 图像访问历史（用于LRU缓存策略）
   std::list<int> image_access_history_;

@@ -183,5 +183,6 @@ visualization:
 image_data_manager:
   verbosity: 4
   image_save_directory: "/home/xiangweizeng/3D_slam/sematic-mapping/panoptic_mapping_ws/test_data"
-  meta_infos_file_name: "images_meta_infos.bin"
+  meta_infos_file_name: "map.panmap_images_meta_infos.bin"
   max_images_in_memory: 10
+  min_IoU_for_box_matching: 0.1
