@@ -168,6 +168,7 @@ bool SubmapCollection::loadFromFile(const std::string& file_path,
   }
 
   // Loading each of the submaps.
+  int max_submap_id = 0;
   for (size_t sub_map_index = 0u;
        sub_map_index < submap_collection_proto.num_submaps(); ++sub_map_index) {
     std::unique_ptr<Submap> submap_ptr =
@@ -179,11 +180,16 @@ bool SubmapCollection::loadFromFile(const std::string& file_path,
       proto_file.close();
       return false;
     }
+    max_submap_id = std::max(max_submap_id, submap_ptr->getID());
 
     // Add to the collection.
     id_to_index_[submap_ptr->getID()] = submaps_.size();
     submaps_.emplace_back(std::move(submap_ptr));
   }
+
+  // 保留读取的 submap id,因此后续新生成的 submap id 会从 max_submap_id + 1 开始
+  submap_id_manager_.setCurrentID(max_submap_id + 1);
+
   active_freespace_submap_id_ =
       submap_collection_proto.active_freespace_submap_id();
   proto_file.close();

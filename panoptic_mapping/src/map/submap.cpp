@@ -115,6 +115,7 @@ void Submap::setT_M_S(const Transformation& T_M_S) {
 void Submap::getProto(SubmapProto* proto) const {
   CHECK_NOTNULL(proto);
   // Store Submap data.
+  proto->set_id(id_);
   proto->set_instance_id(instance_id_);
   proto->set_class_id(class_id_);
   proto->set_class_name(class_name_);
@@ -218,7 +219,15 @@ std::unique_ptr<Submap> Submap::loadFromStream(
   cfg.voxel_size = submap_proto.voxel_size();
   cfg.voxels_per_side = submap_proto.voxels_per_side();
   cfg.truncation_distance = submap_proto.truncation_distance();
-  auto submap = std::make_unique<Submap>(cfg, id_manager, instance_manager);
+  std::unique_ptr<Submap> submap = nullptr;
+  if (submap_proto.has_id()) {
+    int submap_id = submap_proto.id();
+    submap = std::make_unique<Submap>(cfg, id_manager, instance_manager, submap_id);
+  } else {
+    // 兼容无 id 的情况，后续新数据不应该走这个逻辑
+    submap = std::make_unique<Submap>(cfg, id_manager, instance_manager);
+  }
+  
 
   // Load the submap data.
   submap->has_class_layer_ = submap_proto.num_class_blocks() > 0;

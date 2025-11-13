@@ -217,6 +217,7 @@ void PanopticMapper::setupRos() {
     if (!loadMap(load_file)) {
       CHECK(false) << "Failed to load map from " << load_file;
     }
+    image_data_manager_->loadMap();
   }
 
   // 创建独立的回调组用于图像服务
@@ -532,6 +533,9 @@ void PanopticMapper::processNotProcessedImageDataForVLLM() {
                        t_service_1 - t_service_0)
                        .count()
                 << " ms";
+                
+      LOG(INFO) << "unprocessed image data size remaining: "
+            << image_data_manager_->unprocessedImageDataSize();
     }
   }
 }
@@ -731,11 +735,15 @@ bool PanopticMapper::saveMap(const std::string& file_path) {
   // 保存地图时先 finish，否则保存的地图可能有问题
   map_manager_->finishMapping(submaps_.get());
 
+  image_data_manager_->getAndRemoveSubmapUnderLock(*submaps_);
+
   bool success = submaps_->saveToFile(file_path);
   LOG_IF(INFO, success) << "Successfully saved " << submaps_->size()
                         << " submaps to '" << file_path << "'.";
 
   saveIsoSurfacePoints(file_path + "_point_label_cloud.csv");
+
+  image_data_manager_->saveMappingsToFile(file_path + "_images_meta_infos.bin");
   return success;
 }
 

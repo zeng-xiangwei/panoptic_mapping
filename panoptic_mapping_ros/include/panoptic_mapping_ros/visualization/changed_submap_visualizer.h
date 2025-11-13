@@ -98,6 +98,9 @@ class ChangedSubmapVisualizer {
     OrientedBoundingBox obb;
     Color color = Color::Gray();
     std::vector<float> embedding_vector;
+
+    // vllm 给出的额外信息
+    std::vector<std::string> descripts;
   };
 
   /**

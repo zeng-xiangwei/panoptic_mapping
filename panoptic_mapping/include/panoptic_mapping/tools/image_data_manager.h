@@ -114,7 +114,16 @@ class ImageDataManager {
 
   int unprocessedImageDataSize() const { return unprocessed_images_.size(); }
 
+  // getAndRemoveSubmap 加锁版
+  void getAndRemoveSubmapUnderLock(const SubmapCollection& submaps);
+
+  // 加载图片信息、更新图片的最大 id
+  void loadMap();
+
  private:
+  // 获取删除的 submap，并执行删除路基
+  void getAndRemoveSubmap(const SubmapCollection& submaps);
+
   // 从文件加载图像信息
   void loadMappingsFromFile(const std::string& filepath);
 

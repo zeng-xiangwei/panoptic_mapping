@@ -75,15 +75,14 @@ ImageDataManager::ImageDataManager(const Config& config)
   // 创建图像保存目录
   if (config_.enable_image_management) {
     std::filesystem::create_directories(config_.image_save_directory);
-
-    // 初始化ID计数器
-    if (config_.load_image_data_info_on_startup) {
-      std::string meta_file_path = getImageDataInfoPath();
-      LOG(INFO) << "Loading image data info from " << meta_file_path;
-      loadMappingsFromFile(meta_file_path);
-    }
-    initializeImageIdCounter();
   }
+}
+
+void ImageDataManager::loadMap() {
+  std::string meta_file_path = getImageDataInfoPath();
+  LOG(INFO) << "Loading image data info from " << meta_file_path;
+  loadMappingsFromFile(meta_file_path);
+  initializeImageIdCounter();
 }
 
 void ImageDataManager::initializeImageIdCounter() {
@@ -170,13 +169,28 @@ int ImageDataManager::addImageData(const cv::Mat& image,
       << " submaps.";
 
   // 处理已经删除的 submap
+  getAndRemoveSubmap(submaps);
+
+  return image_data->image_id;
+}
+
+void ImageDataManager::getAndRemoveSubmap(const SubmapCollection& submaps) {
+  // 处理已经删除的 submap
   std::vector<int> deleted_submap_ids;
   getDeletedSubmaps(submaps, deleted_submap_ids);
   for (int submap_id : deleted_submap_ids) {
     handleSubmapRemoval(submap_id);
   }
+}
 
-  return image_data->image_id;
+void ImageDataManager::getAndRemoveSubmapUnderLock(
+    const SubmapCollection& submaps) {
+  if (!config_.enable_image_management) {
+    return;
+  }
+
+  std::lock_guard<std::mutex> lock(mutex_);
+  getAndRemoveSubmap(submaps);
 }
 
 bool ImageDataManager::needToRetainImageData(const SubmapCollection& submaps) {
@@ -264,7 +278,6 @@ std::shared_ptr<ImageData> ImageDataManager::getImageData(int image_id) {
 
 std::shared_ptr<ImageData>
 ImageDataManager::getFirstNotProcessedImageDataForVLLM() {
-
   std::lock_guard<std::mutex> lock(mutex_);
 
   // 检查是否有未处理的图像
@@ -379,6 +392,7 @@ void ImageDataManager::processVLLMOutput(const VLLMOutputData& vllm_output,
 void ImageDataManager::updateSubmap(BoundingBoxInfoByVLLM box_info,
                                     Submap* submap) {
   submap->setDescriptsByVllm(box_info.description);
+  submap->setHasNewVllmDescripts(true);
 }
 
 void ImageDataManager::markImageAsProcessed(int image_id) {

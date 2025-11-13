@@ -28,4 +28,8 @@ void SubmapIDManager::releaseID(int id) {
   }
 }
 
+void SubmapIDManager::setCurrentID(int id) {
+  current_id_ = std::max(current_id_, id);
+}
+
 }  // namespace panoptic_mapping

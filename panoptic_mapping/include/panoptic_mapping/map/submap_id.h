@@ -19,6 +19,10 @@ class SubmapIDManager {
     return &instance;
   }
 
+  // 只能调用一次，为了解决读取 submap 文件数据时能够保留 submap
+  // id，后续需要在最大的 id 上递增
+  void setCurrentID(int id);
+
  private:
   friend class SubmapID;
 

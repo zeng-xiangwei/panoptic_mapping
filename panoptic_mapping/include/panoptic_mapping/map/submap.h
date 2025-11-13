@@ -83,6 +83,11 @@ class Submap {
       SubmapIDManager* submap_id_manager = SubmapIDManager::getGlobalInstance(),
       InstanceIDManager* instance_id_manager =
           InstanceIDManager::getGlobalInstance());
+  
+  // This constructor is intended to allow deep copies of the submap collection,
+  // moving the id to the new id managers.
+  Submap(const Config& config, SubmapIDManager* submap_id_manager,
+         InstanceIDManager* instance_id_manager, int submap_id);
   virtual ~Submap() = default;
 
   // Const accessors.
@@ -131,6 +136,7 @@ class Submap {
   std::vector<std::string> getDescriptsByVllm() const {
     return descripts_by_vllm_;
   };
+  bool getHasNewVllmDescripts() const { return has_new_vllm_descripts_; }
 
   // Setters.
   void setDisappearCount(int count) { disappear_count_ = count; }
@@ -145,6 +151,10 @@ class Submap {
   void setMatchRedetection(bool match) { match_redetection_ = match; }
   void setDescriptsByVllm(const std::vector<std::string>& descripts) {
     descripts_by_vllm_ = descripts;
+  }
+
+  void setHasNewVllmDescripts(bool has_new_vllm_descripts) {
+    has_new_vllm_descripts_ = has_new_vllm_descripts;
   }
 
   /**
@@ -237,11 +247,6 @@ class Submap {
   friend class SubmapCollection;
   const Config config_;
 
-  // This constructor is intended to allow deep copies of the submap collection,
-  // moving the id to the new id managers.
-  Submap(const Config& config, SubmapIDManager* submap_id_manager,
-         InstanceIDManager* instance_id_manager, int submap_id);
-
   // Setup.
   void initialize();
 
@@ -320,6 +325,7 @@ class Submap {
 
   // VLLM
   std::vector<std::string> descripts_by_vllm_;
+  bool has_new_vllm_descripts_ = false;
 };
 
 }  // namespace panoptic_mapping

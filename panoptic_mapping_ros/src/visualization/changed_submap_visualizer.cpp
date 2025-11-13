@@ -190,6 +190,18 @@ void ChangedSubmapVisualizer::findChangedSubmaps(SubmapCollection& submaps) {
       info.name = submap.getClassName();
       info.change_type = ChangeType::kChanged;
     }
+
+    if (submap.getHasNewVllmDescripts()) {
+      // TODO: info增加vllm的额外信息字段
+      submap.setHasNewVllmDescripts(false);
+      info.change_type = ChangeType::kChanged;
+      info.descripts = submap.getDescriptsByVllm();
+      std::stringstream ss;
+      for (auto str : info.descripts) {
+        ss << str << ";";
+      }
+      LOG(INFO) << "submap " << submap.getID() << " update vllm descripts: " << ss.str();
+    }
   }
 
   if (config_.verbosity >= 4) {

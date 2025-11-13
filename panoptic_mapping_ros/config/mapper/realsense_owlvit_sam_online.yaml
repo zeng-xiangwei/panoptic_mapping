@@ -185,4 +185,3 @@ image_data_manager:
   image_save_directory: "/home/xiangweizeng/3D_slam/sematic-mapping/panoptic_mapping_ws/test_data"
   meta_infos_file_name: "images_meta_infos.bin"
   max_images_in_memory: 10
-  load_image_data_info_on_startup: true
