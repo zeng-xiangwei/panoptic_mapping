@@ -16,6 +16,14 @@ message SubmapProto {
   repeated float embedding_vector = 17;
   optional int32 embedding_weight = 18;
   optional float embedding_score = 19;
+  
+  // 物体的详细描述信息
+  optional string color = 21;
+  optional string shape = 22;
+  optional string other_descs = 23;
+  // 物体与物体之间的关系，submap 自身是 from，因此仅记录 to 即可
+  repeated int32 relationship_to_submap_ids = 24;
+  repeated string relationship_types = 25;
 
   // Tsdf Layer.
   optional uint32 num_blocks = 2;

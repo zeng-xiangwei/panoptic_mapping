@@ -155,6 +155,24 @@ void Submap::getProto(SubmapProto* proto) const {
   conversions::transformKindrToProto(T_M_S_, transformation_proto_ptr);
   proto->set_allocated_transform(transformation_proto_ptr);
   proto->set_frame_name(frame_name_);
+
+  // 保存物体根据 vllm 得到的描述信息以及 物体与物体之间的关系信息
+  if (!descripts_by_vllm_.color.empty()) {
+    proto->set_color(descripts_by_vllm_.color);
+  }
+  if (!descripts_by_vllm_.shape.empty()) {
+    proto->set_shape(descripts_by_vllm_.shape);
+  }
+  if (!descripts_by_vllm_.other_descs.empty()) {
+    proto->set_other_descs(descripts_by_vllm_.other_descs);
+  }
+
+  // 序列化物体间关系信息
+  for (const auto& relationship : relationships_by_vllm_) {
+    proto->add_relationship_to_submap_ids(relationship.to_id);
+    proto->add_relationship_types(
+        relationshipTypeToString(relationship.relationship));
+  }
 }
 
 bool Submap::saveToStream(std::fstream* outfile_ptr) const {
@@ -222,12 +240,12 @@ std::unique_ptr<Submap> Submap::loadFromStream(
   std::unique_ptr<Submap> submap = nullptr;
   if (submap_proto.has_id()) {
     int submap_id = submap_proto.id();
-    submap = std::make_unique<Submap>(cfg, id_manager, instance_manager, submap_id);
+    submap =
+        std::make_unique<Submap>(cfg, id_manager, instance_manager, submap_id);
   } else {
     // 兼容无 id 的情况，后续新数据不应该走这个逻辑
     submap = std::make_unique<Submap>(cfg, id_manager, instance_manager);
   }
-  
 
   // Load the submap data.
   submap->has_class_layer_ = submap_proto.num_class_blocks() > 0;
@@ -279,6 +297,36 @@ std::unique_ptr<Submap> Submap::loadFromStream(
   conversions::transformProtoToKindr(transformation_proto, &T_M_S);
   submap->setT_M_S(T_M_S);
   submap->setFrameName(submap_proto.frame_name());
+
+  // 加载物体根据 vllm 得到的描述信息以及 物体与物体之间的关系信息
+  if (submap_proto.has_color() || submap_proto.has_shape() ||
+      submap_proto.has_other_descs()) {
+    VllmDescription desc;
+    if (submap_proto.has_color()) {
+      desc.color = submap_proto.color();
+    }
+    if (submap_proto.has_shape()) {
+      desc.shape = submap_proto.shape();
+    }
+    if (submap_proto.has_other_descs()) {
+      desc.other_descs = submap_proto.other_descs();
+    }
+    submap->setDescriptsByVllm(desc);
+    submap->setHasNewVllmDescripts(true);
+  }
+
+  // 加载物体间关系信息
+  for (int i = 0; i < submap_proto.relationship_to_submap_ids_size() &&
+                  i < submap_proto.relationship_types_size();
+       ++i) {
+    VllmRelationship relationship;
+    relationship.from_id = submap->getID();
+    relationship.to_id = submap_proto.relationship_to_submap_ids(i);
+    relationship.relationship =
+        stringToRelationshipType(submap_proto.relationship_types(i));
+    submap->relationships_by_vllm_.push_back(relationship);
+    submap->setHasNewVllmDescripts(true);
+  }
 
   return submap;
 }
@@ -437,11 +485,12 @@ std::unique_ptr<Submap> Submap::clone(
   // which should be identical.
   result->bounding_volume_.update();
 
+  result->descripts_by_vllm_ = descripts_by_vllm_;
+  result->relationships_by_vllm_ = relationships_by_vllm_;
+
   return result;
 }
 
-void Submap::addDisappearCount(int add) {
-  disappear_count_ += add;
-}
+void Submap::addDisappearCount(int add) { disappear_count_ += add; }
 
 }  // namespace panoptic_mapping

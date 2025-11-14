@@ -22,7 +22,8 @@ struct ImageData {
   double timestamp;                 // 图像时间戳
   std::string rbg_image_file_name;  // RGB图像文件名（具体路径由其他参数给定）
   std::string id_image_file_name;   // ID图像文件名
-  // 关联的submap IDs 及其类别名，后续类别名可能替换为一个结构体，用来存储类别名+2d boundingbox
+  // 关联的submap IDs
+  // 及其类别名，后续类别名可能替换为一个结构体，用来存储类别名+2d boundingbox
   std::unordered_map<int, std::string> associated_submaps;
   bool is_processed = false;  // 是否已被VL大模型处理
 
@@ -60,21 +61,13 @@ struct BoundingBoxInfoByVLLM {
   }
 };
 
-struct BoundingBoxRelationship {
-  // 两个box的唯一id
-  int from_id;
-  int to_id;
-  // 关系
-  std::string relationship;
-};
-
 struct VLLMOutputData {
   // 图像ID
   int image_id;
   // VLLM返回的bounding box信息
   std::vector<BoundingBoxInfoByVLLM> bounding_boxes_info;
   // 物体 box 之间的关系
-  std::vector<BoundingBoxRelationship> bounding_boxes_relationships;
+  std::vector<VllmRelationship> bounding_boxes_relationships;
 };
 
 /**
@@ -150,7 +143,9 @@ class ImageDataManager {
   void loadMappingsFromFile(const std::string& filepath);
 
   // 根据 VL 大模型返回的数据，更新 submap 描述信息
-  void updateSubmap(BoundingBoxInfoByVLLM box_info, Submap* submap);
+  void updateSubmap(const VLLMOutputData& vllm_output,
+                    std::unordered_map<int, int> box_submap_pair,
+                    SubmapCollection& submaps);
 
   // 标记图像已被处理
   void markImageAsProcessed(int image_id);

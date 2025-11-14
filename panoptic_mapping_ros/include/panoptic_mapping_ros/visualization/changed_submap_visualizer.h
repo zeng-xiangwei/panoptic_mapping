@@ -101,6 +101,7 @@ class ChangedSubmapVisualizer {
 
     // vllm 给出的额外信息
     VllmDescription vllm_descripts;
+    std::vector<VllmRelationship> vllm_relationship;
   };
 
   /**

@@ -358,14 +358,30 @@ void ImageDataManager::processVLLMOutput(const VLLMOutputData& vllm_output,
     }
   }
 
+  // 统计 box 与 submap 的匹配关系，用来构造 box 和 submap 的一对一关系 <box_id,
+  // <submap_id, IoU>>
+  std::unordered_map<int, std::unordered_map<int, float>>
+      box_submap_associations;
+  const auto& submap_with_class_name = image_data->associated_submaps;
   for (const auto& bbox_info : vllm_output.bounding_boxes_info) {
     const cv::Rect& vllm_bbox = bbox_info.bounding_box;
+    std::string bbox_class_name = bbox_info.description.class_name;
 
     // 计算每个关联submap与边界框的IoU
     std::unordered_map<int, float> submap_ious;
-    // 统计 box 与 submap 的匹配关系
-    std::unordered_map<int, std::unordered_set<int>> box_submap_associations;
     for (const auto& [submap_id, submap_bbox] : submap_with_boxes) {
+      if (submap_with_class_name.count(submap_id) == 0) {
+        LOG(ERROR) << "Submap: " << submap_id
+                   << ",does not have a class name associated with Image ID: "
+                   << image_data->image_id;
+        continue;
+      }
+
+      std::string submap_class_name = submap_with_class_name.at(submap_id);
+      if (submap_class_name != bbox_class_name) {
+        continue;
+      }
+
       // submap_bbox: [xmin, ymin, xmax, ymax]
       cv::Rect submap_rect(submap_bbox[0], submap_bbox[1],
                            submap_bbox[2] - submap_bbox[0] + 1,
@@ -409,32 +425,35 @@ void ImageDataManager::processVLLMOutput(const VLLMOutputData& vllm_output,
       }
     }
 
-    box_submap_associations[bbox_info.id].insert(best_submap_id);
-    if (box_submap_associations[bbox_info.id].size() > 1) {
-      std::stringstream ss;
-      for (const auto& submap_id : box_submap_associations[bbox_info.id]) {
-        ss << submap_id << ",";
-      }
-      LOG(WARNING)
-          << "Multiple submap associations for same bounding box, box id:"
-          << bbox_info.id << ", submap ids:" << ss.str();
-    }
-
     // 如果找到了匹配的submap且IoU足够高，则更新submap信息
     if (best_submap_id != -1 && max_iou > config_.min_IoU_for_box_matching) {
       LOG(INFO) << "Associating bounding box " << bbox_info.id
                 << " with submap " << best_submap_id << " (IoU: " << max_iou
                 << ")";
 
-      if (submaps.submapIdExists(best_submap_id)) {
-        updateSubmap(bbox_info, submaps.getSubmapPtr(best_submap_id));
-      } else {
-        LOG(WARNING)
-            << "Submap " << best_submap_id
-            << " matched with vllm box does not exist in submap collection.";
-      }
+      box_submap_associations[bbox_info.id][best_submap_id] = max_iou;
     }
   }
+
+  // 取 box 和 submap 一一对应的结果，构造 submap 之间的关系
+  // TODO: 可能出现 1 个 submap 对应多个 box
+  // 的情况，暂时不做处理，对于物体的描述，直接做替换更新；对于物体与物体的关系，每个box都贡献一个关系
+  std::unordered_map<int, int> box_submap_pair;
+  for (const auto& [box_id, submap_id_and_iou] : box_submap_associations) {
+    float max_iou = -1.0f;
+    int best_submap_id = -1;
+    for (const auto& [submap_id, iou] : submap_id_and_iou) {
+      if (iou > max_iou) {
+        max_iou = iou;
+        best_submap_id = submap_id;
+      }
+    }
+    if (best_submap_id != -1) {
+      box_submap_pair[box_id] = best_submap_id;
+    }
+  }
+
+  updateSubmap(vllm_output, box_submap_pair, submaps);
 
   visualVllmOutput(vllm_output, image_data);
 
@@ -443,16 +462,73 @@ void ImageDataManager::processVLLMOutput(const VLLMOutputData& vllm_output,
             << " bounding boxes";
 }
 
-void ImageDataManager::updateSubmap(BoundingBoxInfoByVLLM box_info,
-                                    Submap* submap) {
-  submap->setDescriptsByVllm(box_info.description);
-  submap->setHasNewVllmDescripts(true);
+void ImageDataManager::updateSubmap(
+    const VLLMOutputData& vllm_output,
+    std::unordered_map<int, int> box_submap_pair, SubmapCollection& submaps) {
+  for (const auto& box_info : vllm_output.bounding_boxes_info) {
+    if (box_submap_pair.count(box_info.id) == 0) {
+      continue;
+    }
+    int box_id = box_info.id;
+    int submap_id = box_submap_pair[box_id];
+    if (!submaps.submapIdExists(submap_id)) {
+      continue;
+    }
+    Submap* submap = submaps.getSubmapPtr(submap_id);
+    submap->setDescriptsByVllm(box_info.description);
+    submap->setHasNewVllmDescripts(true);
+    LOG(INFO) << "Updating submap " << submap->getID()
+              << " with bounding box (id:" << box_info.id
+              << ") (Rect: " << box_info.bounding_box << ")"
+              << ", and description: ["
+              << submap->getDescriptsByVllm().toString() << "]";
+  }
 
-  LOG(INFO) << "Updating submap " << submap->getID()
-            << " with bounding box (id:" << box_info.id
-            << ") (Rect: " << box_info.bounding_box << ")"
-            << ", and description: [" << submap->getDescriptsByVllm().toString()
-            << "]";
+  for (const auto& box_relationship :
+       vllm_output.bounding_boxes_relationships) {
+    if (box_submap_pair.count(box_relationship.from_id) == 0 ||
+        box_submap_pair.count(box_relationship.to_id) == 0) {
+      continue;
+    }
+
+    int box_from_id = box_relationship.from_id;
+    int box_to_id = box_relationship.to_id;
+    int submap_from_id = box_submap_pair[box_from_id];
+    int submap_to_id = box_submap_pair[box_to_id];
+    RelationshipType relationship_type = box_relationship.relationship;
+
+    if (!submaps.submapIdExists(submap_from_id)) {
+      LOG(WARNING) << "Submap " << submap_from_id
+                   << " does not exist in submap collection when processing "
+                      "relationship from VLLM output for image ID: "
+                   << vllm_output.image_id;
+      continue;
+    }
+    if (!submaps.submapIdExists(submap_to_id)) {
+      LOG(WARNING) << "Submap " << submap_to_id
+                   << " does not exist in submap collection when processing "
+                      "relationship from VLLM output for image ID: "
+                   << vllm_output.image_id;
+      continue;
+    }
+
+    Submap* submap_from = submaps.getSubmapPtr(submap_from_id);
+    Submap* submap_to = submaps.getSubmapPtr(submap_to_id);
+
+    VllmRelationship from_relationship;
+    from_relationship.from_id = submap_from_id;
+    from_relationship.to_id = submap_to_id;
+    from_relationship.relationship = relationship_type;
+    submap_from->getVllmRelationshipsPtr()->push_back(from_relationship);
+    submap_from->setHasNewVllmDescripts(true);
+
+    VllmRelationship to_relationship;
+    to_relationship.from_id = submap_to_id;
+    to_relationship.to_id = submap_from_id;
+    to_relationship.relationship = inverseRelationshipType(relationship_type);
+    submap_from->getVllmRelationshipsPtr()->push_back(to_relationship);
+    submap_from->setHasNewVllmDescripts(true);
+  }
 }
 
 void ImageDataManager::markImageAsProcessed(int image_id) {
@@ -483,7 +559,7 @@ void ImageDataManager::associateSubmapWithImage(int submap_id, int image_id,
   if (it != image_data_.end()) {
     it->second->associated_submaps[submap_id] = submap.getClassName();
     LOG_IF(INFO, config_.verbosity >= 3)
-      << "Associated submap " << submap_id << " with image " << image_id;
+        << "Associated submap " << submap_id << " with image " << image_id;
   }
 }
 
@@ -1146,7 +1222,8 @@ void ImageDataManager::visualVllmOutput(const VLLMOutputData& vllm_output,
       const auto& bbox_info = vllm_output.bounding_boxes_info[i];
       description_file << "Box\n";
       description_file << "  ID: " << bbox_info.id << "\n";
-      description_file << "  Description: " << bbox_info.description.toString() << "\n";
+      description_file << "  Description: " << bbox_info.description.toString()
+                       << "\n";
       description_file << "\n";
     }
 
@@ -1154,7 +1231,8 @@ void ImageDataManager::visualVllmOutput(const VLLMOutputData& vllm_output,
       description_file << "Relationship\n";
       description_file << "  From: " << re.from_id << ",";
       description_file << "To: " << re.to_id << "\n";
-      description_file << "  Relationship: " << re.relationship << "\n";
+      description_file << "  Relationship: "
+                       << relationshipTypeToString(re.relationship) << "\n";
     }
 
     description_file.close();

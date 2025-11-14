@@ -84,7 +84,7 @@ class Submap {
       SubmapIDManager* submap_id_manager = SubmapIDManager::getGlobalInstance(),
       InstanceIDManager* instance_id_manager =
           InstanceIDManager::getGlobalInstance());
-  
+
   // This constructor is intended to allow deep copies of the submap collection,
   // moving the id to the new id managers.
   Submap(const Config& config, SubmapIDManager* submap_id_manager,
@@ -134,10 +134,11 @@ class Submap {
   }
   SubmapBoundingVolume* getBoundingVolumePtr() { return &bounding_volume_; }
   int getDisappearCount() const { return disappear_count_; }
-  VllmDescription getDescriptsByVllm() const {
-    return descripts_by_vllm_;
-  };
+  VllmDescription getDescriptsByVllm() const { return descripts_by_vllm_; };
   bool getHasNewVllmDescripts() const { return has_new_vllm_descripts_; }
+  std::vector<VllmRelationship>* getVllmRelationshipsPtr() {
+    return &relationships_by_vllm_;
+  }
 
   // Setters.
   void setDisappearCount(int count) { disappear_count_ = count; }
@@ -324,8 +325,12 @@ class Submap {
   // Change detection.
   int disappear_count_ = 0;
 
-  // VLLM
+  // VLLM提供的物体属性描述
   VllmDescription descripts_by_vllm_;
+  // 物体与物体之间的位置关系，这里的 from_id 就是该 submap id，to_id
+  // 是另一个submap id
+  std::vector<VllmRelationship> relationships_by_vllm_;
+  // TODO: 暂时设计为描述与关系只要有一个有变化，这个字段就设为true
   bool has_new_vllm_descripts_ = false;
 };
 

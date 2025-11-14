@@ -196,8 +196,14 @@ void ChangedSubmapVisualizer::findChangedSubmaps(SubmapCollection& submaps) {
       submap.setHasNewVllmDescripts(false);
       info.change_type = ChangeType::kChanged;
       info.vllm_descripts = submap.getDescriptsByVllm();
+      info.vllm_relationship = *submap.getVllmRelationshipsPtr();
       LOG(INFO) << "submap " << submap.getID()
                 << " update vllm descripts: " << info.vllm_descripts.toString();
+
+      for (auto& rel : info.vllm_relationship) {
+        LOG(INFO) << "submap " << submap.getID()
+                  << " update vllm relationship: " << rel.toString();
+      }
     }
   }
 
