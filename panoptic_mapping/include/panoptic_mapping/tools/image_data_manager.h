@@ -22,8 +22,9 @@ struct ImageData {
   double timestamp;                 // 图像时间戳
   std::string rbg_image_file_name;  // RGB图像文件名（具体路径由其他参数给定）
   std::string id_image_file_name;   // ID图像文件名
-  std::unordered_set<int> associated_submaps;  // 关联的submap IDs
-  bool is_processed = false;                   // 是否已被VL大模型处理
+  // 关联的submap IDs 及其类别名，后续类别名可能替换为一个结构体，用来存储类别名+2d boundingbox
+  std::unordered_map<int, std::string> associated_submaps;
+  bool is_processed = false;  // 是否已被VL大模型处理
 
   // 内存中的实际图像数据（仅在缓存中存在）
   cv::Mat rgb_data;       // RGB图像数据（内存中）
@@ -50,14 +51,30 @@ struct BoundingBoxInfoByVLLM {
   int id;
   // box 框
   cv::Rect bounding_box;
-  // 自身描述
-  std::vector<std::string> description;
+  // 自身描述，类别名、颜色、形状、其他描述
+  VllmDescription description;
+
+  std::string toString() const {
+    return "id: " + std::to_string(id) +
+           ", description: " + description.toString();
+  }
+};
+
+struct BoundingBoxRelationship {
+  // 两个box的唯一id
+  int from_id;
+  int to_id;
+  // 关系
+  std::string relationship;
 };
 
 struct VLLMOutputData {
-  int image_id;  // 图像ID
-  std::vector<BoundingBoxInfoByVLLM>
-      bounding_boxes_info;  // VLLM返回的bounding box信息
+  // 图像ID
+  int image_id;
+  // VLLM返回的bounding box信息
+  std::vector<BoundingBoxInfoByVLLM> bounding_boxes_info;
+  // 物体 box 之间的关系
+  std::vector<BoundingBoxRelationship> bounding_boxes_relationships;
 };
 
 /**
@@ -139,7 +156,8 @@ class ImageDataManager {
   void markImageAsProcessed(int image_id);
 
   // 建立submap和图像之间的关联
-  void associateSubmapWithImage(int submap_id, int image_id);
+  void associateSubmapWithImage(int submap_id, int image_id,
+                                const Submap& submap);
 
   // 解除submap和图像之间的关联
   void dissociateSubmapFromImage(int submap_id, int image_id);

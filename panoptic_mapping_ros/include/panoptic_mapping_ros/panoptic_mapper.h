@@ -27,8 +27,9 @@
 #include <std_srvs/srv/empty.hpp>
 
 #include "panoptic_mapping/tools/image_data_manager.h"
+#include "panoptic_mapping_msgs/msg/get_object_info_mode.hpp"
+#include "panoptic_mapping_msgs/srv/get_object_info.hpp"
 #include "panoptic_mapping_msgs/srv/get_submap_image_data.hpp"
-#include "panoptic_mapping_msgs/srv/vllm_processing.hpp"
 #include "panoptic_mapping_ros/input/input_synchronizer.h"
 #include "panoptic_mapping_ros/visualization/changed_submap_visualizer.h"
 #include "panoptic_mapping_ros/visualization/planning_visualizer.h"
@@ -39,7 +40,8 @@ namespace panoptic_mapping {
 
 class PanopticMapper {
   using GetSubmapImageData = panoptic_mapping_msgs::srv::GetSubmapImageData;
-  using VLLMProcessing = panoptic_mapping_msgs::srv::VllmProcessing;
+  using VLLMProcessing = panoptic_mapping_msgs::srv::GetObjectInfo;
+  using VLLMProcessingMode = panoptic_mapping_msgs::msg::GetObjectInfoMode;
 
  public:
   // Config.
@@ -87,11 +89,13 @@ class PanopticMapper {
 
     // 是否使用文件保存的embedding向量，如果保存的地图文件与当前使用的检测分割模型不一致，则该变量应该置为false
     bool use_saved_embeddings = true;
-    
+
     // 是否使用图像管理功能，包括 VLLM 的调用、图像管理
     bool use_image_data_manager = true;
     // 调用 VL 大模型服务的超时时间，单位秒
     float vllm_service_timeout = 60.0;
+    // 调用 VL 大模型服务失败的重试次数
+    int vllm_max_retries = 0;
 
     Config() { setConfigName("PanopticMapper"); }
 
@@ -202,6 +206,12 @@ class PanopticMapper {
   void vllmProcessingResponse(VLLMProcessing::Response::SharedPtr response);
   // 获取图像管理模块未处理的图像数据，并调用VL大模型服务进行处理
   void processNotProcessedImageDataForVLLM();
+  // 组织VLLM的请求内容
+  VLLMProcessing::Request::SharedPtr prepareVllmRequest(
+      std::shared_ptr<ImageData> image_data);
+  bool callVLLMServiceWithRetry(VLLMProcessing::Request::SharedPtr request,
+                                VLLMProcessing::Response::SharedPtr& response,
+                                int max_retries = 0);
 
  private:
   // Node handles.

@@ -158,16 +158,15 @@ int ImageDataManager::addImageData(const cv::Mat& image,
 
   // 保存到内存（仅元数据）
   image_data_[image_data->image_id] = image_data;
+  // 自动关联图像中的submap
+  autoAssociateSubmaps(image_data->image_id, id_image, submaps);
+  unprocessed_images_.push(image_data->image_id);
 
   // 创建包含实际图像数据的缓存副本
   auto cache_data = std::make_shared<ImageData>(*image_data);
   cache_data->rgb_data = image.clone();
   cache_data->id_image_data = id_image.clone();
   addToCache(cache_data);
-
-  // 自动关联图像中的submap
-  autoAssociateSubmaps(image_data->image_id, id_image, submaps);
-  unprocessed_images_.push(image_data->image_id);
 
   LOG_IF(INFO, config_.verbosity >= 2)
       << "Added image data with ID " << image_data->image_id
@@ -449,14 +448,11 @@ void ImageDataManager::updateSubmap(BoundingBoxInfoByVLLM box_info,
   submap->setDescriptsByVllm(box_info.description);
   submap->setHasNewVllmDescripts(true);
 
-  std::stringstream ss;
-  for (const auto& desc : submap->getDescriptsByVllm()) {
-    ss << desc << ";";
-  }
   LOG(INFO) << "Updating submap " << submap->getID()
             << " with bounding box (id:" << box_info.id
             << ") (Rect: " << box_info.bounding_box << ")"
-            << ", and description: " << ss.str();
+            << ", and description: [" << submap->getDescriptsByVllm().toString()
+            << "]";
 }
 
 void ImageDataManager::markImageAsProcessed(int image_id) {
@@ -472,7 +468,8 @@ void ImageDataManager::markImageAsProcessed(int image_id) {
   }
 }
 
-void ImageDataManager::associateSubmapWithImage(int submap_id, int image_id) {
+void ImageDataManager::associateSubmapWithImage(int submap_id, int image_id,
+                                                const Submap& submap) {
   if (!config_.enable_image_management) {
     return;
   }
@@ -484,11 +481,10 @@ void ImageDataManager::associateSubmapWithImage(int submap_id, int image_id) {
   // 在图像数据中也记录关联
   auto it = image_data_.find(image_id);
   if (it != image_data_.end()) {
-    it->second->associated_submaps.insert(submap_id);
-  }
-
-  LOG_IF(INFO, config_.verbosity >= 3)
+    it->second->associated_submaps[submap_id] = submap.getClassName();
+    LOG_IF(INFO, config_.verbosity >= 3)
       << "Associated submap " << submap_id << " with image " << image_id;
+  }
 }
 
 void ImageDataManager::dissociateSubmapFromImage(int submap_id, int image_id) {
@@ -730,7 +726,7 @@ void ImageDataManager::autoAssociateSubmaps(int image_id,
       if (submap.getLabel() != PanopticLabel::kInstance) {
         continue;
       }
-      associateSubmapWithImage(submap_id, image_id);
+      associateSubmapWithImage(submap_id, image_id, submap);
     }
   }
 }
@@ -844,13 +840,23 @@ void ImageDataManager::saveMappingsToFile(const std::string& filepath) const {
     file.write(image_data->id_image_file_name.c_str(),
                id_image_file_path_length);
 
-    // 写入关联的submap数量和ID列表
+    // 写入关联的submap数量
     uint32_t associated_submaps_count = image_data->associated_submaps.size();
     file.write(reinterpret_cast<const char*>(&associated_submaps_count),
                sizeof(associated_submaps_count));
 
-    for (int submap_id : image_data->associated_submaps) {
+    // 写入每个关联的submap ID及其类名
+    for (const auto& submap_pair : image_data->associated_submaps) {
+      int submap_id = submap_pair.first;
+      const std::string& class_name = submap_pair.second;
+
       file.write(reinterpret_cast<const char*>(&submap_id), sizeof(submap_id));
+
+      // 写入类名字符串长度和内容
+      uint32_t class_name_length = class_name.length();
+      file.write(reinterpret_cast<const char*>(&class_name_length),
+                 sizeof(class_name_length));
+      file.write(class_name.c_str(), class_name_length);
     }
 
     // 写入处理状态
@@ -958,7 +964,7 @@ void ImageDataManager::loadMappingsFromFile(const std::string& filepath) {
     image_data->id_image_file_name.resize(id_image_file_path_length);
     file.read(&image_data->id_image_file_name[0], id_image_file_path_length);
 
-    // 读取关联的submap ID列表
+    // 读取关联的submap ID及类名
     uint32_t associated_submaps_count;
     file.read(reinterpret_cast<char*>(&associated_submaps_count),
               sizeof(associated_submaps_count));
@@ -966,7 +972,15 @@ void ImageDataManager::loadMappingsFromFile(const std::string& filepath) {
     for (uint32_t j = 0; j < associated_submaps_count; ++j) {
       int submap_id;
       file.read(reinterpret_cast<char*>(&submap_id), sizeof(submap_id));
-      image_data->associated_submaps.insert(submap_id);
+
+      // 读取类名
+      uint32_t class_name_length;
+      file.read(reinterpret_cast<char*>(&class_name_length),
+                sizeof(class_name_length));
+      std::string class_name(class_name_length, '\0');
+      file.read(&class_name[0], class_name_length);
+
+      image_data->associated_submaps[submap_id] = class_name;
     }
 
     // 读取处理状态
@@ -1132,12 +1146,15 @@ void ImageDataManager::visualVllmOutput(const VLLMOutputData& vllm_output,
       const auto& bbox_info = vllm_output.bounding_boxes_info[i];
       description_file << "Box\n";
       description_file << "  ID: " << bbox_info.id << "\n";
-      std::stringstream ss;
-      for (const std::string& desc : bbox_info.description) {
-        ss << desc << ",";
-      }
-      description_file << "  Description: " << ss.str() << "\n";
+      description_file << "  Description: " << bbox_info.description.toString() << "\n";
       description_file << "\n";
+    }
+
+    for (const auto& re : vllm_output.bounding_boxes_relationships) {
+      description_file << "Relationship\n";
+      description_file << "  From: " << re.from_id << ",";
+      description_file << "To: " << re.to_id << "\n";
+      description_file << "  Relationship: " << re.relationship << "\n";
     }
 
     description_file.close();

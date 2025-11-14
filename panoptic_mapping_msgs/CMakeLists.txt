@@ -13,9 +13,11 @@ find_package(sensor_msgs REQUIRED)
 set(msg_files
   "msg/DetectronLabel.msg"
   "msg/DetectronLabels.msg"
-  "msg/BoxInfo.msg"
-  "msg/BoxRelationship.msg"
-  "msg/VllmProcessingMode.msg"
+  "msg/GetObjectInfoMode.msg"
+  "msg/ImageContainer.msg"
+  "msg/ObjectGenerate.msg"
+  "msg/ObjectRelationship.msg"
+  "msg/ObjectSearch.msg"
 )
 
 set(srv_files
@@ -24,7 +26,7 @@ set(srv_files
   "srv/RemoveSubmap.srv"
   "srv/SubmapClassNameChange.srv"
   "srv/GetSubmapImageData.srv"
-  "srv/VllmProcessing.srv"
+  "srv/GetObjectInfo.srv"
 )
 
 rosidl_generate_interfaces(${PROJECT_NAME}

@@ -1,0 +1,14 @@
+# 定义一个ros2中的服务消息的格式
+# 请求部分
+ImageContainer image
+---
+# 响应部分
+bool success
+int32 image_id                      # 请求中的图片id   
+# 物体查询相关内容  
+ObjectSearch[] judge_result         # yes or no
+
+# 物体描述及关系生成相关内容
+ObjectGenerate[] objects            # 物体列表（包含多个ObjectInfo实例）
+ObjectRelationship[] relationships  # 物体间的空间关系描述
+

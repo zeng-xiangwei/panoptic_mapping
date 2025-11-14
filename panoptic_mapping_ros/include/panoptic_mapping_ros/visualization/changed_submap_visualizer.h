@@ -100,7 +100,7 @@ class ChangedSubmapVisualizer {
     std::vector<float> embedding_vector;
 
     // vllm 给出的额外信息
-    std::vector<std::string> descripts;
+    VllmDescription vllm_descripts;
   };
 
   /**

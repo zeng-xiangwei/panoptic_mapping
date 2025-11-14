@@ -24,6 +24,7 @@
 #include "panoptic_mapping/map/scores/score_voxel.h"
 #include "panoptic_mapping/map/submap_bounding_volume.h"
 #include "panoptic_mapping/map/submap_id.h"
+#include "panoptic_mapping/map/vllm_description.h"
 
 namespace panoptic_mapping {
 
@@ -133,7 +134,7 @@ class Submap {
   }
   SubmapBoundingVolume* getBoundingVolumePtr() { return &bounding_volume_; }
   int getDisappearCount() const { return disappear_count_; }
-  std::vector<std::string> getDescriptsByVllm() const {
+  VllmDescription getDescriptsByVllm() const {
     return descripts_by_vllm_;
   };
   bool getHasNewVllmDescripts() const { return has_new_vllm_descripts_; }
@@ -149,7 +150,7 @@ class Submap {
   void setIsActive(bool is_active) { is_active_ = is_active; }
   void setWasTracked(bool was_tracked) { was_tracked_ = was_tracked; }
   void setMatchRedetection(bool match) { match_redetection_ = match; }
-  void setDescriptsByVllm(const std::vector<std::string>& descripts) {
+  void setDescriptsByVllm(const VllmDescription& descripts) {
     descripts_by_vllm_ = descripts;
   }
 
@@ -324,7 +325,7 @@ class Submap {
   int disappear_count_ = 0;
 
   // VLLM
-  std::vector<std::string> descripts_by_vllm_;
+  VllmDescription descripts_by_vllm_;
   bool has_new_vllm_descripts_ = false;
 };
 

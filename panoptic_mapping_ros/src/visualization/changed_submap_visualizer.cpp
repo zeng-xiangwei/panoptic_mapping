@@ -98,7 +98,8 @@ void ChangedSubmapVisualizer::findChangedSubmaps(SubmapCollection& submaps) {
   for (const auto& id_info_pair : submap_infos_) {
     ids.emplace_back(id_info_pair.first);
     if (id_info_pair.first != id_info_pair.second.id) {
-      LOG(ERROR) << "key: " << id_info_pair.first << " != id: " << id_info_pair.second.id;
+      LOG(ERROR) << "key: " << id_info_pair.first
+                 << " != id: " << id_info_pair.second.id;
     }
   }
   submaps.updateIDList(ids, &new_ids, &deleted_ids);
@@ -192,15 +193,11 @@ void ChangedSubmapVisualizer::findChangedSubmaps(SubmapCollection& submaps) {
     }
 
     if (submap.getHasNewVllmDescripts()) {
-      // TODO: info增加vllm的额外信息字段
       submap.setHasNewVllmDescripts(false);
       info.change_type = ChangeType::kChanged;
-      info.descripts = submap.getDescriptsByVllm();
-      std::stringstream ss;
-      for (auto str : info.descripts) {
-        ss << str << ";";
-      }
-      LOG(INFO) << "submap " << submap.getID() << " update vllm descripts: " << ss.str();
+      info.vllm_descripts = submap.getDescriptsByVllm();
+      LOG(INFO) << "submap " << submap.getID()
+                << " update vllm descripts: " << info.vllm_descripts.toString();
     }
   }
 
@@ -219,7 +216,7 @@ void ChangedSubmapVisualizer::findChangedSubmaps(SubmapCollection& submaps) {
           break;
         case ChangeType::kChanged:
           change_count++;
-          ss_change << kv.second.id << "(key:" << kv.first << ")"  << " ";
+          ss_change << kv.second.id << "(key:" << kv.first << ")" << " ";
           break;
         case ChangeType::kUnChanged:
           unchange_count++;
@@ -329,13 +326,16 @@ void ChangedSubmapVisualizer::publishChangesForVln(
     obj.embedding_vector = info.embedding_vector;
     if (info.change_type == ChangeType::kAdded) {
       result.add_objects.push_back(obj);
-      LOG(INFO) << "add submap: " << obj.id << "(" << info.id << ")" << ", name: " << obj.name << "(" << info.name << ")";
+      LOG(INFO) << "add submap: " << obj.id << "(" << info.id << ")"
+                << ", name: " << obj.name << "(" << info.name << ")";
     } else if (info.change_type == ChangeType::kDeleted) {
       result.del_objects.push_back(obj);
-      LOG(INFO) << "del submap: " << obj.id << "(" << info.id << ")" << ", name: " << obj.name << "(" << info.name << ")";
+      LOG(INFO) << "del submap: " << obj.id << "(" << info.id << ")"
+                << ", name: " << obj.name << "(" << info.name << ")";
     } else if (info.change_type == ChangeType::kChanged) {
       result.update_objects.push_back(obj);
-      LOG(INFO) << "change submap: " << obj.id  << "(" << info.id << ")" << ", name: " << obj.name << "(" << info.name << ")";
+      LOG(INFO) << "change submap: " << obj.id << "(" << info.id << ")"
+                << ", name: " << obj.name << "(" << info.name << ")";
     }
   }
 

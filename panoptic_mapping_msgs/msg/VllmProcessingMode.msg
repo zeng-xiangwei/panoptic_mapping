@@ -1,2 +1,0 @@
-uint8 PROCESS_MODE = 0
-uint8 QUERY_MODE = 1

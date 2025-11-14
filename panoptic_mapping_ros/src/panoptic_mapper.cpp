@@ -63,6 +63,7 @@ void PanopticMapper::Config::setupParamsAndPrinting() {
   setupParam("use_saved_embeddings", &use_saved_embeddings);
   setupParam("vllm_service_timeout", &vllm_service_timeout);
   setupParam("use_image_data_manager", &use_image_data_manager);
+  setupParam("vllm_max_retries", &vllm_max_retries);
 }
 
 PanopticMapper::PanopticMapper(rclcpp::Node::SharedPtr node)
@@ -171,8 +172,8 @@ void PanopticMapper::setupMembersFromYaml() {
   // 图像管理器
   if (config_.use_image_data_manager) {
     image_data_manager_ = std::make_unique<ImageDataManager>(
-      config_utilities::getConfigFromYaml<ImageDataManager::Config>(
-          root_yaml_, defaultYamlKeyPath("image_data_manager")));
+        config_utilities::getConfigFromYaml<ImageDataManager::Config>(
+            root_yaml_, defaultYamlKeyPath("image_data_manager")));
   }
 
   // Setup all requested inputs from all modules.
@@ -514,23 +515,20 @@ void PanopticMapper::processNotProcessedImageDataForVLLM() {
     auto image_data =
         image_data_manager_->getFirstNotProcessedImageDataForVLLM();
     if (image_data) {
-      // 创建服务请求
-      // TODO: 完善请求内容
-      auto request = std::make_shared<VLLMProcessing::Request>();
-      request->image_id = image_data->image_id;
-
       // 定义回调函数处理VL大模型的响应
       LOG(INFO) << "Processing image " << image_data->image_id
                 << ", call async service";
 
-      // 调用VL处理服务并设置回调函数
       std::chrono::system_clock::time_point t_service_0 =
           std::chrono::system_clock::now();
-
-      // 异步调用VL大模型服务，并等待结果，达到与同步一样的效果
-      auto result_future = vllm_processing_client_->async_send_request(request);
-      auto response = result_future.get();
-      vllmProcessingResponse(response);
+      // // 异步调用VL大模型服务，并等待结果，达到与同步一样的效果
+      auto request = prepareVllmRequest(image_data);
+      VLLMProcessing::Response::SharedPtr response;
+      bool success = callVLLMServiceWithRetry(request, response, config_.vllm_max_retries);
+      if (success) {
+        vllmProcessingResponse(response);
+      }
+      // TODO: 服务调用失败是是否需要记录
 
       std::chrono::system_clock::time_point t_service_1 =
           std::chrono::system_clock::now();
@@ -539,11 +537,75 @@ void PanopticMapper::processNotProcessedImageDataForVLLM() {
                        t_service_1 - t_service_0)
                        .count()
                 << " ms";
-                
+
       LOG(INFO) << "unprocessed image data size remaining: "
-            << image_data_manager_->unprocessedImageDataSize();
+                << image_data_manager_->unprocessedImageDataSize();
     }
   }
+}
+
+// 添加重试机制的服务调用函数
+bool PanopticMapper::callVLLMServiceWithRetry(
+    VLLMProcessing::Request::SharedPtr request,
+    VLLMProcessing::Response::SharedPtr& response, int max_retries) {
+  for (int attempt = 0; attempt <= max_retries; ++attempt) {
+    if (!vllm_processing_client_ ||
+        !vllm_processing_client_->service_is_ready()) {
+      LOG(WARNING) << "VLLM processing service not available";
+      if (attempt < max_retries) {
+        LOG(WARNING) << "Waiting 500 ms and retrying...";
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        continue;
+      }
+      return false;
+    }
+
+    auto result_future = vllm_processing_client_->async_send_request(request);
+    auto status = result_future.wait_for(
+        std::chrono::duration<double>(config_.vllm_service_timeout));
+
+    if (status == std::future_status::ready) {
+      try {
+        response = result_future.get();
+        return true;
+      } catch (const std::exception& e) {
+        LOG(WARNING) << "Exception when getting VLLM service response: "
+                     << e.what();
+      }
+    } else {
+      LOG(WARNING) << "VLLM service timeout on attempt " << (attempt + 1);
+    }
+
+    if (attempt < max_retries) {
+      LOG(INFO) << "Retrying VLLM service call (attempt " << (attempt + 2)
+                << "), waiting 500ms...";
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
+  }
+
+  LOG(ERROR) << "Failed to call VLLM service after " << (max_retries + 1)
+             << " attempts";
+  return false;
+}
+
+PanopticMapper::VLLMProcessing::Request::SharedPtr
+PanopticMapper::prepareVllmRequest(std::shared_ptr<ImageData> image_data) {
+  auto request = std::make_shared<VLLMProcessing::Request>();
+  request->image.image_id = image_data->image_id;
+
+  cv_bridge::CvImage cv_image;
+  cv_image.header.stamp =
+      rclcpp::Time(static_cast<int64_t>(image_data->timestamp * 1e9));
+  cv_image.header.frame_id = "image";
+  cv_image.encoding = "bgr8";
+  cv_image.image = image_data->rgb_data;
+  request->image.image = *cv_image.toImageMsg();
+
+  request->image.mode = VLLMProcessingMode::GENERATE_MODE;
+  for (const auto& [submap_id, submap_name] : image_data->associated_submaps) {
+    request->image.object_names.push_back(submap_name);
+  }
+  return request;
 }
 
 // VL大模型服务响应的回调函数
@@ -563,13 +625,26 @@ void PanopticMapper::vllmProcessingResponse(
   vllm_output.image_id = response->image_id;
 
   // 转换边界框信息
-  for (const auto& bbox_msg : response->bounding_boxes) {
+  for (const auto& bbox_msg : response->objects) {
     BoundingBoxInfoByVLLM bbox_info;
     bbox_info.id = bbox_msg.id;
-    bbox_info.bounding_box =
-        cv::Rect(bbox_msg.x, bbox_msg.y, bbox_msg.width, bbox_msg.height);
-    bbox_info.description.push_back(bbox_msg.descriptions);
+    bbox_info.description.class_name = bbox_msg.object_name;
+    int xmin = bbox_msg.bbox[0], ymin = bbox_msg.bbox[1];
+    int xmax = bbox_msg.bbox[2], ymax = bbox_msg.bbox[3];
+    int width = xmax - xmin;
+    int height = ymax - ymin;
+    bbox_info.bounding_box = cv::Rect(xmin, ymin, width, height);
+    bbox_info.description.color = bbox_msg.color;
+    bbox_info.description.shape = bbox_msg.shape;
     vllm_output.bounding_boxes_info.push_back(bbox_info);
+  }
+
+  for (const auto& bbox_relation_msg : response->relationships) {
+    BoundingBoxRelationship bbox_relation;
+    bbox_relation.from_id = bbox_relation_msg.from_id;
+    bbox_relation.to_id = bbox_relation_msg.to_id;
+    bbox_relation.relationship = bbox_relation_msg.type;
+    vllm_output.bounding_boxes_relationships.push_back(bbox_relation);
   }
 
   // 调用图像管理模块处理函数
@@ -755,7 +830,8 @@ bool PanopticMapper::saveMap(const std::string& file_path) {
 
   if (image_data_manager_) {
     image_data_manager_->getAndRemoveSubmapUnderLock(*submaps_);
-    image_data_manager_->saveMappingsToFile(file_path + "_images_meta_infos.bin");
+    image_data_manager_->saveMappingsToFile(file_path +
+                                            "_images_meta_infos.bin");
   }
   return success;
 }

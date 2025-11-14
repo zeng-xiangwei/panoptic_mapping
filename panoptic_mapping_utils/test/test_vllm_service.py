@@ -16,9 +16,9 @@ import matplotlib.pyplot as plt
 
 # 服务类型导入 (使用别名以便后续修改)
 from panoptic_mapping_msgs.srv import GetSubmapImageData as GetSubmapImageDataSrv
-from panoptic_mapping_msgs.srv import VllmProcessing as VllmProcessingSrv
-from panoptic_mapping_msgs.msg import BoxInfo as BoxInfoMsg
-from panoptic_mapping_msgs.msg import BoxRelationship as BoxRelationshipMsg
+from panoptic_mapping_msgs.srv import GetObjectInfo as VllmProcessingSrv
+from panoptic_mapping_msgs.msg import ObjectGenerate as BoxInfoMsg
+from panoptic_mapping_msgs.msg import ObjectRelationship as BoxRelationshipMsg
 
 
 class VllmServiceTester(Node):
@@ -33,36 +33,41 @@ class VllmServiceTester(Node):
             'request_vl_processing', 
             self.vllm_service_callback
         )
+
+        # 创建cv_bridge实例用于图像转换
+        self.bridge = CvBridge()
         self.get_logger().info("VLLM Service Tester initialized and waiting for requests...")
 
     def vllm_service_callback(self, request, response):
         """VLLM服务回调函数"""
-        self.get_logger().info(f'Received VLLM processing request for image ID: {request.image_id}')
+        image_id = request.image.image_id
+        image_msg = request.image.image
+        self.get_logger().info(f'Received VLLM processing request for image ID: {image_id}')
         
+        self.show_image(image_msg, image_id)
         # 设置响应
-        response.image_id = request.image_id
+        response.image_id = image_id
         response.success = True
+
+        self.get_logger().info(f'mode: {request.image.mode}')
+        self.get_logger().info(f'object_names: {request.image.object_names}')
         
         # 创建一些模拟的边界框数据
-        if hasattr(response, 'bounding_boxes'):
+        if hasattr(response, 'objects'):
             # 创建一些示例边界框
             box1 = BoxInfoMsg()
             box1.id = 1
-            box1.x = 100
-            box1.y = 100
-            box1.width = 400
-            box1.height = 300
-            box1.descriptions = "A red chair"
+            box1.bbox = [100, 100, 200, 200]
+            box1.color = "red"
+            box1.shape = ""
             
             box2 = BoxInfoMsg()
             box2.id = 2
-            box2.x = 300
-            box2.y = 200
-            box2.width = 150
-            box2.height = 180
-            box2.descriptions = "A wooden table"
+            box2.bbox = [200, 200, 400, 300]
+            box1.color = "gray"
+            box1.shape = "rectangle"
             
-            response.bounding_boxes = [box1, box2]
+            response.objects = [box1, box2]
             
         if hasattr(response, 'relationships'):
             # 创建一些示例关系
@@ -74,10 +79,45 @@ class VllmServiceTester(Node):
         
         self.get_logger().info(f'start sleep, to simulate processing')
         time.sleep(3)
-        self.get_logger().info(f'VLLM processing completed for image ID: {request.image_id}')
-        self.get_logger().info(f'Generated {len(response.bounding_boxes)} bounding boxes and {len(response.relationships)} relationships')
+        self.get_logger().info(f'VLLM processing completed for image ID: {image_id}')
+        self.get_logger().info(f'Generated {len(response.objects)} bounding boxes and {len(response.relationships)} relationships')
         return response
 
+    def show_image(self, image_msg, image_id):
+        # 将图像数据保存到文件
+        try:
+            # 使用cv_bridge将ROS图像消息转换为OpenCV格式
+            cv_image = self.bridge.imgmsg_to_cv2(image_msg, "bgr8")
+            
+            # 生成文件名
+            filename = f"image_{image_id}.png"
+            file_path = os.path.join("/home/xiangweizeng/3D_slam/sematic-mapping/panoptic_mapping_ws/logs", filename)
+            
+            # 保存图像到文件
+            cv2.imwrite(file_path, cv_image)
+            self.get_logger().info(f'Image saved to file: {filename}')
+        except Exception as e:
+            self.get_logger().error(f'Failed to save image to file: {e}')
+        
+        """使用matplotlib显示图像"""
+        try:
+            # 使用cv_bridge将ROS图像消息转换为OpenCV格式
+            cv_image = self.bridge.imgmsg_to_cv2(image_msg, "bgr8")
+            
+            # 转换BGR到RGB（因为OpenCV使用BGR，而matplotlib使用RGB）
+            rgb_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
+            
+            # 使用matplotlib显示图像
+            plt.figure(figsize=(10, 8))
+            plt.imshow(rgb_image)
+            plt.title("Received Image from Panoptic Mapper")
+            plt.axis('off')  # 关闭坐标轴
+            plt.tight_layout()
+            plt.show()
+            
+            self.get_logger().info("Image displayed using matplotlib")
+        except Exception as e:
+            self.get_logger().error(f"Failed to display image: {e}")
 
 class ImageServiceTester(Node):
     """图像服务测试类 - 作为客户端向panoptic-mapper发送获取图像的请求"""
@@ -205,10 +245,10 @@ def main(args=None):
     # 通过注释/取消注释来选择要运行的测试
     
     # 运行VLLM服务测试 (服务端模式)
-    # test_vllm_service()
+    test_vllm_service()
     
     # 运行图像服务测试 (客户端模式)
-    test_image_service()
+    # test_image_service()
 
 
 if __name__ == '__main__':
