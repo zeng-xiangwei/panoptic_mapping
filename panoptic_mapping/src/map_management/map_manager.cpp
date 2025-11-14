@@ -285,6 +285,13 @@ bool MapManager::mergeSubmapIfPossible(SubmapCollection* submaps, int submap_id,
         other.updateEmbeddingVector(submap->getEmbeddingVector(),
                                     submap->getEmbeddingScore());
         other.setDisappearCount(0);
+        if (other.getDescriptsByVllm().class_name.empty()) {
+          other.setDescriptsByVllm(submap->getDescriptsByVllm());
+        }
+        for (auto relationship : *submap->getVllmRelationshipsPtr()) {
+          relationship.from_id = other.getID();
+          other.getVllmRelationshipsPtr()->push_back(relationship);
+        }
         submaps->removeSubmap(submap_id);
         if (merged_id) {
           *merged_id = other.getID();

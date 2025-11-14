@@ -843,6 +843,9 @@ void ImageDataManager::removeFromCache(int image_id) {
 
 void ImageDataManager::updateCacheAccess(int image_id) {
   // 将该图像ID移到访问历史的前面
+  // TODO:
+  // 缓存考虑访问次数+时间，次数越低优先级越低，时间越久优先级越低；
+  // 还需要考虑区分第一个输入的图像与查询时获取的图像的优先级是不同的
   image_access_history_.remove(image_id);
   image_access_history_.push_front(image_id);
 }
