@@ -192,9 +192,11 @@ void ChangedSubmapVisualizer::findChangedSubmaps(SubmapCollection& submaps) {
       info.change_type = ChangeType::kChanged;
     }
 
+    info.has_vllm_info = false;
     if (submap.getHasNewVllmDescripts()) {
       submap.setHasNewVllmDescripts(false);
       info.change_type = ChangeType::kChanged;
+      info.has_vllm_info = true;
       info.vllm_descripts = submap.getDescriptsByVllm();
       info.vllm_relationship = *submap.getVllmRelationshipsPtr();
       LOG(INFO) << "submap " << submap.getID()
@@ -349,6 +351,35 @@ void ChangedSubmapVisualizer::publishChangesForVln(
   if (result.add_objects.size() > 0 || result.del_objects.size() > 0 ||
       result.update_objects.size() > 0) {
     updated = true;
+  }
+
+  // 增加 VL 大模型输出的信息
+  for (auto& kv : submap_infos_) {
+    const SubmapInfo& info = kv.second;
+    if (info.change_type != ChangeType::kChanged || !info.has_vllm_info) {
+      continue;
+    }
+
+    // TODO: 目前依靠是否有类别名这个字段来判断是否有 vllm 描述信息
+    if (!info.vllm_descripts.class_name.empty()) {
+      vln_msgs::msg::ObjectGenerate obj_vllm_info;
+      obj_vllm_info.id = info.id;
+      obj_vllm_info.object_name = info.vllm_descripts.class_name;
+      obj_vllm_info.shape = info.vllm_descripts.shape;
+      obj_vllm_info.color = info.vllm_descripts.color;
+      result.update_obj_descriptions.push_back(obj_vllm_info);
+    }
+
+    if (!info.vllm_relationship.empty()) {
+      for (auto& rel : info.vllm_relationship) {
+        vln_msgs::msg::ObjectRelationship obj_vllm_relationship;
+        obj_vllm_relationship.from_id = rel.from_id;
+        obj_vllm_relationship.to_id = rel.to_id;
+        obj_vllm_relationship.type =
+            relationshipTypeToString(rel.relationship);
+        result.update_obj_relationships.push_back(obj_vllm_relationship);
+      }
+    }
   }
 
   if (updated) {

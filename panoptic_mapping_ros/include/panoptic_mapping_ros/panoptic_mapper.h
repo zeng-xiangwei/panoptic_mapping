@@ -36,12 +36,24 @@
 #include "panoptic_mapping_ros/visualization/submap_visualizer.h"
 #include "panoptic_mapping_ros/visualization/tracking_visualizer.h"
 
+#ifdef VLN_MSGS_FOUND
+#include "vln_msgs/msg/get_object_info_mode.hpp"
+#include "vln_msgs/srv/get_object_info.hpp"
+#include "vln_msgs/srv/get_submap_image_data.hpp"
+#endif
+
 namespace panoptic_mapping {
 
 class PanopticMapper {
+#ifdef VLN_MSGS_FOUND
+  using GetSubmapImageData = vln_msgs::srv::GetSubmapImageData;
+  using VLLMProcessing = vln_msgs::srv::GetObjectInfo;
+  using VLLMProcessingMode = vln_msgs::msg::GetObjectInfoMode;
+#else
   using GetSubmapImageData = panoptic_mapping_msgs::srv::GetSubmapImageData;
   using VLLMProcessing = panoptic_mapping_msgs::srv::GetObjectInfo;
   using VLLMProcessingMode = panoptic_mapping_msgs::msg::GetObjectInfoMode;
+#endif
 
  public:
   // Config.

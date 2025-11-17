@@ -644,6 +644,9 @@ void PanopticMapper::vllmProcessingResponse(
     bbox_relation.from_id = bbox_relation_msg.from_id;
     bbox_relation.to_id = bbox_relation_msg.to_id;
     bbox_relation.relationship = stringToRelationshipType(bbox_relation_msg.type);
+    if (bbox_relation.relationship == RelationshipType::UNKNOWN) {
+      continue;
+    }
     vllm_output.bounding_boxes_relationships.push_back(bbox_relation);
   }
 

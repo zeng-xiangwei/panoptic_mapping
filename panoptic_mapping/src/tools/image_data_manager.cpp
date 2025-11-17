@@ -1177,6 +1177,9 @@ void ImageDataManager::visualVllmOutput(const VLLMOutputData& vllm_output,
 
   // 在图像上绘制mask
   std::unordered_map<int, Color> color_map;
+  // 存储每个submap的中心点
+  std::unordered_map<int, std::vector<cv::Point>> submap_centers;
+
   for (int y = 0; y < image_data->id_image_data.rows; ++y) {
     for (int x = 0; x < image_data->id_image_data.cols; ++x) {
       int submap_id = image_data->id_image_data.at<int>(y, x);
@@ -1195,8 +1198,67 @@ void ImageDataManager::visualVllmOutput(const VLLMOutputData& vllm_output,
                                               0.4 * color.g);  // Green
         pixel[2] =
             static_cast<unsigned char>(0.6 * pixel[2] + 0.4 * color.r);  // Red
+        
+        // 收集submap像素位置，用于计算中心点
+        submap_centers[submap_id].push_back(cv::Point(x, y));
       }
     }
+  }
+
+  // 在每个submap的中心位置添加文本信息
+  for (const auto& pair : submap_centers) {
+    int submap_id = pair.first;
+    
+    // 计算submap的中心点
+    long long sum_x = 0, sum_y = 0;
+    const auto& points = pair.second;
+    for (const auto& point : points) {
+      sum_x += point.x;
+      sum_y += point.y;
+    }
+    cv::Point center(sum_x / points.size(), sum_y / points.size());
+    
+    // 获取submap对应的物体类别
+    std::string class_name = "Background";
+    if (image_data->associated_submaps.find(submap_id) != image_data->associated_submaps.end()) {
+      class_name = image_data->associated_submaps.at(submap_id);
+    }
+    
+    // 构造显示文本
+    std::string text = std::to_string(submap_id) + ": " + class_name;
+    
+    // 设置文本参数
+    int font_face = cv::FONT_HERSHEY_SIMPLEX;
+    double font_scale = 0.5;
+    int thickness = 1;
+    
+    // 获取文本大小
+    int baseline = 0;
+    cv::Size text_size = cv::getTextSize(text, font_face, font_scale, thickness, &baseline);
+    
+    // 调整文本位置，确保在图像范围内
+    center.x = std::max(text_size.width/2, std::min(center.x, mask_visualization.cols - text_size.width/2));
+    center.y = std::max(text_size.height, std::min(center.y, mask_visualization.rows - baseline));
+    
+    // 绘制文本背景
+    cv::Rect text_bg_rect(center.x - text_size.width/2 - 2, 
+                          center.y - text_size.height - 2,
+                          text_size.width + 4,
+                          text_size.height + baseline + 4);
+    
+    // 绘制半透明背景
+    cv::Mat roi = mask_visualization(text_bg_rect);
+    cv::Mat color_bg(roi.size(), roi.type(), cv::Scalar(0, 0, 0));
+    cv::addWeighted(roi, 0.3, color_bg, 0.7, 0, roi);
+    
+    // 绘制文本
+    cv::putText(mask_visualization, 
+                text, 
+                cv::Point(center.x - text_size.width/2, center.y),
+                font_face, 
+                font_scale,
+                cv::Scalar(255, 255, 255), 
+                thickness);
   }
 
   // 保存可视化结果
