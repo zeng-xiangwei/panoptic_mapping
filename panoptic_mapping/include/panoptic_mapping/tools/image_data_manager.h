@@ -210,7 +210,8 @@ class ImageDataManager {
 
   // 将VLLM的输出可视化
   void visualVllmOutput(const VLLMOutputData& vllm_output,
-                        std::shared_ptr<ImageData> image_data);
+                        std::shared_ptr<ImageData> image_data,
+                        std::unordered_map<int, int> box_submap_pair);
 
  private:
   const Config config_;

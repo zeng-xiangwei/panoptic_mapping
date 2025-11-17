@@ -371,9 +371,9 @@ void ImageDataManager::processVLLMOutput(const VLLMOutputData& vllm_output,
     std::unordered_map<int, float> submap_ious;
     for (const auto& [submap_id, submap_bbox] : submap_with_boxes) {
       if (submap_with_class_name.count(submap_id) == 0) {
-        LOG(ERROR) << "Submap: " << submap_id
-                   << ",does not have a class name associated with Image ID: "
-                   << image_data->image_id;
+        LOG(INFO) << "Submap: " << submap_id
+                  << ",does not have a class name associated with Image ID: "
+                  << image_data->image_id;
         continue;
       }
 
@@ -1129,8 +1129,9 @@ std::string ImageDataManager::getVllmMiddleResultsDir() const {
          config_.vllm_middle_result_dir_name;
 }
 
-void ImageDataManager::visualVllmOutput(const VLLMOutputData& vllm_output,
-                                        std::shared_ptr<ImageData> image_data) {
+void ImageDataManager::visualVllmOutput(
+    const VLLMOutputData& vllm_output, std::shared_ptr<ImageData> image_data,
+    std::unordered_map<int, int> box_submap_pair) {
   // 创建RGB图像的副本用于绘制
   cv::Mat visualization_image;
   image_data->rgb_data.copyTo(visualization_image);
@@ -1148,7 +1149,7 @@ void ImageDataManager::visualVllmOutput(const VLLMOutputData& vllm_output,
     cv::rectangle(visualization_image, bbox, cv_color, 2);
 
     // 准备标签文本
-    std::string label = "ID: " + std::to_string(bbox_info.id);
+    std::string label = bbox_info.toString();
 
     // 计算标签尺寸并绘制标签背景
     int baseline = 0;
@@ -1198,7 +1199,7 @@ void ImageDataManager::visualVllmOutput(const VLLMOutputData& vllm_output,
                                               0.4 * color.g);  // Green
         pixel[2] =
             static_cast<unsigned char>(0.6 * pixel[2] + 0.4 * color.r);  // Red
-        
+
         // 收集submap像素位置，用于计算中心点
         submap_centers[submap_id].push_back(cv::Point(x, y));
       }
@@ -1208,7 +1209,7 @@ void ImageDataManager::visualVllmOutput(const VLLMOutputData& vllm_output,
   // 在每个submap的中心位置添加文本信息
   for (const auto& pair : submap_centers) {
     int submap_id = pair.first;
-    
+
     // 计算submap的中心点
     long long sum_x = 0, sum_y = 0;
     const auto& points = pair.second;
@@ -1217,48 +1218,56 @@ void ImageDataManager::visualVllmOutput(const VLLMOutputData& vllm_output,
       sum_y += point.y;
     }
     cv::Point center(sum_x / points.size(), sum_y / points.size());
-    
+
     // 获取submap对应的物体类别
     std::string class_name = "Background";
-    if (image_data->associated_submaps.find(submap_id) != image_data->associated_submaps.end()) {
+    if (image_data->associated_submaps.find(submap_id) !=
+        image_data->associated_submaps.end()) {
       class_name = image_data->associated_submaps.at(submap_id);
     }
-    
+
     // 构造显示文本
     std::string text = std::to_string(submap_id) + ": " + class_name;
-    
+
     // 设置文本参数
     int font_face = cv::FONT_HERSHEY_SIMPLEX;
     double font_scale = 0.5;
     int thickness = 1;
-    
+
     // 获取文本大小
     int baseline = 0;
-    cv::Size text_size = cv::getTextSize(text, font_face, font_scale, thickness, &baseline);
-    
+    cv::Size text_size =
+        cv::getTextSize(text, font_face, font_scale, thickness, &baseline);
+
     // 调整文本位置，确保在图像范围内
-    center.x = std::max(text_size.width/2, std::min(center.x, mask_visualization.cols - text_size.width/2));
-    center.y = std::max(text_size.height, std::min(center.y, mask_visualization.rows - baseline));
-    
+    center.x = std::max(
+        text_size.width / 2,
+        std::min(center.x, mask_visualization.cols - text_size.width / 2));
+    center.y = std::max(text_size.height,
+                        std::min(center.y, mask_visualization.rows - baseline));
+
     // 绘制文本背景
-    cv::Rect text_bg_rect(center.x - text_size.width/2 - 2, 
-                          center.y - text_size.height - 2,
-                          text_size.width + 4,
+    cv::Rect text_bg_rect(center.x - text_size.width / 2 - 2,
+                          center.y - text_size.height - 2, text_size.width + 4,
                           text_size.height + baseline + 4);
-    
+
     // 绘制半透明背景
-    cv::Mat roi = mask_visualization(text_bg_rect);
-    cv::Mat color_bg(roi.size(), roi.type(), cv::Scalar(0, 0, 0));
-    cv::addWeighted(roi, 0.3, color_bg, 0.7, 0, roi);
-    
+    if (text_bg_rect.x >= 0 && text_bg_rect.y >= 0 &&
+        text_bg_rect.x + text_bg_rect.width <= mask_visualization.cols &&
+        text_bg_rect.y + text_bg_rect.height <= mask_visualization.rows) {
+      cv::Mat roi = mask_visualization(text_bg_rect);
+      cv::Mat color_bg(roi.size(), roi.type(), cv::Scalar(0, 0, 0));
+      cv::addWeighted(roi, 0.3, color_bg, 0.7, 0, roi);
+    }
+
     // 绘制文本
-    cv::putText(mask_visualization, 
-                text, 
-                cv::Point(center.x - text_size.width/2, center.y),
-                font_face, 
-                font_scale,
-                cv::Scalar(255, 255, 255), 
-                thickness);
+    if (text_bg_rect.x >= 0 && text_bg_rect.y >= 0 &&
+        text_bg_rect.x + text_bg_rect.width <= mask_visualization.cols &&
+        text_bg_rect.y + text_bg_rect.height <= mask_visualization.rows) {
+      cv::putText(mask_visualization, text,
+                  cv::Point(center.x - text_size.width / 2, center.y),
+                  font_face, font_scale, cv::Scalar(255, 255, 255), thickness);
+    }
   }
 
   // 保存可视化结果
@@ -1298,6 +1307,13 @@ void ImageDataManager::visualVllmOutput(const VLLMOutputData& vllm_output,
       description_file << "To: " << re.to_id << "\n";
       description_file << "  Relationship: "
                        << relationshipTypeToString(re.relationship) << "\n";
+    }
+
+    description_file << "\n\nBox and submap match result information:\n";
+    description_file << "==========================\n\n";
+    for (const auto& [box_id, submap_id] : box_submap_pair) {
+      description_file << "Box ID: " << box_id
+                       << " matched with Submap ID: " << submap_id << "\n";
     }
 
     description_file.close();

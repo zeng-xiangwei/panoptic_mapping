@@ -65,15 +65,17 @@ class VllmServiceTester(Node):
             # 创建一些示例边界框
             box1 = BoxInfoMsg()
             box1.id = 1
-            box1.bbox = [100, 100, 200, 200]
+            box1.bbox = [100, 100, 500, 400]
+            box1.object_name = "desk"
             box1.color = "red"
-            box1.shape = ""
+            box1.shape = "round"
             
             box2 = BoxInfoMsg()
             box2.id = 2
-            box2.bbox = [200, 200, 400, 300]
-            box1.color = "gray"
-            box1.shape = "rectangle"
+            box2.bbox = [1, 1, 400, 300]
+            box2.object_name = "chair"
+            box2.color = "gray"
+            box2.shape = "rectangle"
             
             response.objects = [box1, box2]
             
