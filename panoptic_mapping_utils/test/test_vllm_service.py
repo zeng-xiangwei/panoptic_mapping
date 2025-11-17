@@ -15,10 +15,15 @@ from cv_bridge import CvBridge
 import matplotlib.pyplot as plt
 
 # 服务类型导入 (使用别名以便后续修改)
-from panoptic_mapping_msgs.srv import GetSubmapImageData as GetSubmapImageDataSrv
-from panoptic_mapping_msgs.srv import GetObjectInfo as VllmProcessingSrv
-from panoptic_mapping_msgs.msg import ObjectGenerate as BoxInfoMsg
-from panoptic_mapping_msgs.msg import ObjectRelationship as BoxRelationshipMsg
+# from panoptic_mapping_msgs.srv import GetSubmapImageData as GetSubmapImageDataSrv
+# from panoptic_mapping_msgs.srv import GetObjectInfo as VllmProcessingSrv
+# from panoptic_mapping_msgs.msg import ObjectGenerate as BoxInfoMsg
+# from panoptic_mapping_msgs.msg import ObjectRelationship as BoxRelationshipMsg
+
+from vln_msgs.srv import GetSubmapImageData as GetSubmapImageDataSrv
+from vln_msgs.srv import GetObjectInfo as VllmProcessingSrv
+from vln_msgs.msg import ObjectGenerate as BoxInfoMsg
+from vln_msgs.msg import ObjectRelationship as BoxRelationshipMsg
 
 
 class VllmServiceTester(Node):
@@ -38,13 +43,16 @@ class VllmServiceTester(Node):
         self.bridge = CvBridge()
         self.get_logger().info("VLLM Service Tester initialized and waiting for requests...")
 
+        self.show_image_flag = False
+
     def vllm_service_callback(self, request, response):
         """VLLM服务回调函数"""
         image_id = request.image.image_id
         image_msg = request.image.image
         self.get_logger().info(f'Received VLLM processing request for image ID: {image_id}')
         
-        self.show_image(image_msg, image_id)
+        if self.show_image_flag:
+            self.show_image(image_msg, image_id)
         # 设置响应
         response.image_id = image_id
         response.success = True
