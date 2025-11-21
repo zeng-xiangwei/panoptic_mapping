@@ -35,7 +35,8 @@ class VllmServiceTester(Node):
         # 创建VLLM服务服务端
         self.vllm_service = self.create_service(
             VllmProcessingSrv, 
-            'request_vl_processing', 
+            # 'request_vl_processing',
+            '/vln_slow/image_description', 
             self.vllm_service_callback
         )
 

@@ -15,3 +15,6 @@ Run the mesh saver to save the same mesh that is visualised in RVIZ as a `.ply` 
   <param name="output path" value="/tmp/mesh.ply" />
 </node>
 ```
+
+## TestVllmService
+模拟 VL 大模型服务端，自测

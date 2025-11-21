@@ -20,7 +20,7 @@ def generate_launch_description():
     shutdown_when_finished_arg = DeclareLaunchArgument(
         'shutdown_when_finished', default_value='false')
 
-    load_map_arg = DeclareLaunchArgument('load_map', default_value='true')
+    load_map_arg = DeclareLaunchArgument('load_map', default_value='false')
     load_file_arg = DeclareLaunchArgument(
         'load_file',
         default_value=
@@ -53,7 +53,8 @@ def generate_launch_description():
             ('depth_image_in', '/camera/camera/aligned_depth_to_color/image_raw'),
             ('segmentation_image_in', '/segmentation_mask'),
             ('labels_in', '/detection_result'),
-            ('vln_map_update', '/vln/semantic_map')
+            ('vln_map_update', '/vln/semantic_map'),
+            ('request_vl_processing', '/vln_slow/image_description')
         ],
         on_exit=Shutdown()
         if LaunchConfiguration('shutdown_when_finished') == 'true' else [])

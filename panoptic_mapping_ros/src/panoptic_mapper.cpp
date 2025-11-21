@@ -478,7 +478,11 @@ void PanopticMapper::imageManagementThread() {
       std::unique_lock<std::mutex> lock(image_management_queue_mutex_);
       image_management_cv_.wait(lock, [this] {
         // vl 大模型服务可用且有未处理图像数据  或者  线程被要求停止
-        return (vllm_processing_client_->service_is_ready() &&
+        bool vllm_service_is_ready = vllm_processing_client_->service_is_ready();
+        if (!vllm_service_is_ready) {
+          LOG(WARNING) << "vllm service is not ready";
+        }
+        return (vllm_service_is_ready &&
                 image_data_manager_->unprocessedImageDataSize() > 0) ||
                !image_management_thread_running_;
       });
@@ -597,8 +601,8 @@ PanopticMapper::prepareVllmRequest(std::shared_ptr<ImageData> image_data) {
   cv_image.header.stamp =
       rclcpp::Time(static_cast<int64_t>(image_data->timestamp * 1e9));
   cv_image.header.frame_id = "image";
-  cv_image.encoding = "bgr8";
-  cv_image.image = image_data->rgb_data;
+  cv_image.encoding = "rgb8";
+  cv::cvtColor(image_data->rgb_data, cv_image.image, cv::COLOR_BGR2RGB);
   request->image.image = *cv_image.toImageMsg();
 
   request->image.mode = VLLMProcessingMode::GENERATE_MODE;
@@ -686,10 +690,11 @@ bool PanopticMapper::getSubmapImageDataCallback(
   cv_image.header.stamp =
       rclcpp::Time(static_cast<int64_t>(image_data->timestamp * 1e9));
   cv_image.header.frame_id = "image";
-  cv_image.encoding = "bgr8";
-  cv_image.image = image_data->rgb_data;
+  cv_image.encoding = "rgb8";
+  cv::cvtColor(image_data->rgb_data, cv_image.image, cv::COLOR_BGR2RGB);
 
   response->rgb_image = *cv_image.toImageMsg();
+  response->image_id = image_data->image_id;
 
   response->img_timestamp = image_data->timestamp;
   return true;

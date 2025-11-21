@@ -455,7 +455,7 @@ void ImageDataManager::processVLLMOutput(const VLLMOutputData& vllm_output,
 
   updateSubmap(vllm_output, box_submap_pair, submaps);
 
-  visualVllmOutput(vllm_output, image_data);
+  visualVllmOutput(vllm_output, image_data, box_submap_pair);
 
   LOG(INFO) << "Processed VLLM output for image ID: " << vllm_output.image_id
             << " with " << vllm_output.bounding_boxes_info.size()

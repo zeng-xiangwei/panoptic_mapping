@@ -85,10 +85,7 @@ Visualization Manager:
             Reliability Policy: Reliable
             Value: /visualization/submaps/mesh
           Value: true
-          Visible:
-            1_floor: true
-            4_black desk: true
-            Value: true
+          Visible: true
         - Alpha: 0.30000001192092896
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
@@ -355,34 +352,13 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: true
-        armbasebody:
-          Value: true
-        camera_color_optical_frame:
-          Value: true
-        carbody:
-          Value: true
-        headbody:
-          Value: true
-        imubody:
-          Value: true
-        lidarbody:
-          Value: true
-        map:
-          Value: true
       Marker Scale: 1
       Name: TF
       Show Arrows: true
       Show Axes: true
       Show Names: true
       Tree:
-        map:
-          imubody:
-            carbody:
-              lidarbody:
-                camera_color_optical_frame:
-                  headbody:
-                    armbasebody:
-                      {}
+        {}
       Update Interval: 0
       Value: true
     - Class: rviz_default_plugins/Image
@@ -399,6 +375,18 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /visualize_detect_segment_result
       Value: false
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: scene_graph
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /scene_graph_visualization
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 255; 255; 255
@@ -445,25 +433,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 10
+      Distance: 10.599996566772461
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 1.6737366914749146
-        Y: -0.08739408105611801
-        Z: 0.4081082344055176
+        X: 1.307045817375183
+        Y: 0.2872719168663025
+        Z: 0.04035733640193939
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.9353982210159302
+      Pitch: 0.7403984069824219
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz_default_plugins)
-      Yaw: 3.1003963947296143
+      Yaw: 3.2203969955444336
     Saved: ~
 Window Geometry:
   Color:
