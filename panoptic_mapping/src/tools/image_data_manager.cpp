@@ -341,7 +341,8 @@ void ImageDataManager::processVLLMOutput(const VLLMOutputData& vllm_output,
       }
 
       if (submap_with_boxes.count(submap_id) == 0) {
-        submap_with_boxes[submap_id] = Eigen::Vector4i(0, 0, 0, 0);
+        int int_max = std::numeric_limits<int>::max();
+        submap_with_boxes[submap_id] = Eigen::Vector4i(int_max, int_max, 0, 0);
       }
       Eigen::Vector4i& bbox = submap_with_boxes[submap_id];
       bbox[0] = std::min(bbox[0], x);
