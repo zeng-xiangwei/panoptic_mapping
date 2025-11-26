@@ -92,6 +92,19 @@ inline std::string changeStateToString(const ChangeState& state) {
   }
 }
 
+// 去除字符串首尾空格
+inline std::string trimString(const std::string& str) {
+    if (str.empty()) {
+        return str;
+    }
+    size_t first = str.find_first_not_of(" \t\n\r\f\v");
+    if (first == std::string::npos) {
+        return "";
+    }
+    size_t last = str.find_last_not_of(" \t\n\r\f\v");
+    return str.substr(first, (last - first + 1));
+}
+
 /**
  * Frame names are abbreviated consistently (in paranthesesalternative
  * explanations):

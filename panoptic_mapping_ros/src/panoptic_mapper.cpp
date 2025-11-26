@@ -632,14 +632,15 @@ void PanopticMapper::vllmProcessingResponse(
   for (const auto& bbox_msg : response->objects) {
     BoundingBoxInfoByVLLM bbox_info;
     bbox_info.id = bbox_msg.id;
-    bbox_info.description.class_name = bbox_msg.object_name;
+    // 因为 VL 大模型返回的字符串可能在首尾包含多余的空格，进行过滤
+    bbox_info.description.class_name = trimString(bbox_msg.object_name);
     int xmin = bbox_msg.bbox[0], ymin = bbox_msg.bbox[1];
     int xmax = bbox_msg.bbox[2], ymax = bbox_msg.bbox[3];
     int width = xmax - xmin;
     int height = ymax - ymin;
     bbox_info.bounding_box = cv::Rect(xmin, ymin, width, height);
-    bbox_info.description.color = bbox_msg.color;
-    bbox_info.description.shape = bbox_msg.shape;
+    bbox_info.description.color = trimString(bbox_msg.color);
+    bbox_info.description.shape = trimString(bbox_msg.shape);
     vllm_output.bounding_boxes_info.push_back(bbox_info);
   }
 

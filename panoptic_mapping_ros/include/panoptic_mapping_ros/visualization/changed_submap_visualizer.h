@@ -128,11 +128,14 @@ class ChangedSubmapVisualizer {
    * @brief 与已有的 submap 进行比较，判断 box
    * 是否重复，避免同一个物体存在不同大小的 box（存在同一个物体，activate submap
    * 比 persistent submap 小的情况）
+   * 不做实际删除，仅标记
    *
    * @param query_submap
+   * @param marked_delete_ids 将标记为删除的物体的 id 返回出来
    * @return 是否应该保留输入的 submap
    */
-  bool deleteRepeatByOBB(const SubmapInfo& query_submap);
+  bool deleteRepeatByOBBWithMark(const SubmapInfo& query_submap,
+                                 std::set<int>& marked_delete_ids);
 
   // ROS.
   rclcpp::Node::SharedPtr node_;
@@ -149,7 +152,7 @@ class ChangedSubmapVisualizer {
   std::unordered_map<int, SubmapInfo> submap_infos_;
   const SubmapCollection* previous_submaps_ =
       nullptr;  // Only for tracking, not for use!
-  
+
   // 发布 vln 物体变化消息时，需要等待接收着就绪再发布
   bool subscriber_is_active_ = false;
 };

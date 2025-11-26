@@ -134,10 +134,48 @@ void ChangedSubmapVisualizer::findChangedSubmaps(SubmapCollection& submaps) {
         computeOBB(submap.getIsoSurfacePoints(), submap.getConfig().voxel_size);
     info.color = kAddColor;
     info.embedding_vector = submap.getEmbeddingVector();
+    if (submap.hasVllmDescripts()) {
+      info.has_vllm_info = true;
+      info.vllm_descripts = submap.getDescriptsByVllm();
+      info.vllm_relationship = *submap.getVllmRelationshipsPtr();
+      LOG(INFO) << "submap " << submap.getID()
+                << " add vllm descripts: " << info.vllm_descripts.toString();
+
+      for (auto& rel : info.vllm_relationship) {
+        LOG(INFO) << "submap " << submap.getID()
+                  << " add vllm relationship: " << rel.toString();
+      }
+    }
 
     bool remain = true;
     if (config_.use_space_unique_boxes) {
-      remain = deleteRepeatByOBB(info);
+      std::set<int> mark_delete_ids;
+      remain = deleteRepeatByOBBWithMark(info, mark_delete_ids);
+      // 如果当前物体没有描述信息，且有因为该物体而删除的其他物体，则将被删除物体的描述给到当前物体上
+      // TODO: 函数是否过长
+      if (!info.has_vllm_info) {
+        for (int delete_id : mark_delete_ids) {
+          if (submaps.submapIdExists(delete_id)) {
+            auto& submap = *submaps.getSubmapPtr(delete_id);
+            if (submap.hasVllmDescripts()) {
+              info.has_vllm_info = true;
+              info.vllm_descripts = submap.getDescriptsByVllm();
+              info.vllm_relationship = *submap.getVllmRelationshipsPtr();
+              LOG(INFO) << "submap " << submap.getID()
+                        << " add vllm descripts: "
+                        << info.vllm_descripts.toString()
+                        << ", inherit from submap" << delete_id;
+
+              for (auto& rel : info.vllm_relationship) {
+                LOG(INFO) << "submap " << submap.getID()
+                          << " add vllm relationship: " << rel.toString()
+                          << ", inherit from submap" << delete_id;
+              }
+              break;
+            }
+          }
+        }
+      }
     }
 
     if (remain) {
@@ -356,7 +394,8 @@ void ChangedSubmapVisualizer::publishChangesForVln(
   // 增加 VL 大模型输出的信息
   for (auto& kv : submap_infos_) {
     const SubmapInfo& info = kv.second;
-    if (info.change_type != ChangeType::kChanged || !info.has_vllm_info) {
+    if (info.change_type == ChangeType::kDeleted ||
+        info.change_type == ChangeType::kUnChanged || !info.has_vllm_info) {
       continue;
     }
 
@@ -375,8 +414,7 @@ void ChangedSubmapVisualizer::publishChangesForVln(
         vln_msgs::msg::ObjectRelationship obj_vllm_relationship;
         obj_vllm_relationship.from_id = rel.from_id;
         obj_vllm_relationship.to_id = rel.to_id;
-        obj_vllm_relationship.type =
-            relationshipTypeToString(rel.relationship);
+        obj_vllm_relationship.type = relationshipTypeToString(rel.relationship);
         result.update_obj_relationships.push_back(obj_vllm_relationship);
       }
     }
@@ -785,8 +823,8 @@ float ChangedSubmapVisualizer::computeOBBIoU(const OrientedBoundingBox& obb1,
   return std::max(ration_1, ration_2);
 }
 
-bool ChangedSubmapVisualizer::deleteRepeatByOBB(
-    const SubmapInfo& query_submap) {
+bool ChangedSubmapVisualizer::deleteRepeatByOBBWithMark(
+    const SubmapInfo& query_submap, std::set<int>& marked_delete_ids) {
   // 存在 query_submap 小于相交的 submap，则该 query_submap 应该删除，否则保留
   bool remain_query_submap = true;
   std::vector<int> delete_ids;
@@ -821,6 +859,7 @@ bool ChangedSubmapVisualizer::deleteRepeatByOBB(
     for (int delete_id : delete_ids) {
       ss << delete_id << " ";
       submap_infos_[delete_id].change_type = ChangeType::kDeleted;
+      marked_delete_ids.insert(delete_id);
     }
     LOG_IF(INFO, config_.verbosity >= 4)
         << "save query: " << query_submap.name << " " << query_submap.id

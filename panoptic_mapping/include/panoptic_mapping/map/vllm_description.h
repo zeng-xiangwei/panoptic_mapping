@@ -15,7 +15,7 @@ struct VllmDescription {
   std::string other_descs;
 
   std::string toString() const {
-    return class_name + " " + color + " " + shape + " " + other_descs;
+    return class_name + "|" + color + "|" + shape + "|" + other_descs;
   }
 };
 

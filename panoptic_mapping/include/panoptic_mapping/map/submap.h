@@ -135,7 +135,13 @@ class Submap {
   SubmapBoundingVolume* getBoundingVolumePtr() { return &bounding_volume_; }
   int getDisappearCount() const { return disappear_count_; }
   VllmDescription getDescriptsByVllm() const { return descripts_by_vllm_; };
+
+  // 是否有新的描述信息
   bool getHasNewVllmDescripts() const { return has_new_vllm_descripts_; }
+  // 是否存在描述信息
+  bool hasVllmDescripts() const {
+    return !descripts_by_vllm_.class_name.empty();
+  }
   std::vector<VllmRelationship>* getVllmRelationshipsPtr() {
     return &relationships_by_vllm_;
   }
