@@ -13,6 +13,8 @@ Panels:
         - /currentLidar1/Topic1
         - /TF1/Frames1
         - /DetectResult1
+        - /scene_graph1/Namespaces1
+        - /target_object1/Topic1
       Splitter Ratio: 0.5
     Tree Height: 727
   - Class: rviz_common/Selection
@@ -85,7 +87,104 @@ Visualization Manager:
             Reliability Policy: Reliable
             Value: /visualization/submaps/mesh
           Value: true
-          Visible: true
+          Visible:
+            100_chair: true
+            1055_potted plant: true
+            1063_cabinet: true
+            1078_chair: true
+            1084_cabinet: true
+            1087_desk: true
+            108_cabinet: true
+            1090_chair: true
+            1093_fridge: true
+            1095_thermal flask: true
+            1099_microwave: true
+            109_desk: true
+            1102_microwave: true
+            1109_cabinet: true
+            1117_desk: true
+            111_keyboard: true
+            1125_trash can: true
+            1126_trash can: true
+            1132_cabinet: true
+            1174_desk: true
+            1186_chair: true
+            1187_desk: true
+            127_keyboard: true
+            129_monitor: true
+            1325_cabinet: true
+            1329_potted plant: true
+            1366_cabinet: true
+            1427_cabinet: true
+            1428_potted plant: true
+            1451_cabinet: true
+            1452_cabinet: true
+            1456_trash can: true
+            1466_potted plant: true
+            1519_potted plant: true
+            1526_cabinet: true
+            1536_trash can: true
+            1539_chair: true
+            1553_chair: true
+            1556_chair: true
+            1562_desk: true
+            1564_cabinet: true
+            1574_potted plant: true
+            1576_cabinet: true
+            1583_trash can: true
+            1584_door: true
+            190_cabinet: true
+            195_monitor: true
+            196_desk: true
+            208_desk: true
+            220_cabinet: true
+            226_monitor: true
+            249_desk: true
+            281_potted plant: true
+            284_potted plant: true
+            28_desk: true
+            303_cabinet: true
+            307_potted plant: true
+            320_potted plant: true
+            327_door: true
+            330_cabinet: true
+            331_potted plant: true
+            342_cabinet: true
+            350_desk: true
+            355_chair: true
+            395_window: true
+            39_desk: true
+            3_chair: true
+            410_potted plant: true
+            41_window: true
+            430_window: true
+            456_cabinet: true
+            457_potted plant: true
+            459_cabinet: true
+            473_potted plant: true
+            479_cabinet: true
+            487_door: true
+            544_chair: true
+            545_desk: true
+            552_chair: true
+            571_chair: true
+            573_desk: true
+            663_chair: true
+            682_chair: true
+            729_desk: true
+            742_desk: true
+            746_chair: true
+            750_chair: true
+            84_potted plant: true
+            85_cabinet: true
+            87_cabinet: true
+            8_chair: true
+            943_cabinet: true
+            961_trash can: true
+            964_cabinet: true
+            965_cabinet: true
+            992_door: true
+            Value: true
         - Alpha: 0.30000001192092896
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
@@ -352,13 +451,28 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: true
+        camera_color_optical_frame:
+          Value: true
+        carbody:
+          Value: true
+        imubody:
+          Value: true
+        lidarbody:
+          Value: true
+        map:
+          Value: true
       Marker Scale: 1
       Name: TF
       Show Arrows: true
       Show Axes: true
       Show Names: true
       Tree:
-        {}
+        map:
+          imubody:
+            carbody:
+              lidarbody:
+                camera_color_optical_frame:
+                  {}
       Update Interval: 0
       Value: true
     - Class: rviz_default_plugins/Image
@@ -379,13 +493,38 @@ Visualization Manager:
       Enabled: true
       Name: scene_graph
       Namespaces:
-        {}
+        building_node: true
+        object_box: true
+        object_cone: true
+        object_id: true
+        object_label: true
+        object_node: true
+        object_spatial_relations: true
+        object_to_projection_edges: true
+        region_to_building_edges: true
+        room_label: true
+        room_node: true
+        room_poly: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /scene_graph_visualization
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: target_object
+      Namespaces:
+        target_info: true
+        target_object_box: true
+        target_pose: true
+      Topic:
+        Depth: 5
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /scene_graph/visualization/target_object
       Value: true
   Enabled: true
   Global Options:
@@ -433,25 +572,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 10.599996566772461
+      Distance: 10
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 1.307045817375183
-        Y: 0.2872719168663025
-        Z: 0.04035733640193939
+        X: -0.5028036236763
+        Y: 0.6408747434616089
+        Z: -0.097631074488163
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.7403984069824219
+      Pitch: 0.700398325920105
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz_default_plugins)
-      Yaw: 3.2203969955444336
+      Yaw: 0.9603981375694275
     Saved: ~
 Window Geometry:
   Color:

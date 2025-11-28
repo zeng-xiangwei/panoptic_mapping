@@ -302,6 +302,7 @@ std::unique_ptr<Submap> Submap::loadFromStream(
   if (submap_proto.has_color() || submap_proto.has_shape() ||
       submap_proto.has_other_descs()) {
     VllmDescription desc;
+    desc.class_name = submap->getClassName();
     if (submap_proto.has_color()) {
       desc.color = submap_proto.color();
     }
