@@ -329,12 +329,28 @@ void ChangedSubmapVisualizer::publishChanges(const SubmapCollection& submaps) {
       marker.action = visualization_msgs::msg::Marker::MODIFY;
     }
 
-    if (info.obb.valid) {
+    if (info.obb.valid || info.change_type == ChangeType::kDeleted) {
       result.markers.push_back(marker);
     }
   }
 
   obb_publisher_->publish(result);
+}
+
+bool ChangedSubmapVisualizer::validChange(const SubmapInfo& info) {
+  if (info.change_type == ChangeType::kDeleted) {
+    return true;
+  }
+
+  if (info.change_type == ChangeType::kUnChanged) {
+    return false;
+  }
+
+  if (!info.obb.valid) {
+    return false;
+  }
+
+  return true;
 }
 
 void ChangedSubmapVisualizer::publishChangesForVln(
@@ -347,7 +363,7 @@ void ChangedSubmapVisualizer::publishChangesForVln(
       LOG(WARNING) << " Submap " << kv.first << " has an invalid bounding box.";
     }
 
-    if (info.change_type == ChangeType::kUnChanged || !info.obb.valid) {
+    if (!validChange(info)) {
       continue;
     }
 

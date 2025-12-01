@@ -136,6 +136,7 @@ class ChangedSubmapVisualizer {
    */
   bool deleteRepeatByOBBWithMark(const SubmapInfo& query_submap,
                                  std::set<int>& marked_delete_ids);
+  bool validChange(const SubmapInfo& info);
 
   // ROS.
   rclcpp::Node::SharedPtr node_;

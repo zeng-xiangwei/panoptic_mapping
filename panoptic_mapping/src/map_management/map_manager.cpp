@@ -235,6 +235,10 @@ void MapManager::finishMapping(SubmapCollection* submaps) {
           << "Removed submap " << id << " which was empty.";
     }
   }
+
+  if (config_.remove_absent_submaps) {
+    removeAbsentSubmaps(submaps);
+  }
 }
 
 bool MapManager::mergeSubmapIfPossible(SubmapCollection* submaps, int submap_id,
