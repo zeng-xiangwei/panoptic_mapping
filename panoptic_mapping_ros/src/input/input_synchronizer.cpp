@@ -39,6 +39,7 @@ void InputSynchronizer::Config::setupParamsAndPrinting() {
   setupParam("max_delay", &max_delay);
   setupParam("depth_type", &depth_type);
   setupParam("color_msg_type", &color_msg_type);
+  setupParam("tf_pose_delay", &tf_pose_delay);
 }
 
 InputSynchronizer::InputSynchronizer(const Config& config,
@@ -326,14 +327,15 @@ bool InputSynchronizer::lookupTransform(const rclcpp::Time& timestamp,
                                         Transformation* transformation) const {
   // Try to lookup the transform for the maximum wait time.
   geometry_msgs::msg::TransformStamped transform;
+  rclcpp::Time delayed_timestamp = timestamp + rclcpp::Duration::from_seconds(config_.tf_pose_delay);
   try {
     transform = tf_buffer_->lookupTransform(
-        base_frame, child_frame, timestamp,
+        base_frame, child_frame, delayed_timestamp,
         tf2::durationFromSec(config_.transform_lookup_time));
   } catch (tf2::TransformException& ex) {
     LOG_IF(WARNING, config_.verbosity >= 2)
         << "Unable to lookup transform between '" << base_frame << "' and '"
-        << child_frame << "' at time '" << timestamp.seconds() << "' over '"
+        << child_frame << "' at time '" << delayed_timestamp.seconds() << "' over '"
         << config_.transform_lookup_time << "s', skipping inputs. Exception: '"
         << ex.what() << "'.";
     return false;

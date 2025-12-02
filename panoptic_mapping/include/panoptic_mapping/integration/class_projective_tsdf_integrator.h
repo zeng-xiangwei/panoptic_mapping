@@ -28,6 +28,9 @@ class ClassProjectiveIntegrator : public ProjectiveIntegrator {
 
     bool use_binary_classification = false;    // false: use a counter per id.
     bool use_instance_classification = false;  // false: use class id.
+    // true: 只有在 voxel 对应的分割结果有具体的检测类别时，才增加 foreign
+    // count，否则不增加，用于处理检测分割不稳定的情况，提高有效物体的生成率
+    bool add_foreign_count_when_has_instances = true;
     bool update_only_tracked_submaps = true;
 
     // Integration params.

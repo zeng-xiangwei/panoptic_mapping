@@ -27,6 +27,8 @@ void ClassProjectiveIntegrator::Config::setupParamsAndPrinting() {
   setupParam("use_instance_classification", &use_instance_classification);
   setupParam("update_only_tracked_submaps", &update_only_tracked_submaps);
   setupParam("projective_integrator", &pi_config);
+  setupParam("add_foreign_count_when_has_instances",
+             &add_foreign_count_when_has_instances);
 }
 
 ClassProjectiveIntegrator::ClassProjectiveIntegrator(
@@ -158,9 +160,15 @@ void ClassProjectiveIntegrator::updateClassVoxel(InterpolatorBase* interpolator,
     // Use ID 0 for belongs, 1 for does not belong.
     if (config_.use_instance_classification) {
       // Just count how often the assignments were right.
-      voxel->incrementCount(
-          1 - static_cast<int>(interpolator->interpolateID(input.idImage()) ==
-                               submap_id));
+      int id = interpolator->interpolateID(input.idImage());
+      if (config_.add_foreign_count_when_has_instances) {
+        if (id > 0) {
+          voxel->incrementCount(1 - static_cast<int>(id == submap_id));
+        }
+        // id 小于 0 表示没有检测到物体，不增加 foreign count
+      } else {
+        voxel->incrementCount(1 - static_cast<int>(id == submap_id));
+      }
     } else {
       // Only the class needs to match.
       auto it = id_to_class_.find(submap_id);

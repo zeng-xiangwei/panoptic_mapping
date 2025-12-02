@@ -48,6 +48,9 @@ class InputSynchronizer : public InputSynchronizerBase {
     // v_bridge::toCvCopy(msg, "rgb8")
     std::string color_msg_type = "bgr8";
 
+    // s, 相机时间戳与位姿时间戳可能存在延迟，需要补偿该延迟
+    double tf_pose_delay = 0.0;
+
     Config() { setConfigName("InputSynchronizer"); }
 
    protected:
