@@ -332,6 +332,25 @@ bool InputSynchronizer::lookupTransform(const rclcpp::Time& timestamp,
     transform = tf_buffer_->lookupTransform(
         base_frame, child_frame, delayed_timestamp,
         tf2::durationFromSec(config_.transform_lookup_time));
+
+    // 计算时间差以判断是否为精确查询
+    rclcpp::Time transform_timestamp(transform.header.stamp);
+    auto time_diff = transform_timestamp - delayed_timestamp;
+    double time_diff_ns = std::abs(time_diff.nanoseconds());
+    
+    // 判断是否为外推值（时间差超过一定阈值认为是外推）
+    bool is_extrapolated = time_diff_ns > 1000000; // 1ms阈值
+    
+    if (is_extrapolated) {
+        LOG(WARNING) << "Transform is extrapolated. Time difference: " 
+                     << time_diff_ns / 1000000.0 << " ms. "
+                     << "Requested: " << delayed_timestamp.seconds() << ", "
+                     << "Actual: " << transform_timestamp.seconds() << ".";
+    } else {
+        LOG_IF(INFO, config_.verbosity >= 3) 
+            << "Transform is accurate. Time difference: " 
+            << time_diff_ns / 1000000.0 << " ms.";
+    }
   } catch (tf2::TransformException& ex) {
     LOG_IF(WARNING, config_.verbosity >= 2)
         << "Unable to lookup transform between '" << base_frame << "' and '"
