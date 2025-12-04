@@ -22,6 +22,8 @@ labels:
   file_name: /home/xiangweizeng/3D_slam/sematic-mapping/panoptic_mapping_ws/install/panoptic_mapping_ros/share/panoptic_mapping_ros/config/classes/realsense_labels_mini.csv
   use_whitelist: false
   whitelist_file_name: /home/xiangweizeng/3D_slam/sematic-mapping/panoptic_mapping_ws/install/panoptic_mapping_ros/share/panoptic_mapping_ros/config/classes/realsense_whitelist.csv
+  use_blacklist: true
+  blacklist_file_name: /home/xiangweizeng/3D_slam/sematic-mapping/panoptic_mapping_ws/install/panoptic_mapping_ros/share/panoptic_mapping_ros/config/classes/realsense_blacklist.csv
 
 camera:
   verbosity: 1
@@ -47,7 +49,7 @@ submap_allocator:
   min_embedding_weight: 0.00001
   mesh:
     clear_foreign_voxels: true
-    required_belonging_corners: &required_belonging_corners 4
+    required_belonging_corners: &required_belonging_corners 1
   classification:
     type: moving_binary_count
   

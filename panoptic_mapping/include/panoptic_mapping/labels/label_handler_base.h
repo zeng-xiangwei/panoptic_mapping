@@ -34,6 +34,7 @@ class LabelHandlerBase {
   const std::string& getName(int segmentation_id) const;
   const LabelEntry& getLabelEntry(int segmentation_id) const;
   const std::unordered_set<std::string> getWhiteList() const;
+  const std::unordered_set<std::string> getBlackList() const;
 
   /**
    * @brief Get the LabelEntry if it exists in a combined lookup.
@@ -55,6 +56,9 @@ class LabelHandlerBase {
 
   // Whitelist of classes to build map. Only operate classes in whitelist
   std::unordered_set<std::string> whitelist_classes_;
+
+  // Blacklist of classes to build map. Ignore classes in blacklist
+  std::unordered_set<std::string> blacklist_classes_;
 };
 
 }  // namespace panoptic_mapping

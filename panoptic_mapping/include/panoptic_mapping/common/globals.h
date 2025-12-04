@@ -29,6 +29,10 @@ class Globals {
     return label_handler_->getWhiteList();
   }
 
+  const std::unordered_set<std::string> getBlackList() const {
+    return label_handler_->getBlackList();
+  }
+
  private:
   // Components.
   std::shared_ptr<Camera> camera_;

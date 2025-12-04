@@ -22,6 +22,8 @@ void MiniCsvLabelHandler::Config::setupParamsAndPrinting() {
   setupParam("file_name", &file_name);
   setupParam("use_whitelist", &use_whitelist);
   setupParam("whitelist_file_name", &whitelist_file_name);
+  setupParam("use_blacklist", &use_blacklist);
+  setupParam("blacklist_file_name", &blacklist_file_name);
 }
 
 void MiniCsvLabelHandler::Config::checkParams() const {
@@ -41,6 +43,10 @@ MiniCsvLabelHandler::MiniCsvLabelHandler(const Config& config,
 
   if (config_.use_whitelist && !config_.whitelist_file_name.empty()) {
     readWhiteListFromFile();
+  }
+
+  if (config_.use_blacklist && !config_.blacklist_file_name.empty()) {
+    readBlackListFromFile();
   }
 }
 
@@ -134,6 +140,32 @@ void MiniCsvLabelHandler::readWhiteListFromFile() {
   std::stringstream info;
   info << "Read whitelist from " << config_.whitelist_file_name << ".Found "
        << whitelist_classes_.size() << " classes in whitelist.\n";
+  LOG_IF(INFO, config_.verbosity >= 1) << info.str();
+}
+
+void MiniCsvLabelHandler::readBlackListFromFile() {
+  io::CSVReader<1> in(config_.blacklist_file_name);
+  in.read_header(io::ignore_extra_column, "ClassName");
+
+  bool read_row = true;
+  int missed_count = -1;  // The header is also counter.
+  while (read_row) {
+    std::string name;
+    read_row = in.read_row(name);
+
+    // Write all found values to the label.
+    LabelEntry label;
+    if (!name.empty()) {
+      blacklist_classes_.insert(name);
+    } else {
+      missed_count += 1;
+      continue;
+    }
+  }
+
+  std::stringstream info;
+  info << "Read blacklist from " << config_.blacklist_file_name << ".Found "
+       << blacklist_classes_.size() << " classes in blacklist.\n";
   LOG_IF(INFO, config_.verbosity >= 1) << info.str();
 }
 

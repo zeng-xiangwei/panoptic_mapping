@@ -30,12 +30,19 @@ DetectronIDTracker::DetectronIDTracker(const Config& config,
   LOG_IF(INFO, config_.verbosity >= 1) << "\n" << config_.toString();
   addRequiredInput(InputData::InputType::kDetectronLabels);
   whitelist_classes_ = globals_->getWhiteList();
+  blacklist_classes_ = globals_->getBlackList();
 
   std::stringstream info;
   for (auto class_name : whitelist_classes_) {
     info << class_name << ",";
   }
   LOG_IF(INFO, config_.verbosity >= 1) << "Whitelist: " << info.str();
+
+  info.clear();
+  for (auto class_name : blacklist_classes_) {
+    info << class_name << ",";
+  }
+  LOG_IF(INFO, config_.verbosity >= 1) << "Blacklist: " << info.str();
 }
 
 void DetectronIDTracker::processInput(SubmapCollection* submaps,
@@ -67,6 +74,11 @@ Submap* DetectronIDTracker::allocateSubmap(int input_id,
   if (!whitelist_classes_.empty() &&
       (whitelist_classes_.count(it->second.category_name) == 0)) {
     // Class is not in whitelist.
+    return nullptr;
+  }
+
+  if (blacklist_classes_.count(it->second.category_name) != 0) {
+    // 黑名单内的类别不构造
     return nullptr;
   }
 

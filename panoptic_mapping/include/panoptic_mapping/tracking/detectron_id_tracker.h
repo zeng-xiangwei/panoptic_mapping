@@ -53,6 +53,9 @@ class DetectronIDTracker : public ProjectiveIDTracker {
 
   // Whitelist for allocate submap.
   std::unordered_set<std::string> whitelist_classes_;
+
+  // Blacklist for allocate submap.
+  std::unordered_set<std::string> blacklist_classes_;
 };
 
 }  // namespace panoptic_mapping

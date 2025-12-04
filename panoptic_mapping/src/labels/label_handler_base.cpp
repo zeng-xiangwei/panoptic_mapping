@@ -61,4 +61,8 @@ const std::unordered_set<std::string> LabelHandlerBase::getWhiteList() const {
   return whitelist_classes_;
 }
 
+const std::unordered_set<std::string> LabelHandlerBase::getBlackList() const {
+  return blacklist_classes_;
+}
+
 }  // namespace panoptic_mapping

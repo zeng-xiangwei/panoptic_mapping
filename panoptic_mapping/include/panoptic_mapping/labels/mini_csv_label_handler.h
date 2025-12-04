@@ -25,6 +25,9 @@ class MiniCsvLabelHandler : public LabelHandlerBase {
     // Whitelist classes file, only these classes will be considered.
     bool use_whitelist = false;
     std::string whitelist_file_name;
+
+    bool use_blacklist = false;
+    std::string blacklist_file_name;
     Config() { setConfigName("MiniCsvLabelHandler"); }
 
    protected:
@@ -39,6 +42,7 @@ class MiniCsvLabelHandler : public LabelHandlerBase {
   const Config config_;
   void readLabelsFromFile();
   void readWhiteListFromFile();
+  void readBlackListFromFile();
 
  public:
   static config_utilities::Factory::RegistrationRos<LabelHandlerBase,
