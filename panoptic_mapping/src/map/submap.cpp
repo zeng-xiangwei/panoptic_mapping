@@ -380,12 +380,6 @@ void Submap::finishActivePeriod() {
   // Since the submap was active just before we assume it still exists.
   change_state_ = ChangeState::kPersistent;
   updateEverything();
-
-  if (iso_surface_points_.empty()) {
-    LOG(WARNING) << "Submap " << static_cast<int>(id_) << " (" << name_
-                 << ") has no iso-surface points after finishing active period. Set KAbsent";
-    change_state_ = ChangeState::kAbsent;
-  }
 }
 
 void Submap::updateEverything(bool only_updated_blocks) {
@@ -430,6 +424,12 @@ void Submap::computeIsoSurfacePoints() {
                  << ") has " << ignored_points
                  << " iso-surface points with a distance > "
                  << 0.1 * config_.voxel_size << ", these will be ignored.";
+  }
+
+  if (iso_surface_points_.empty()) {
+    LOG(WARNING) << "Submap " << static_cast<int>(id_) << " (" << name_
+                 << ") has no iso-surface points after finishing active period. Set KAbsent";
+    change_state_ = ChangeState::kAbsent;
   }
 }
 
