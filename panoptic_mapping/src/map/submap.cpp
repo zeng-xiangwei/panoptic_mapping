@@ -426,9 +426,10 @@ void Submap::computeIsoSurfacePoints() {
                  << 0.1 * config_.voxel_size << ", these will be ignored.";
   }
 
-  if (iso_surface_points_.empty()) {
+  if (iso_surface_points_.size() < 3) {
     LOG(WARNING) << "Submap " << static_cast<int>(id_) << " (" << name_
-                 << ") has no iso-surface points after finishing active period. Set KAbsent";
+                 << ") iso-surface points size(" << iso_surface_points_.size()
+                 << ") less than 3 after finishing active period. Set KAbsent";
     change_state_ = ChangeState::kAbsent;
   }
 }
