@@ -798,7 +798,7 @@ void PanopticMapper::publishColoredPointCloud(InputData* input) {
   for (int v = 0; v < depth_image.rows; ++v) {
     for (int u = 0; u < depth_image.cols; ++u) {
       float depth = depth_image.at<float>(v, u);
-      if (validity_image.at<uchar>(v, u) == 0) continue;  // 跳过无效深度值
+      if (depth <= 0.0f) continue;
 
       // 计算点的空间坐标
       float x = (u - cx) * depth / fx;

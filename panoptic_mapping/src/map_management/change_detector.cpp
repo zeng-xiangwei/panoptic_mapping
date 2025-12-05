@@ -75,7 +75,10 @@ void ChangeDetector::checkSubmapCollectionVisibleByInputData(
         submap.getChangeState() != ChangeState::kAbsent) {
       const Point center_C = T_M_C.inverse() * submap.getT_M_S() *
                              submap.getBoundingVolume().getCenter();
-      if (!camera.submapIsInViewFrustum(submap, T_M_C)) {
+      // if (!camera.submapIsInViewFrustum(submap, T_M_C)) {
+      //   continue;
+      // }
+      if (!camera.pointIsInViewFrustum(center_C)) {
         continue;
       }
 
@@ -210,7 +213,11 @@ std::string ChangeDetector::checkSubmapVisibleByInputData(Submap* submap,
     submap->setChangeState(ChangeState::kAbsent);
     std::stringstream info;
     info << "\nSubmap " << submap->getID() << " (" << submap->getName()
-         << ") conflicts with input data judged by strong. Marked as absent.";
+         << ") conflicts with input data judged by strong. Marked as absent."
+         << " Absent points: (" << strong_absent_num << "," << weak_absent_num
+         << ")/" << submap->getIsoSurfacePoints().size()
+         << ", valid_measurement_nums / projected_nums: "
+         << valid_depth_measurement_num << " / " << projected_num;
     return info.str();
   }
 
