@@ -91,6 +91,15 @@ void ProjectiveIntegrator::processInput(SubmapCollection* submaps,
   }
   find_timer.Stop();
 
+  if (config_.verbosity >= 2) {
+    std::stringstream ss;
+    for (const auto& id_blocklist_pair : block_lists) {
+      int submap_id = id_blocklist_pair.first;
+      ss << submap_id << "(" << submaps->getSubmapPtr(submap_id)->getClassName() << "),";
+    }
+    LOG(INFO) << "Submaps to run tsdf_integration:" << ss.str();
+  }
+
   // Integrate in parallel.
   Timer int_timer("tsdf_integration/integration");
   SubmapIndexGetter index_getter(id_list);

@@ -75,7 +75,7 @@ void ChangeDetector::checkSubmapCollectionVisibleByInputData(
         submap.getChangeState() != ChangeState::kAbsent) {
       const Point center_C = T_M_C.inverse() * submap.getT_M_S() *
                              submap.getBoundingVolume().getCenter();
-      if (!camera.pointIsInViewFrustum(center_C)) {
+      if (!camera.submapIsInViewFrustum(submap, T_M_C)) {
         continue;
       }
 
@@ -88,6 +88,14 @@ void ChangeDetector::checkSubmapCollectionVisibleByInputData(
 
   if (id_list.empty()) {
     return;
+  }
+
+  if (config_.verbosity >= 2) {
+    std::stringstream ss;
+    for (const int id : id_list) {
+      ss << id << "(" << submaps->getSubmapPtr(id)->getClassName() << "),";
+    }
+    LOG(INFO) << "Submaps to check change by input data:" << ss.str();
   }
 
   // Perform change detection in parallel.
@@ -384,6 +392,7 @@ std::string ChangeDetector::checkSubmapVisibleByInputDataWithClassification(
        << ") num: " << max_projected_num
        << ", valid_measurement_nums / projected_nums: "
        << valid_depth_measurement_num << " / " << projected_num
+       << ", current frame disappear status(1: disappear): " << disappear
        << ", disappear frame: " << submap->getDisappearCount();
   return info.str();
 }

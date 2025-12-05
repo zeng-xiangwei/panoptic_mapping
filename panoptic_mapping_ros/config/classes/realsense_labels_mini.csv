@@ -21,6 +21,7 @@ chopsticks,S,1
 pot,S,1
 pillow,S,1
 telephone,S,1
+person,S,1
 floor,L,0
 wall,L,0
 stair,S,0

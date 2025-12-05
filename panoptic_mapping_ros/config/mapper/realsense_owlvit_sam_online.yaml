@@ -22,7 +22,7 @@ labels:
   file_name: /home/xiangweizeng/3D_slam/sematic-mapping/panoptic_mapping_ws/install/panoptic_mapping_ros/share/panoptic_mapping_ros/config/classes/realsense_labels_mini.csv
   use_whitelist: false
   whitelist_file_name: /home/xiangweizeng/3D_slam/sematic-mapping/panoptic_mapping_ws/install/panoptic_mapping_ros/share/panoptic_mapping_ros/config/classes/realsense_whitelist.csv
-  use_blacklist: true
+  use_blacklist: false
   blacklist_file_name: /home/xiangweizeng/3D_slam/sematic-mapping/panoptic_mapping_ws/install/panoptic_mapping_ros/share/panoptic_mapping_ros/config/classes/realsense_blacklist.csv
 
 camera:
@@ -129,9 +129,9 @@ map_management:
     verbosity: 3
     strong_disappear_threshold: -10 # m, negative = #vs
     weak_disappear_threshold: -2 # m, negative = #vs
-    match_strong_disappear_points: 50
+    match_strong_disappear_points: 0
     match_strong_disappear_percentage: 0.3
-    match_weak_disappear_points: 50
+    match_weak_disappear_points: 0
     match_weak_disappear_percentage: 0.6
     match_weak_average_distance: -4 # m, negative = #vs
     detection_threads: 1
@@ -139,7 +139,7 @@ map_management:
     min_isolated_points_size: 3000
     classification_only_background: false
     classification_use_no_class: true
-    limit_range: true
+    limit_range: false
     classification_disappear_frames_threshold: 3
     classification_disappear_threshold: 0.01 # m, negative = #vs
     classification_disappear_percentage: 0.5
