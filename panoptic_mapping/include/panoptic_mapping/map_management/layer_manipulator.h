@@ -23,6 +23,11 @@ class LayerManipulator {
 
     // Use to remove isolated class voxels.
     int required_belonging_corners = 0;
+
+    // Maximum weight used for TSDF updates. High max weight keeps information
+    // longer in memory, low max weight favors rapid updates. Only For limit
+    // weight after merge A to B
+    float max_weight = 1e5;
     Config() { setConfigName("LayerManipulator"); }
 
    protected:

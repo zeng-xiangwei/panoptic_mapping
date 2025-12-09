@@ -17,6 +17,7 @@ void LayerManipulator::Config::setupParamsAndPrinting() {
   setupParam("verbosity", &verbosity);
   setupParam("use_instance_classification", &use_instance_classification);
   setupParam("required_belonging_corners", &required_belonging_corners);
+  setupParam("max_weight", &max_weight);
 }
 
 LayerManipulator::LayerManipulator(const Config& config)
@@ -95,6 +96,8 @@ void LayerManipulator::mergeSubmapAintoB(const Submap& A, Submap* B) const {
     return;
   }
   const bool use_class_layer = A.hasClassLayer();
+  float A_truncation_distance = A.getConfig().truncation_distance;
+  float B_truncation_distance = B->getConfig().truncation_distance;
 
   // Currently just use the voxels...
   voxblox::BlockIndexList block_indices;
@@ -130,7 +133,21 @@ void LayerManipulator::mergeSubmapAintoB(const Submap& A, Submap* B) const {
         belongs_B = class_voxel_B->belongsToSubmap();
       }
       if (belongs_A && belongs_B) {
-        voxblox::mergeVoxelAIntoVoxelB(tsdf_voxel_A, &tsdf_voxel_B);
+        // 如果二者中存在 sdf 值等于正的截断值，则将 B 的 sdf 值设为非截断值那个
+        if (tsdf_voxel_A.distance != A_truncation_distance &&
+            tsdf_voxel_B.distance != B_truncation_distance) {
+          voxblox::mergeVoxelAIntoVoxelB(tsdf_voxel_A, &tsdf_voxel_B);
+        } else {
+          if (tsdf_voxel_A.distance != A_truncation_distance &&
+              tsdf_voxel_A.weight > 0) {
+            tsdf_voxel_B.distance = tsdf_voxel_A.distance;
+            tsdf_voxel_B.weight = tsdf_voxel_A.weight;
+            tsdf_voxel_B.color = tsdf_voxel_A.color;
+          }
+        }
+        if (tsdf_voxel_B.weight > config_.max_weight) {
+          tsdf_voxel_B.weight = config_.max_weight;
+        }
         if (class_voxel_A && class_voxel_B) {
           // Voxels that belong to A and B are merged.
           class_voxel_B->mergeVoxel(*class_voxel_A);

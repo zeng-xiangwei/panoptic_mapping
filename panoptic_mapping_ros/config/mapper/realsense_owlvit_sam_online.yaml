@@ -84,7 +84,7 @@ tsdf_integrator:
 
   # Projective
   use_weight_dropoff: true
-  max_weight: 10000
+  max_weight: &max_weight 10000
   interpolation_method: adaptive  # nearest, bilinear, adaptive
   foreign_rays_clear: true
   integration_threads: 8
@@ -118,7 +118,8 @@ map_management:
   tsdf_registrator:
     verbosity: 3
     min_voxel_weight: 0.000001
-    error_threshold: -2 # m, negative = #vs
+    # Must less than submap_allocator.truncation_distance
+    error_threshold: -1 # m, negative = #vs
     match_rejection_points: 20  
     match_rejection_percentage: 0.02
     match_acceptance_points: 20
@@ -150,6 +151,7 @@ map_management:
       verbosity: 3
       use_instance_classification: *use_instance_classification
       required_belonging_corners: *required_belonging_corners
+      max_weight: *max_weight
   
 visualization:  
   submaps:
