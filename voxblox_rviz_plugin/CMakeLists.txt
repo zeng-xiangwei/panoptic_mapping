@@ -3,6 +3,7 @@ project(voxblox_rviz_plugin)
 
 set(CMAKE_MACOSX_RPATH 0)
 add_definitions(-std=c++17 -Wall)
+set(CMAKE_BUILD_TYPE Release)
 
 ## This setting causes Qt's "MOC" generation to happen automatically.
 set(CMAKE_AUTOMOC ON)

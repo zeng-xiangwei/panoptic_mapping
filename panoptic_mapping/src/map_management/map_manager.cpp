@@ -99,7 +99,8 @@ void MapManager::pruneActiveBlocks(SubmapCollection* submaps) {
     if (submap.getTsdfLayer().getNumberOfAllocatedBlocks() == 0) {
       submaps_to_remove.emplace_back(submap.getID());
       if (config_.verbosity >= 4) {
-        info << "Removed submap!";
+        info << "Removed submap " << submap.getID() << " (" << submap.getName()
+             << ") by prune blocks.\n";
       }
     }
   }
@@ -402,8 +403,10 @@ void MapManager::removeAbsentSubmaps(SubmapCollection* submaps) {
     for (int id : absent_submaps) {
       ss << id << " ";
     }
-    LOG(INFO) << "Removed " << absent_submaps.size()
+    if (absent_submaps.size() > 0) {
+      LOG(INFO) << "Removed " << absent_submaps.size()
               << " kAbsent submaps: " << ss.str();
+    }
   }
 }
 

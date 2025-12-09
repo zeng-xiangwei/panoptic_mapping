@@ -106,6 +106,11 @@ std::string TsdfRegistrator::checkSubmapForChange(
       continue;
     }
 
+    if (!other.matchRedetection()) {
+      // 活跃子图必须是稳定观测到的
+      continue;
+    }
+
     // Note(schmluk): Exclude free space for thin structures. Although there's
     // potentially a nicer way of solving this.
     if (other.getLabel() == PanopticLabel::kFreeSpace &&

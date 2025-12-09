@@ -62,9 +62,10 @@ SubmapVisualizer::SubmapVisualizer(const Config& config,
   setVisualizationMode(visualizationModeFromString(config_.visualization_mode));
   setColorMode(colorModeFromString(config_.color_mode));
   id_color_map_.setItemsPerRevolution(config_.submap_color_discretization);
-  
+
   classes_to_pub_for_occ_ = globals_->getWhiteList();
-  LOG(INFO) << "Classes to publish for occupancy size: " << classes_to_pub_for_occ_.size();
+  LOG(INFO) << "Classes to publish for occupancy size: "
+            << classes_to_pub_for_occ_.size();
   for (auto class_name : classes_to_pub_for_occ_) {
     LOG(INFO) << "Classes name: " << class_name;
   }
@@ -72,21 +73,21 @@ SubmapVisualizer::SubmapVisualizer(const Config& config,
   // Setup publishers.
   if (config_.visualize_free_space) {
     freespace_pub_ = node_->create_publisher<sensor_msgs::msg::PointCloud2>(
-        "visualization/submaps/free_space_tsdf", 100);
+        "visualization/submaps/free_space_tsdf", 10);
   }
   if (config_.visualize_mesh) {
     mesh_pub_ = node_->create_publisher<voxblox_msgs::msg::MultiMeshList>(
-        "visualization/submaps/mesh", 1000);
+        "visualization/submaps/mesh", 10);
   }
   if (config_.visualize_tsdf_blocks) {
     tsdf_blocks_pub_ =
         node_->create_publisher<visualization_msgs::msg::MarkerArray>(
-            "visualization/submaps/tsdf_blocks", 100);
+            "visualization/submaps/tsdf_blocks", 10);
   }
   if (config_.visualize_bounding_volumes) {
     bounding_volume_pub_ =
         node_->create_publisher<visualization_msgs::msg::MarkerArray>(
-            "visualization/submaps/bounding_volumes", 100);
+            "visualization/submaps/bounding_volumes", 10);
   }
 
   occupancy_submap_pub_ =
@@ -141,7 +142,10 @@ void SubmapVisualizer::visualizeAll(SubmapCollection* submaps) {
                 << ", isactive: " << submap.isActive()
                 << ", was tracked: " << submap.wasTracked()
                 << ", change  state: "
-                << changeStateToString(submap.getChangeState());
+                << changeStateToString(submap.getChangeState())
+                << ", matchRedetection: " << submap.matchRedetection()
+                << ", surface points size: "
+                << submap.getIsoSurfacePoints().size();
     }
   }
 

@@ -50,6 +50,7 @@ void ChangeDetector::Config::setupParamsAndPrinting() {
              &classification_disappear_frames_threshold);
   setupParam("classification_use_no_class", &classification_use_no_class);
   setupParam("min_isolated_points_size", &min_isolated_points_size);
+  setupParam("range_inner_buffer", &range_inner_buffer);
 }
 
 ChangeDetector::ChangeDetector(const Config& config,
@@ -79,6 +80,12 @@ void ChangeDetector::checkSubmapCollectionVisibleByInputData(
       //   continue;
       // }
       if (!camera.pointIsInViewFrustum(center_C)) {
+        continue;
+      }
+
+      // 限制物体的距离范围
+      if (center_C.norm() >
+          camera.getConfig().max_range - config_.range_inner_buffer) {
         continue;
       }
 
@@ -256,11 +263,16 @@ std::string ChangeDetector::checkSubmapVisibleByInputData(Submap* submap,
 
 std::string ChangeDetector::checkSubmapVisibleByInputDataWithClassification(
     Submap* submap, InputData* input) {
-  if (submap->getIsoSurfacePoints().size() > config_.min_isolated_points_size) {
+  // 根据 voxel 大小的不同，设定不同的小物体阈值
+  int min_isolated_points_size =
+      config_.min_isolated_points_size /
+      std::pow(submap->getConfig().voxel_size / 0.02, 3);
+
+  if (submap->getIsoSurfacePoints().size() > min_isolated_points_size) {
     std::stringstream info;
     info << "\nSubmap " << submap->getID() << " (" << submap->getName()
          << ") points size: " << submap->getIsoSurfacePoints().size() << " > "
-         << config_.min_isolated_points_size;
+         << min_isolated_points_size;
     return info.str();
   }
 

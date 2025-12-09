@@ -119,7 +119,7 @@ map_management:
     verbosity: 3
     min_voxel_weight: 0.000001
     # Must less than submap_allocator.truncation_distance
-    error_threshold: -1 # m, negative = #vs
+    error_threshold: -1.9 # m, negative = #vs
     match_rejection_points: 20  
     match_rejection_percentage: 0.02
     match_acceptance_points: 20
@@ -136,13 +136,16 @@ map_management:
     match_weak_disappear_percentage: 0.6
     match_weak_average_distance: -4 # m, negative = #vs
     detection_threads: 1
+    # 选择候选 submap 进行变化检测时，在相机有效距离范围内，再限制一次距离，最终仅取 (camera.max_range - range_inner_buffer) 范围内的 submap
+    range_inner_buffer: 0.5 # m
     use_classification_for_tiny: true
+    # 0.02 体素大小下的小物体点数, 代码内会根据体素大小进行缩放
     min_isolated_points_size: 3000
     classification_only_background: false
     classification_use_no_class: true
     limit_range: false
     classification_disappear_frames_threshold: 3
-    classification_disappear_threshold: 0.01 # m, negative = #vs
+    classification_disappear_threshold: -1.5 # m, negative = #vs
     classification_disappear_percentage: 0.5
     classification_disappear_average_distance: -1 # m, negative = #vs
     classification_projected_percentage: 0.9

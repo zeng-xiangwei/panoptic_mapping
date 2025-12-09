@@ -21,6 +21,9 @@ class ChangeDetector {
 
     // Limit range in valid depth to judge
     bool limit_range = true;
+
+    // Only judge submap center in (camera.max_range - range_inner_buffer)
+    float range_inner_buffer = 0.0;
     
     // Allowed disappear distance in meters where a point is still considered
     // visible in input data. Negative values are multiples of the voxel_size.
