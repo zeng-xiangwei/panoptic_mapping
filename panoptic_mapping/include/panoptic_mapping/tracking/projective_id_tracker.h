@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <opencv2/core/mat.hpp>
+#include <opencv2/imgproc.hpp>
 
 #include "panoptic_mapping/3rd_party/config_utilities.hpp"
 #include "panoptic_mapping/common/camera.h"
@@ -61,6 +62,9 @@ class ProjectiveIDTracker : public IDTrackerBase {
 
     // Renderer settings. The renderer is only used for visualization purposes.
     MapRenderer::Config renderer;
+
+    // True: Render submaps that are not active.
+    bool rendering_persistent_submap = true;
 
     Config() { setConfigName("ProjectiveIDTracker"); }
 

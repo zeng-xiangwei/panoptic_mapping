@@ -88,102 +88,15 @@ Visualization Manager:
             Value: /visualization/submaps/mesh
           Value: true
           Visible:
-            100_chair: true
-            1055_potted plant: true
-            1063_cabinet: true
-            1078_chair: true
-            1084_cabinet: true
-            1087_desk: true
-            108_cabinet: true
-            1090_chair: true
-            1093_fridge: true
-            1095_thermal flask: true
-            1099_microwave: true
-            109_desk: true
-            1102_microwave: true
-            1109_cabinet: true
-            1117_desk: true
-            111_keyboard: true
-            1125_trash can: true
-            1126_trash can: true
-            1132_cabinet: true
-            1174_desk: true
-            1186_chair: true
-            1187_desk: true
-            127_keyboard: true
-            129_monitor: true
-            1325_cabinet: true
-            1329_potted plant: true
-            1366_cabinet: true
-            1427_cabinet: true
-            1428_potted plant: true
-            1451_cabinet: true
-            1452_cabinet: true
-            1456_trash can: true
-            1466_potted plant: true
-            1519_potted plant: true
-            1526_cabinet: true
-            1536_trash can: true
-            1539_chair: true
-            1553_chair: true
-            1556_chair: true
-            1562_desk: true
-            1564_cabinet: true
-            1574_potted plant: true
-            1576_cabinet: true
-            1583_trash can: true
-            1584_door: true
-            190_cabinet: true
-            195_monitor: true
-            196_desk: true
-            208_desk: true
-            220_cabinet: true
-            226_monitor: true
-            249_desk: true
-            281_potted plant: true
-            284_potted plant: true
-            28_desk: true
-            303_cabinet: true
-            307_potted plant: true
-            320_potted plant: true
-            327_door: true
-            330_cabinet: true
-            331_potted plant: true
-            342_cabinet: true
-            350_desk: true
-            355_chair: true
-            395_window: true
-            39_desk: true
-            3_chair: true
-            410_potted plant: true
-            41_window: true
-            430_window: true
-            456_cabinet: true
-            457_potted plant: true
-            459_cabinet: true
-            473_potted plant: true
-            479_cabinet: true
-            487_door: true
-            544_chair: true
-            545_desk: true
-            552_chair: true
-            571_chair: true
-            573_desk: true
-            663_chair: true
-            682_chair: true
-            729_desk: true
-            742_desk: true
-            746_chair: true
-            750_chair: true
-            84_potted plant: true
-            85_cabinet: true
-            87_cabinet: true
-            8_chair: true
-            943_cabinet: true
-            961_trash can: true
-            964_cabinet: true
-            965_cabinet: true
-            992_door: true
+            0_monitor: true
+            123_desk: true
+            174_chair: true
+            178_desk: true
+            1_desk: true
+            203_desk: true
+            36_laptop: true
+            39_window: true
+            92_chair: true
             Value: true
         - Alpha: 0.30000001192092896
           Autocompute Intensity Bounds: true
@@ -350,6 +263,20 @@ Visualization Manager:
             Reliability Policy: Reliable
             Value: /visualization/tracking/tracked
           Value: true
+        - Class: rviz_default_plugins/Image
+          Enabled: true
+          Max Value: 1
+          Median window: 5
+          Min Value: 0
+          Name: Persistent_overlay
+          Normalize Range: true
+          Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /visualization/tracking/persistent_overlay
+          Value: true
       Enabled: false
       Name: Tracking
     - Class: rviz_default_plugins/Image
@@ -493,18 +420,7 @@ Visualization Manager:
       Enabled: true
       Name: scene_graph
       Namespaces:
-        building_node: true
-        object_box: true
-        object_cone: true
-        object_id: true
-        object_label: true
-        object_node: true
-        object_spatial_relations: true
-        object_to_projection_edges: true
-        region_to_building_edges: true
-        room_label: true
-        room_node: true
-        room_poly: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -516,9 +432,7 @@ Visualization Manager:
       Enabled: true
       Name: target_object
       Namespaces:
-        target_info: true
-        target_object_box: true
-        target_pose: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Transient Local
@@ -587,10 +501,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.700398325920105
+      Pitch: 0.7253983020782471
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz_default_plugins)
-      Yaw: 0.9603981375694275
+      Yaw: 0.9503981471061707
     Saved: ~
 Window Geometry:
   Color:
@@ -606,7 +520,9 @@ Window Geometry:
   Hide Right Dock: false
   Input:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd0000000400000000000002350000035afc0200000010fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d0000035a000000c900fffffffb00000026004400650074006500630074005300650067006d0065006e00740052006500730075006c0074000000022b0000016c0000002800fffffffb0000000a0043006f006c006f007200000001a70000006b0000002800fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb000000180044006500740065006300740052006500730075006c00740000000211000001860000002800fffffffb0000000e0054007200610063006b006500640000000218000000750000002800fffffffb0000000a0049006e00700075007400000002930000007c0000002800fffffffb0000001000520065006e006400650072006500640000000315000000820000002800fffffffb0000000a0043006f006c006f00720100000279000000740000000000000000fb0000000a0049006d00610067006502000002980000030700000235000000c6000000010000010f0000035afc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073010000003d0000035a000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000073a0000003efc0100000002fb0000000800540069006d006501000000000000073a000002fb00fffffffb0000000800540069006d00650100000000000004500000000000000000000003ea0000035a00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  Persistent_overlay:
+    collapsed: false
+  QMainWindow State: 000000ff00000000fd0000000400000000000002350000035afc0200000011fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d0000035a000000c900fffffffb00000026004400650074006500630074005300650067006d0065006e00740052006500730075006c0074000000022b0000016c0000002800fffffffb0000000a0043006f006c006f007200000001b0000000280000002800fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb000000180044006500740065006300740052006500730075006c007400000002ee000000a90000002800fffffffb0000000e0054007200610063006b00650064000000023e000000280000002800fffffffb0000000a0049006e007000750074000000026c000000300000002800fffffffb0000001000520065006e0064006500720065006400000002a20000002b0000002800fffffffb0000000a0043006f006c006f00720100000279000000740000000000000000fb0000000a0049006d00610067006502000002980000030700000235000000c6fb0000002400500065007200730069007300740065006e0074005f006f007600650072006c0061007900000002d3000000c40000002800ffffff000000010000010f0000035afc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073010000003d0000035a000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000073a0000003efc0100000002fb0000000800540069006d006501000000000000073a000002fb00fffffffb0000000800540069006d00650100000000000004500000000000000000000003ea0000035a00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Rendered:
     collapsed: false
   Selection:

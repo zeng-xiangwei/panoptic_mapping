@@ -77,6 +77,7 @@ id_tracker:
   match_acceptance_threshold: 0.2 
   min_allocation_size: 300 # px, for submap allocation.
   use_class_data_for_matching: true
+  rendering_persistent_submap: true
 
 tsdf_integrator:  
   type: class_projective # projective, class_projective, single_tsdf

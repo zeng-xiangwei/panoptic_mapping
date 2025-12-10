@@ -40,6 +40,8 @@ class MapRenderer {
                                 const Transformation& T_M_C);
   cv::Mat renderActiveSubmapClasses(const SubmapCollection& submaps,
                                     const Transformation& T_M_C);
+  cv::Mat renderNotActiveSubmapIDs(const SubmapCollection& submaps,
+                             const Transformation& T_M_C);
   cv::Mat colorIdImage(const cv::Mat& id_image, int colors_per_revolution = 20);
 
  private:
@@ -52,7 +54,8 @@ class MapRenderer {
 
   // Methods.
   cv::Mat render(const SubmapCollection& submaps, const Transformation& T_M_C,
-                 bool only_active_submaps, int (*paint)(const Submap&));
+                 bool only_active_submaps, int (*paint)(const Submap&),
+                 bool only_not_active_submaps = false);
   static int paintSubmapID(const Submap& submap);
   static int paintClass(const Submap& submap);
 };

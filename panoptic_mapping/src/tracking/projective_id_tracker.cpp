@@ -33,6 +33,7 @@ void ProjectiveIDTracker::Config::setupParamsAndPrinting() {
   setupParam("min_allocation_size", &min_allocation_size);
   setupParam("rendering_threads", &rendering_threads);
   setupParam("renderer", &renderer);
+  setupParam("rendering_persistent_submap", &rendering_persistent_submap);
 }
 
 ProjectiveIDTracker::ProjectiveIDTracker(const Config& config,
@@ -190,9 +191,9 @@ void ProjectiveIDTracker::processInput(SubmapCollection* submaps,
     if (input_to_output.count(*it) == 0) {
       // tracking_data.getInputIDs()
       // 中由于限制了深度范围，因此不能保证所有的输入分割id都有对应的输出id（submap
-      // id），因此要将未处理的 id 的输出标记为 -1 如果不做处理，可能会对 submap id
-      // = 0 的物体造成影响。但是考虑到后面使用 idImage 时还会结合深度范围使用，因此
-      // 就算不修改也不会对建图造成影响
+      // id），因此要将未处理的 id 的输出标记为 -1 如果不做处理，可能会对 submap
+      // id = 0 的物体造成影响。但是考虑到后面使用 idImage
+      // 时还会结合深度范围使用，因此 就算不修改也不会对建图造成影响
       LOG(WARNING) << "input segment id " << *it
                    << " not found in output submap ids.";
       input_to_output[*it] = -1;
@@ -231,6 +232,18 @@ void ProjectiveIDTracker::processInput(SubmapCollection* submaps,
     visualize(rendered_vis_, "rendered");
     visualize(input->colorImage(), "color");
     visualize(tracked_vis, "tracked");
+    if (config_.rendering_persistent_submap) {
+      cv::Mat persistent_vis = renderer_.colorIdImage(
+          renderer_.renderNotActiveSubmapIDs(*submaps, input->T_M_C()));
+      cv::Mat blended_vis;
+      // 输入RGB图像的权重
+      double alpha = 0.5;
+      // persistent_vis的权重
+      double beta = 0.5;
+      cv::addWeighted(input->colorImage(), alpha, persistent_vis, beta, 0.0,
+                      blended_vis);
+      visualize(blended_vis, "persistent_overlay");
+    }
     vis_timer->Stop();
   }
 }

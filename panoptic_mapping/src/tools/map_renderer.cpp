@@ -25,7 +25,8 @@ MapRenderer::MapRenderer(const Config& config, const Camera::Config& camera,
 cv::Mat MapRenderer::render(const SubmapCollection& submaps,
                             const Transformation& T_M_C,
                             bool only_active_submaps,
-                            int (*paint)(const Submap&)) {
+                            int (*paint)(const Submap&),
+                            bool only_not_active_submaps) {
   // Use the mesh vertices as an approximation to render active submaps.
   // Assumes that all active submap meshes are up to date and does not perform
   // a meshing step of its own. Very inefficient due to pixel duplicates.
@@ -42,6 +43,9 @@ cv::Mat MapRenderer::render(const SubmapCollection& submaps,
       continue;
     }
     if (submap.getLabel() == PanopticLabel::kFreeSpace) {
+      continue;
+    }
+    if (only_not_active_submaps && submap.isActive()) {
       continue;
     }
     if (!camera_.submapIsInViewFrustum(submap, T_M_C)) {
@@ -107,6 +111,11 @@ int MapRenderer::paintClass(const Submap& submap) {
 cv::Mat MapRenderer::renderActiveSubmapIDs(const SubmapCollection& submaps,
                                            const Transformation& T_M_C) {
   return render(submaps, T_M_C, true, paintSubmapID);
+}
+
+cv::Mat MapRenderer::renderNotActiveSubmapIDs(const SubmapCollection& submaps,
+                                        const Transformation& T_M_C) {
+  return render(submaps, T_M_C, false, paintSubmapID, true);
 }
 
 cv::Mat MapRenderer::renderActiveSubmapClasses(const SubmapCollection& submaps,
