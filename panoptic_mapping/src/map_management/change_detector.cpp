@@ -2,9 +2,83 @@
 
 #include <future>
 
+#include <opencv2/core/core.hpp>
+#include <opencv2/imgcodecs.hpp>
+
 #include "panoptic_mapping/common/index_getter.h"
 
+#include "voxblox/core/common.h"
+#include "voxblox/interpolator/interpolator.h"
+
 namespace panoptic_mapping {
+
+namespace {
+void saveMiddleResult(Submap* submap, InputData* input) {
+  auto T_C_S = input->T_M_C().inverse() * submap->getT_M_S();
+  const cv::Mat& depth_image = input->depthImage();
+  const cv::Mat& bgr_image = input->colorImage();
+
+  // 保存子图在相机系下的点云
+  std::string dir =
+      "/home/xiangweizeng/3D_slam/sematic-mapping/panoptic_mapping_ws/data/"
+      "test";
+
+  int submap_id = submap->getID();
+  std::string submap_name = submap->getClassName();
+
+  // 生成带submap信息的文件名前缀
+  std::string filename_prefix =
+      dir + "/submap_" + std::to_string(submap_id) + "_" + submap_name;
+
+  // 保存点云数据
+  std::ofstream point_cloud_file(filename_prefix + "_point_cloud.txt");
+  auto iso_surface_points_ = std::vector<IsoSurfacePoint>();
+  voxblox::Interpolator<TsdfVoxel> interpolator(
+      submap->getTsdfLayerPtr().get());
+
+  // Extract the vertices and verify.
+  voxblox::BlockIndexList index_list;
+  auto mesh_layer_ = submap->getMeshLayerPtr();
+  mesh_layer_->getAllAllocatedMeshes(&index_list);
+  int ignored_points = 0;
+  if (point_cloud_file.is_open()) {
+    point_cloud_file << "x,y,z,r,g,b" << std::endl;
+  }
+  for (const voxblox::BlockIndex& index : index_list) {
+    const Pointcloud& vertices = mesh_layer_->getMeshByIndex(index).vertices;
+    const voxblox::Colors& colors = mesh_layer_->getMeshByIndex(index).colors;
+    iso_surface_points_.reserve(iso_surface_points_.size() + vertices.size());
+    for (size_t i = 0; i < vertices.size(); ++i) {
+      const Point& vertex = vertices[i];
+      const voxblox::Color& color = colors[i];
+      TsdfVoxel voxel;
+      if (interpolator.getVoxel(vertex, &voxel, true)) {
+        const auto p_C = T_C_S * vertex;
+        if (point_cloud_file.is_open()) {
+          point_cloud_file << p_C.x() << "," << p_C.y() << "," << p_C.z() << ","
+                           << static_cast<int>(color.r) << ","
+                           << static_cast<int>(color.g) << ","
+                           << static_cast<int>(color.b) << std::endl;
+        }
+      }
+    }
+  }
+  if (point_cloud_file.is_open()) {
+    point_cloud_file.close();
+  }
+
+  // 保存深度图、rgb图
+  // 这里的深度图中每个像素存储的float类型数据，单位是米
+  // 使用TIFF格式保存float类型深度图
+  std::vector<int> compression_params;
+  compression_params.push_back(cv::IMWRITE_TIFF_COMPRESSION);
+  compression_params.push_back(1);  // 无压缩保存，确保数据精度
+
+  cv::imwrite(filename_prefix + "_depth.tiff", depth_image, compression_params);
+  cv::imwrite(filename_prefix + "_color.png", bgr_image);
+}
+
+}  // namespace
 void ChangeDetector::Config::checkParams() const {
   checkParamNE(strong_disappear_threshold, 0.f, "strong_disappear_threshold");
   checkParamNE(weak_disappear_threshold, 0.f, "weak_disappear_threshold");
@@ -225,6 +299,7 @@ std::string ChangeDetector::checkSubmapVisibleByInputData(Submap* submap,
          << ")/" << submap->getIsoSurfacePoints().size()
          << ", valid_measurement_nums / projected_nums: "
          << valid_depth_measurement_num << " / " << projected_num;
+    // saveMiddleResult(submap, input);
     return info.str();
   }
 

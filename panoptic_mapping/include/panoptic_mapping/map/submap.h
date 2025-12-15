@@ -224,6 +224,13 @@ class Submap {
   void computeIsoSurfacePoints();
 
   /**
+   * @brief Iso-surface point with image color, now only used in map save
+   * 
+   * @return const std::vector<ColoredIsoSurfacePoint> 
+   */
+  std::vector<ColoredIsoSurfacePoint> computeColoredIsoSurfacePoints() const;
+
+  /**
    * @brief Removes non-belonging points from the TSDF and deletes the class
    * layer. Uses the provided manipulator to perform the class layer
    * integration.

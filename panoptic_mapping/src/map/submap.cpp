@@ -434,6 +434,33 @@ void Submap::computeIsoSurfacePoints() {
   }
 }
 
+std::vector<ColoredIsoSurfacePoint> Submap::computeColoredIsoSurfacePoints()
+    const {
+  voxblox::Interpolator<TsdfVoxel> interpolator(tsdf_layer_.get());
+
+  std::vector<ColoredIsoSurfacePoint> colored_iso_surface_points;
+  // Extract the vertices and verify.
+  voxblox::BlockIndexList index_list;
+  mesh_layer_->getAllAllocatedMeshes(&index_list);
+  int ignored_points = 0;
+  for (const voxblox::BlockIndex& index : index_list) {
+    const Pointcloud& vertices = mesh_layer_->getMeshByIndex(index).vertices;
+    const voxblox::Colors& colors = mesh_layer_->getMeshByIndex(index).colors;
+    colored_iso_surface_points.reserve(iso_surface_points_.size() +
+                                       vertices.size());
+    for (size_t i = 0; i < vertices.size(); ++i) {
+      const Point& vertex = vertices[i];
+      const voxblox::Color& color = colors[i];
+      TsdfVoxel voxel;
+      if (interpolator.getVoxel(vertex, &voxel, true)) {
+        colored_iso_surface_points.emplace_back(vertex, color, voxel.weight);
+      }
+    }
+  }
+
+  return colored_iso_surface_points;
+}
+
 void Submap::updateBoundingVolume() { bounding_volume_.update(); }
 
 bool Submap::applyClassLayer(const LayerManipulator& manipulator,

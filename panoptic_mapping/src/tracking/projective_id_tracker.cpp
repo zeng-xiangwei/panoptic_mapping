@@ -229,7 +229,6 @@ void ProjectiveIDTracker::processInput(SubmapCollection* submaps,
     cv::Mat tracked_vis = renderer_.colorIdImage(input->idImage());
     timer.Stop();
     visualize(input_vis, "input");
-    visualize(rendered_vis_, "rendered");
     visualize(input->colorImage(), "color");
     visualize(tracked_vis, "tracked");
     if (config_.rendering_persistent_submap) {
@@ -243,6 +242,11 @@ void ProjectiveIDTracker::processInput(SubmapCollection* submaps,
       cv::addWeighted(input->colorImage(), alpha, persistent_vis, beta, 0.0,
                       blended_vis);
       visualize(blended_vis, "persistent_overlay");
+
+      cv::Mat blended_vis_active;
+      cv::addWeighted(input->colorImage(), alpha, rendered_vis_, beta, 0.0,
+                      blended_vis_active);
+      visualize(blended_vis_active, "rendered");
     }
     vis_timer->Stop();
   }

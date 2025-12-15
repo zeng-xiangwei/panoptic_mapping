@@ -478,7 +478,8 @@ void PanopticMapper::imageManagementThread() {
       std::unique_lock<std::mutex> lock(image_management_queue_mutex_);
       image_management_cv_.wait(lock, [this] {
         // vl 大模型服务可用且有未处理图像数据  或者  线程被要求停止
-        bool vllm_service_is_ready = vllm_processing_client_->service_is_ready();
+        bool vllm_service_is_ready =
+            vllm_processing_client_->service_is_ready();
         if (!vllm_service_is_ready) {
           LOG(WARNING) << "vllm service is not ready";
         }
@@ -528,7 +529,8 @@ void PanopticMapper::processNotProcessedImageDataForVLLM() {
       // // 异步调用VL大模型服务，并等待结果，达到与同步一样的效果
       auto request = prepareVllmRequest(image_data);
       VLLMProcessing::Response::SharedPtr response;
-      bool success = callVLLMServiceWithRetry(request, response, config_.vllm_max_retries);
+      bool success =
+          callVLLMServiceWithRetry(request, response, config_.vllm_max_retries);
       if (success) {
         vllmProcessingResponse(response);
       }
@@ -648,7 +650,8 @@ void PanopticMapper::vllmProcessingResponse(
     VllmRelationship bbox_relation;
     bbox_relation.from_id = bbox_relation_msg.from_id;
     bbox_relation.to_id = bbox_relation_msg.to_id;
-    bbox_relation.relationship = stringToRelationshipType(bbox_relation_msg.type);
+    bbox_relation.relationship =
+        stringToRelationshipType(bbox_relation_msg.type);
     if (bbox_relation.relationship == RelationshipType::UNKNOWN) {
       continue;
     }
@@ -855,22 +858,25 @@ bool PanopticMapper::saveIsoSurfacePoints(const std::string& file_path) {
                << "' to save point label cloud.";
     return false;
   }
-  point_label_cloud_file << "x,y,z,id,label,changeStatus,changeStatusId"
+  point_label_cloud_file << "x,y,z,r,g,b,id,label,changeStatus,changeStatusId"
                          << std::endl;
   for (const auto& submap : *submaps_) {
     if (submap.getChangeState() == ChangeState::kAbsent ||
         submap.getLabel() == PanopticLabel::kFreeSpace) {
       continue;
     }
-    const std::vector<IsoSurfacePoint>& surface_points =
-        submap.getIsoSurfacePoints();
-    for (const IsoSurfacePoint& point : surface_points) {
-      point_label_cloud_file << point.position.x() << "," << point.position.y()
-                             << "," << point.position.z() << ","
-                             << submap.getID() << "," << submap.getName() << ","
-                             << changeStateToString(submap.getChangeState())
-                             << "," << static_cast<int>(submap.getChangeState())
-                             << std::endl;
+
+    std::vector<ColoredIsoSurfacePoint> surface_points =
+        submap.computeColoredIsoSurfacePoints();
+    for (const ColoredIsoSurfacePoint& point : surface_points) {
+      point_label_cloud_file
+          << point.position.x() << "," << point.position.y() << ","
+          << point.position.z() << "," << static_cast<int>(point.color.r) << ","
+          << static_cast<int>(point.color.g) << ","
+          << static_cast<int>(point.color.b) << "," << submap.getID() << ","
+          << submap.getName() << ","
+          << changeStateToString(submap.getChangeState()) << ","
+          << static_cast<int>(submap.getChangeState()) << std::endl;
     }
   }
   point_label_cloud_file.close();

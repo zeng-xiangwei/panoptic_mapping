@@ -66,6 +66,14 @@ struct IsoSurfacePoint {
   FloatingPoint weight;
 };
 
+struct ColoredIsoSurfacePoint {
+  ColoredIsoSurfacePoint(Point _position, Color _color, FloatingPoint _weight)
+      : position(std::move(_position)), color(_color), weight(_weight) {}
+  Point position;
+  Color color;
+  FloatingPoint weight;
+};
+
 // Change detection data stores relevant information for associating submaps.
 enum class ChangeState {
   kNew = 0,
