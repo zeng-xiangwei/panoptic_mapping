@@ -135,6 +135,7 @@ void ChangedSubmapVisualizer::findChangedSubmaps(SubmapCollection& submaps) {
     info.color = kAddColor;
     info.embedding_vector = submap.getEmbeddingVector();
     if (submap.hasVllmDescripts()) {
+      submap.setHasNewVllmDescripts(false);
       info.has_vllm_info = true;
       info.vllm_descripts = submap.getDescriptsByVllm();
       info.vllm_relationship = *submap.getVllmRelationshipsPtr();
