@@ -48,6 +48,9 @@ class MapManager : public MapManagerBase {
     // If true, remove submap if it is absent
     bool remove_absent_submaps = false;
 
+    // If true, prune isolated blocks by clustering.
+    bool prune_isolated_blocks_by_clustering = false;
+
     // Member configs.
     TsdfRegistrator::Config tsdf_registrator_config;
     ActivityManager::Config activity_manager_config;

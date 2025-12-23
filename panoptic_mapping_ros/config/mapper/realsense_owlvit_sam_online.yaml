@@ -111,6 +111,7 @@ map_management:
   apply_class_layer_when_deactivating_submaps: true
   detect_disappear_by_sensor_data: true
   remove_absent_submaps: true
+  prune_isolated_blocks_by_clustering: true
   
   activity_manager:
     required_reobservations: 5 # Consecutive observations to keep new submaps.
@@ -161,7 +162,7 @@ visualization:
   submaps:
     type: submaps  # submaps, single_tsdf
     verbosity: 1
-    color_mode: color # submaps, instances, color, normals, classes, change, classification
+    color_mode: instances # submaps, instances, color, normals, classes, change, classification
     visualization_mode: all  # all, active, active_only, inactive, persistent
     visualize_other_mode: false
     submap_color_discretization: 20

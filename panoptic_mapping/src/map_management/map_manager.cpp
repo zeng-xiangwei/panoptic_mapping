@@ -40,6 +40,8 @@ void MapManager::Config::setupParamsAndPrinting() {
   setupParam("change_detector_config", &change_detector_config,
              "change_detector");
   setupParam("remove_absent_submaps", &remove_absent_submaps);
+  setupParam("prune_isolated_blocks_by_clustering",
+             &prune_isolated_blocks_by_clustering);
 }
 
 MapManager::MapManager(const Config& config, std::shared_ptr<Globals> globals)
@@ -94,6 +96,10 @@ void MapManager::pruneActiveBlocks(SubmapCollection* submaps) {
       continue;
     }
     info << pruneBlocks(&submap);
+
+    if (config_.prune_isolated_blocks_by_clustering) {
+      info << submap.pruneIsolatedBlocks();
+    }
 
     // If a submap does not contain data anymore it can be removed.
     if (submap.getTsdfLayer().getNumberOfAllocatedBlocks() == 0) {
@@ -174,7 +180,8 @@ void MapManager::manageSubmapActivity(SubmapCollection* submaps) {
 }
 
 void MapManager::performChangeDetection(SubmapCollection* submaps) {
-  tsdf_registrator_->checkSubmapCollectionForChange(submaps, globals_->getWhiteList());
+  tsdf_registrator_->checkSubmapCollectionForChange(submaps,
+                                                    globals_->getWhiteList());
   if (config_.detect_disappear_by_sensor_data && input_ != nullptr) {
     change_detector_->checkSubmapCollectionVisibleByInputData(submaps, input_);
   }
@@ -405,7 +412,7 @@ void MapManager::removeAbsentSubmaps(SubmapCollection* submaps) {
     }
     if (absent_submaps.size() > 0) {
       LOG(INFO) << "Removed " << absent_submaps.size()
-              << " kAbsent submaps: " << ss.str();
+                << " kAbsent submaps: " << ss.str();
     }
   }
 }

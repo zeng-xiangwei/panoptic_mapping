@@ -225,8 +225,8 @@ class Submap {
 
   /**
    * @brief Iso-surface point with image color, now only used in map save
-   * 
-   * @return const std::vector<ColoredIsoSurfacePoint> 
+   *
+   * @return const std::vector<ColoredIsoSurfacePoint>
    */
   std::vector<ColoredIsoSurfacePoint> computeColoredIsoSurfacePoints() const;
 
@@ -243,6 +243,12 @@ class Submap {
    */
   bool applyClassLayer(const LayerManipulator& manipulator,
                        bool clear_class_layer = true);
+
+  /**
+   * @brief 通过聚类移除孤立的blocks，只保留最大的连通组件
+   * @return 移除的block信息，用于日志打印
+   */
+  std::string pruneIsolatedBlocks();
 
   /**
    * @brief Create a deep copy of the submap. Notice that new submapID and

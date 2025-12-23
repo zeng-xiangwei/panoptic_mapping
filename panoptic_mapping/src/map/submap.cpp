@@ -383,6 +383,7 @@ void Submap::finishActivePeriod() {
 }
 
 void Submap::updateEverything(bool only_updated_blocks) {
+  pruneIsolatedBlocks();
   updateBoundingVolume();
   updateMesh(only_updated_blocks);
   computeIsoSurfacePoints();
@@ -459,6 +460,164 @@ std::vector<ColoredIsoSurfacePoint> Submap::computeColoredIsoSurfacePoints()
   }
 
   return colored_iso_surface_points;
+}
+
+std::string Submap::pruneIsolatedBlocks() {
+  auto t1 = std::chrono::high_resolution_clock::now();
+
+  // 获取所有分配的 TSDF blocks
+  voxblox::BlockIndexList block_indices;
+  tsdf_layer_->getAllAllocatedBlocks(&block_indices);
+
+  if (block_indices.size() < 2) {
+    // 如果少于2个blocks，不需要聚类
+    return "";
+  }
+
+  // 构建邻接图用于聚类
+  voxblox::AnyIndexHashMapType<std::vector<voxblox::BlockIndex>>::type
+      adjacency;
+  voxblox::AnyIndexHashMapType<bool>::type visited;
+
+  // 初始化邻接图和访问标记
+  for (const auto& block_index : block_indices) {
+    adjacency[block_index] = std::vector<voxblox::BlockIndex>();
+    visited[block_index] = false;
+  }
+
+  // 构建邻接关系 - 检查每个block与其6个直接邻居是否相邻
+  for (const auto& block_index : block_indices) {
+    // 检查6个直接邻居
+    for (int dx = -1; dx <= 1; dx++) {
+      for (int dy = -1; dy <= 1; dy++) {
+        for (int dz = -1; dz <= 1; dz++) {
+          if (std::abs(dx) + std::abs(dy) + std::abs(dz) == 1) {
+            voxblox::BlockIndex neighbor_index =
+                block_index + voxblox::BlockIndex(dx, dy, dz);
+            if (adjacency.find(neighbor_index) != adjacency.end()) {
+              adjacency[block_index].push_back(neighbor_index);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 使用 BFS 进行聚类
+  std::vector<std::vector<voxblox::BlockIndex>> clusters;
+  for (const auto& block_index : block_indices) {
+    if (!visited[block_index]) {
+      // 发现新的聚类
+      std::vector<voxblox::BlockIndex> cluster;
+      std::queue<voxblox::BlockIndex> queue;
+      queue.push(block_index);
+      visited[block_index] = true;
+
+      while (!queue.empty()) {
+        voxblox::BlockIndex current = queue.front();
+        queue.pop();
+        cluster.push_back(current);
+
+        // 访问所有邻居
+        for (const auto& neighbor : adjacency[current]) {
+          if (!visited[neighbor]) {
+            visited[neighbor] = true;
+            queue.push(neighbor);
+          }
+        }
+      }
+
+      clusters.push_back(cluster);
+    }
+  }
+
+  // 找到最大的聚类，如果有多个相同大小的聚类，则根据TSDF voxel值选择
+  if (clusters.empty()) {
+    return "";
+  }
+
+  // 首先找到最大聚类的大小
+  size_t max_cluster_size = 0;
+  for (const auto& cluster : clusters) {
+    if (cluster.size() > max_cluster_size) {
+      max_cluster_size = cluster.size();
+    }
+  }
+
+  // 找到所有具有最大大小的聚类
+  std::vector<size_t> max_cluster_indices;
+  for (size_t i = 0; i < clusters.size(); i++) {
+    if (clusters[i].size() == max_cluster_size) {
+      max_cluster_indices.push_back(i);
+    }
+  }
+
+  // 如果只有一个最大聚类，直接选择它
+  size_t selected_cluster_index = max_cluster_indices[0];
+
+  // 如果有多个最大聚类，根据TSDF voxel值进行选择
+  if (max_cluster_indices.size() > 1) {
+    size_t best_cluster_index = max_cluster_indices[0];
+    int max_valid_voxel_count = -1;
+
+    for (size_t idx : max_cluster_indices) {
+      int valid_voxel_count = 0;
+
+      for (const auto& block_index : clusters[idx]) {
+        TsdfBlock& block = tsdf_layer_->getBlockByIndex(block_index);
+        for (size_t i = 0; i < block.num_voxels(); ++i) {
+          TsdfVoxel& voxel = block.getVoxelByLinearIndex(i);
+          if (std::abs(voxel.distance) < config_.truncation_distance) {
+            valid_voxel_count++;
+          }
+        }
+      }
+
+      // 选择有效voxel数量最多的聚类
+      if (valid_voxel_count > max_valid_voxel_count) {
+        max_valid_voxel_count = valid_voxel_count;
+        best_cluster_index = idx;
+      }
+    }
+
+    selected_cluster_index = best_cluster_index;
+  }
+
+  // 计算将要删除的 block 数量
+  int blocks_to_remove_count = 0;
+  for (size_t i = 0; i < clusters.size(); i++) {
+    if (i != selected_cluster_index) {
+      blocks_to_remove_count += static_cast<int>(clusters[i].size());
+    }
+  }
+
+  // 移除最大聚类以外的所有 blocks
+  int removed_count = 0;
+  for (size_t i = 0; i < clusters.size(); i++) {
+    if (i != selected_cluster_index) {
+      // 删除这个聚类中的所有 blocks
+      for (const auto& block_index : clusters[i]) {
+        tsdf_layer_->removeBlock(block_index);
+        mesh_layer_->removeMesh(block_index);
+        if (has_class_layer_ && class_layer_) {
+          class_layer_->removeBlock(block_index);
+        }
+        if (has_score_layer_ && score_layer_) {
+          score_layer_->removeBlock(block_index);
+        }
+        removed_count++;
+      }
+    }
+  }
+
+  auto t2 = std::chrono::high_resolution_clock::now();
+  std::stringstream ss;
+  ss << "Pruned " << removed_count << " isolated blocks from submap " << getID()
+     << " (" << getName() << ") by clustering in "
+     << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count()
+     << "ms.";
+
+  return ss.str();
 }
 
 void Submap::updateBoundingVolume() { bounding_volume_.update(); }

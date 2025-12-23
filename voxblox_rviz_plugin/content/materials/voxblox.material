@@ -29,8 +29,8 @@ material VoxbloxMaterialTransparent
 			iteration_depth_bias 0
 			light_scissor off
 			light_clip_planes off
-			cull_hardware clockwise
-			cull_software back
+			cull_hardware none
+			cull_software none
 			shading gouraud
 			polygon_mode solid
 			polygon_mode_overrideable on
@@ -70,8 +70,8 @@ material VoxbloxMaterial
 			iteration_depth_bias 0
 			light_scissor off
 			light_clip_planes off
-			cull_hardware clockwise
-			cull_software back
+			cull_hardware none
+			cull_software none
 			shading gouraud
 			polygon_mode solid
 			polygon_mode_overrideable on
