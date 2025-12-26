@@ -531,56 +531,88 @@ std::string Submap::pruneIsolatedBlocks() {
     }
   }
 
-  // 找到最大的聚类，如果有多个相同大小的聚类，则根据TSDF voxel值选择
+  // 找到合适的聚类，根据是否有class_layer来选择策略
   if (clusters.empty()) {
     return "";
   }
 
-  // 首先找到最大聚类的大小
-  size_t max_cluster_size = 0;
-  for (const auto& cluster : clusters) {
-    if (cluster.size() > max_cluster_size) {
-      max_cluster_size = cluster.size();
-    }
-  }
+  size_t selected_cluster_index = 0;
 
-  // 找到所有具有最大大小的聚类
-  std::vector<size_t> max_cluster_indices;
-  for (size_t i = 0; i < clusters.size(); i++) {
-    if (clusters[i].size() == max_cluster_size) {
-      max_cluster_indices.push_back(i);
-    }
-  }
+  if (has_class_layer_ && class_layer_) {
+    // 有class_layer时，选择有效class_voxel最多的聚类
+    int max_belonging_voxel_count = -1;
+    const int voxel_indices = std::pow(config_.voxels_per_side, 3);
+    for (size_t i = 0; i < clusters.size(); ++i) {
+      int belonging_voxel_count = 0;
 
-  // 如果只有一个最大聚类，直接选择它
-  size_t selected_cluster_index = max_cluster_indices[0];
-
-  // 如果有多个最大聚类，根据TSDF voxel值进行选择
-  if (max_cluster_indices.size() > 1) {
-    size_t best_cluster_index = max_cluster_indices[0];
-    int max_valid_voxel_count = -1;
-
-    for (size_t idx : max_cluster_indices) {
-      int valid_voxel_count = 0;
-
-      for (const auto& block_index : clusters[idx]) {
-        TsdfBlock& block = tsdf_layer_->getBlockByIndex(block_index);
-        for (size_t i = 0; i < block.num_voxels(); ++i) {
-          TsdfVoxel& voxel = block.getVoxelByLinearIndex(i);
-          if (std::abs(voxel.distance) < config_.truncation_distance) {
-            valid_voxel_count++;
+      for (const auto& block_index : clusters[i]) {
+        ClassBlock::Ptr class_block;
+        if (class_layer_->hasBlock(block_index)) {
+          class_block = class_layer_->getBlockPtrByIndex(block_index);
+          for (int voxel_index = 0; voxel_index < voxel_indices;
+               ++voxel_index) {
+            if (class_block->getVoxelByLinearIndex(voxel_index)
+                    .belongsToSubmap()) {
+              belonging_voxel_count++;
+            }
           }
         }
       }
 
-      // 选择有效voxel数量最多的聚类
-      if (valid_voxel_count > max_valid_voxel_count) {
-        max_valid_voxel_count = valid_voxel_count;
-        best_cluster_index = idx;
+      // 选择属于当前submap的voxel数量最多的聚类
+      if (belonging_voxel_count > max_belonging_voxel_count) {
+        max_belonging_voxel_count = belonging_voxel_count;
+        selected_cluster_index = i;
+      }
+    }
+  } else {
+    // 没有class_layer时，按 block 数目以及 tsdf 数目来选择
+    // 首先找到最大聚类的大小
+    size_t max_cluster_size = 0;
+    for (const auto& cluster : clusters) {
+      if (cluster.size() > max_cluster_size) {
+        max_cluster_size = cluster.size();
       }
     }
 
-    selected_cluster_index = best_cluster_index;
+    // 找到所有具有最大大小的聚类
+    std::vector<size_t> max_cluster_indices;
+    for (size_t i = 0; i < clusters.size(); i++) {
+      if (clusters[i].size() == max_cluster_size) {
+        max_cluster_indices.push_back(i);
+      }
+    }
+
+    // 如果只有一个最大聚类，直接选择它
+    selected_cluster_index = max_cluster_indices[0];
+
+    // 如果有多个最大聚类，根据TSDF voxel值进行选择
+    if (max_cluster_indices.size() > 1) {
+      size_t best_cluster_index = max_cluster_indices[0];
+      int max_valid_voxel_count = -1;
+
+      for (size_t idx : max_cluster_indices) {
+        int valid_voxel_count = 0;
+
+        for (const auto& block_index : clusters[idx]) {
+          TsdfBlock& block = tsdf_layer_->getBlockByIndex(block_index);
+          for (size_t i = 0; i < block.num_voxels(); ++i) {
+            TsdfVoxel& voxel = block.getVoxelByLinearIndex(i);
+            if (std::abs(voxel.distance) < config_.truncation_distance) {
+              valid_voxel_count++;
+            }
+          }
+        }
+
+        // 选择有效voxel数量最多的聚类
+        if (valid_voxel_count > max_valid_voxel_count) {
+          max_valid_voxel_count = valid_voxel_count;
+          best_cluster_index = idx;
+        }
+      }
+
+      selected_cluster_index = best_cluster_index;
+    }
   }
 
   // 计算将要删除的 block 数量
@@ -591,7 +623,7 @@ std::string Submap::pruneIsolatedBlocks() {
     }
   }
 
-  // 移除最大聚类以外的所有 blocks
+  // 移除选中聚类以外的所有 blocks
   int removed_count = 0;
   for (size_t i = 0; i < clusters.size(); i++) {
     if (i != selected_cluster_index) {
@@ -612,10 +644,12 @@ std::string Submap::pruneIsolatedBlocks() {
 
   auto t2 = std::chrono::high_resolution_clock::now();
   std::stringstream ss;
-  ss << "Pruned " << removed_count << " isolated blocks from submap " << getID()
-     << " (" << getName() << ") by clustering in "
-     << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count()
-     << "ms.";
+  if (removed_count > 0) {
+    ss << "Pruned " << removed_count << " isolated blocks from submap "
+       << getID() << " (" << getName() << ") by clustering in "
+       << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count()
+       << "ms.";
+  }
 
   return ss.str();
 }
