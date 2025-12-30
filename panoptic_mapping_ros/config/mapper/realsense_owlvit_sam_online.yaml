@@ -22,7 +22,7 @@ labels:
   file_name: /home/xiangweizeng/3D_slam/sematic-mapping/panoptic_mapping_ws/install/panoptic_mapping_ros/share/panoptic_mapping_ros/config/classes/realsense_labels_mini.csv
   use_whitelist: false
   whitelist_file_name: /home/xiangweizeng/3D_slam/sematic-mapping/panoptic_mapping_ws/install/panoptic_mapping_ros/share/panoptic_mapping_ros/config/classes/realsense_whitelist.csv
-  use_blacklist: false
+  use_blacklist: true
   blacklist_file_name: /home/xiangweizeng/3D_slam/sematic-mapping/panoptic_mapping_ws/install/panoptic_mapping_ros/share/panoptic_mapping_ros/config/classes/realsense_blacklist.csv
 
 camera:
@@ -147,11 +147,18 @@ map_management:
     classification_use_no_class: true
     limit_range: false
     classification_disappear_frames_threshold: 3
-    classification_disappear_threshold: -1.5 # m, negative = #vs
+    # 正负值代表submap的投影点是在当前深度像素的正面还是反面（更靠近相机 or 更远离相机），dis = d_depthImage - d_submap
+    # 该值为负时，可能更好得处理小物体
+    classification_disappear_threshold: -0.02
     classification_disappear_percentage: 0.5
-    classification_disappear_average_distance: -1 # m, negative = #vs
+    # 正负值含义与classification_disappear_threshold相同
+    classification_disappear_average_distance: -0.02
     classification_projected_percentage: 0.9
-    
+    # 用于判断相机运动是否剧烈的阈值，与上一帧位姿对比，单位：米/s，相机运动剧烈时就不进行小物体变化检测，因为此时目标检测结果不稳定
+    max_translation_velocity: 0.5
+    # 单位: 度/s
+    max_rotation_velocity: 5.0
+
   layer_manipulator:
       verbosity: 3
       use_instance_classification: *use_instance_classification

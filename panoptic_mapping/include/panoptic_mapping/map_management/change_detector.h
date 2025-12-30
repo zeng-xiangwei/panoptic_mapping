@@ -24,7 +24,7 @@ class ChangeDetector {
 
     // Only judge submap center in (camera.max_range - range_inner_buffer)
     float range_inner_buffer = 0.0;
-    
+
     // Allowed disappear distance in meters where a point is still considered
     // visible in input data. Negative values are multiples of the voxel_size.
     float strong_disappear_threshold = -10;
@@ -70,6 +70,10 @@ class ChangeDetector {
     // For classification.
     int classification_disappear_frames_threshold = 3;
 
+    // Judge whether the camera motion is soft, unit: meter/s and deg/s
+    float max_translation_velocity = 0.5;
+    float max_rotation_velocity = 5.0;
+
     Config() { setConfigName("ChangeDetector"); }
 
    protected:
@@ -89,11 +93,20 @@ class ChangeDetector {
   std::string checkSubmapVisibleByInputData(Submap* submap, InputData* input);
   std::string checkSubmapVisibleByInputDataWithClassification(Submap* submap,
                                                               InputData* input);
-  bool validWithClassification(int projected_instance_id, Submap* submap, const DetectronLabels* labels, std::string& info,
+  bool validWithClassification(int projected_instance_id, Submap* submap,
+                               const DetectronLabels* labels, std::string& info,
                                std::string& background_class_name);
+                              //  判断相机运动是否较小
+                          bool cameraMotionSoft(const Transformation& T_M_C,
+                                               double timestamp);
 
   const Config config_;
   const std::shared_ptr<Globals> globals_;
+
+ private:
+  // 记录上一帧数据的位姿以及时间戳，用来判断相机运动程度
+  std::shared_ptr<Transformation> last_camera_pose_ = nullptr;
+  double last_camera_timestamp_ = -1;
 };
 
 }  // namespace panoptic_mapping

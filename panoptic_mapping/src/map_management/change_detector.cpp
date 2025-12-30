@@ -125,6 +125,8 @@ void ChangeDetector::Config::setupParamsAndPrinting() {
   setupParam("classification_use_no_class", &classification_use_no_class);
   setupParam("min_isolated_points_size", &min_isolated_points_size);
   setupParam("range_inner_buffer", &range_inner_buffer);
+  setupParam("max_translation_velocity", &max_translation_velocity);
+  setupParam("max_rotation_velocity", &max_rotation_velocity);
 }
 
 ChangeDetector::ChangeDetector(const Config& config,
@@ -348,6 +350,16 @@ std::string ChangeDetector::checkSubmapVisibleByInputDataWithClassification(
     info << "\nSubmap " << submap->getID() << " (" << submap->getName()
          << ") points size: " << submap->getIsoSurfacePoints().size() << " > "
          << min_isolated_points_size;
+    submap->resetDisappearCount();
+    return info.str();
+  }
+
+  // 根据位姿判断相机运动程度，如果相机运动较剧烈，则不做判断，因为此时目标检测结果不稳定
+  if (!cameraMotionSoft(input->T_M_C(), input->timestamp())) {
+    std::stringstream info;
+    info << "\nSubmap " << submap->getID() << " (" << submap->getName()
+         << ") camera motion is not soft.";
+    submap->resetDisappearCount();
     return info.str();
   }
 
@@ -362,10 +374,7 @@ std::string ChangeDetector::checkSubmapVisibleByInputDataWithClassification(
   int valid_depth_measurement_num = 0;
   int projected_num = 0;
 
-  float depth_tolerance = config_.classification_disappear_threshold > 0
-                              ? config_.classification_disappear_threshold
-                              : -config_.classification_disappear_threshold *
-                                    submap->getTsdfLayer().voxel_size();
+  float depth_tolerance = config_.classification_disappear_threshold;
 
   // Simply limit the measurement values of the depth measurement
   float camera_visible_distance_max = 5.0 * camera.getConfig().max_range;
@@ -431,6 +440,7 @@ std::string ChangeDetector::checkSubmapVisibleByInputDataWithClassification(
   std::string background_class_name;
   if (!validWithClassification(max_instance_id, submap, labels, info_str,
                                background_class_name)) {
+    submap->resetDisappearCount();
     return info_str;
   }
 
@@ -442,11 +452,7 @@ std::string ChangeDetector::checkSubmapVisibleByInputDataWithClassification(
       static_cast<int>(config_.classification_projected_percentage *
                        submap->getIsoSurfacePoints().size());
 
-  float avg_dis_threshold =
-      config_.classification_disappear_average_distance > 0
-          ? config_.classification_disappear_average_distance
-          : -config_.classification_disappear_average_distance *
-                submap->getTsdfLayer().voxel_size();
+  float avg_dis_threshold = config_.classification_disappear_average_distance;
 
   bool disappear = false;
   if (max_projected_num > min_projected_other_type_num &&
@@ -475,6 +481,8 @@ std::string ChangeDetector::checkSubmapVisibleByInputDataWithClassification(
            << valid_depth_measurement_num << " / " << projected_num;
       return info.str();
     }
+  } else {
+    submap->resetDisappearCount();
   }
 
   std::stringstream info;
@@ -489,6 +497,47 @@ std::string ChangeDetector::checkSubmapVisibleByInputDataWithClassification(
        << ", current frame disappear status(1: disappear): " << disappear
        << ", disappear frame: " << submap->getDisappearCount();
   return info.str();
+}
+
+bool ChangeDetector::cameraMotionSoft(const Transformation& T_M_C,
+                                      double timestamp) {
+  if (last_camera_pose_ == nullptr) {
+    last_camera_pose_ = std::make_shared<Transformation>(T_M_C);
+    last_camera_timestamp_ = timestamp;
+    return false;
+  }
+
+  double time_diff = timestamp - last_camera_timestamp_;
+  if (time_diff <= 0) {
+    return false;
+  }
+
+  // 计算相机位姿变化
+  Transformation T_C1_C2 = last_camera_pose_->inverse() * T_M_C;
+  
+  // 计算平移距离和旋转角度
+  Point translation = T_C1_C2.getPosition();
+  double translation_norm = translation.norm();
+  
+  // 获取旋转矩阵并计算旋转角度
+  Eigen::Matrix3f rotation_matrix = T_C1_C2.getRotationMatrix();
+  double trace = rotation_matrix(0,0) + rotation_matrix(1,1) + rotation_matrix(2,2);
+  double angle_radians = std::acos(std::min(std::max((trace - 1.0) / 2.0, -1.0), 1.0));
+  double angle_degrees = angle_radians * 180.0 / M_PI;
+  
+  bool is_soft = false;
+  double translation_v = translation_norm / time_diff;
+  double rotation_v = std::abs(angle_degrees) / time_diff;
+  if (translation_v <= config_.max_translation_velocity &&
+      rotation_v <= config_.max_rotation_velocity) {
+    is_soft = true;
+  }
+  
+  // 更新上一帧位姿
+  *last_camera_pose_ = T_M_C;
+  last_camera_timestamp_ = timestamp;
+  
+  return is_soft;
 }
 
 bool ChangeDetector::validWithClassification(

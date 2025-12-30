@@ -182,6 +182,7 @@ class Submap {
                              float score = 0.0);
 
   void addDisappearCount(int add = 1);
+  void resetDisappearCount() { disappear_count_ = 0; }
 
   // Processing.
   /**
