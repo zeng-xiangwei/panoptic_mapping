@@ -130,6 +130,8 @@ map_management:
   
   change_detector:
     verbosity: 3
+    # N frames disappear to confirm a submap is disappeared. In normal case. Disapper count > threshold  means submap is disappeared.
+    normal_disappear_frames_threshold: 3
     strong_disappear_threshold: -10 # m, negative = #vs
     weak_disappear_threshold: -2 # m, negative = #vs
     match_strong_disappear_points: 0
@@ -157,7 +159,7 @@ map_management:
     # 用于判断相机运动是否剧烈的阈值，与上一帧位姿对比，单位：米/s，相机运动剧烈时就不进行小物体变化检测，因为此时目标检测结果不稳定
     max_translation_velocity: 0.5
     # 单位: 度/s
-    max_rotation_velocity: 5.0
+    max_rotation_velocity: 3.0
 
   layer_manipulator:
       verbosity: 3

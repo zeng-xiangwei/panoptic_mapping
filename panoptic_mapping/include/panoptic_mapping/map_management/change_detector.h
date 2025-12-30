@@ -38,6 +38,8 @@ class ChangeDetector {
     // disappear.
     float match_strong_disappear_percentage = 0.6;
     float match_weak_disappear_percentage = 0.8;
+    // N frames disappear to confirm a submap is disappeared
+    int normal_disappear_frames_threshold = 3;
 
     // For weak disappear point, the average distance from disappear points to
     // the projected pixel depth must larger than this value. Unit m, Negative

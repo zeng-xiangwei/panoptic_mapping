@@ -134,6 +134,7 @@ class Submap {
   }
   SubmapBoundingVolume* getBoundingVolumePtr() { return &bounding_volume_; }
   int getDisappearCount() const { return disappear_count_; }
+  int getNormalDisappearCount() const { return normal_disappear_count_; }
   VllmDescription getDescriptsByVllm() const { return descripts_by_vllm_; };
 
   // 是否有新的描述信息
@@ -148,6 +149,7 @@ class Submap {
 
   // Setters.
   void setDisappearCount(int count) { disappear_count_ = count; }
+  void setNormalDisappearCount(int count) { normal_disappear_count_ = count; }
   void setT_M_S(const Transformation& T_M_S);
   void setInstanceID(int id) { instance_id_ = id; }
   void setLabel(PanopticLabel label) { label_ = label; }
@@ -182,7 +184,9 @@ class Submap {
                              float score = 0.0);
 
   void addDisappearCount(int add = 1);
+  void addDisappearCountForNormal(int add = 1);
   void resetDisappearCount() { disappear_count_ = 0; }
+  void resetNormalDisappearCount() { normal_disappear_count_ = 0; }
 
   // Processing.
   /**
@@ -342,8 +346,10 @@ class Submap {
   // Processing.
   std::unique_ptr<MeshIntegrator> mesh_integrator_;
 
-  // Change detection.
+  // Change detection. For classification based disappear detection
   int disappear_count_ = 0;
+  // For normal disappear detection
+  int normal_disappear_count_ = 0;
 
   // VLLM提供的物体属性描述
   VllmDescription descripts_by_vllm_;

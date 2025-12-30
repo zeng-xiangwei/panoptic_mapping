@@ -297,6 +297,7 @@ bool MapManager::mergeSubmapIfPossible(SubmapCollection* submaps, int submap_id,
         other.updateEmbeddingVector(submap->getEmbeddingVector(),
                                     submap->getEmbeddingScore());
         other.setDisappearCount(0);
+        other.setNormalDisappearCount(0);
         if (other.getDescriptsByVllm().class_name.empty()) {
           other.setDescriptsByVllm(submap->getDescriptsByVllm());
         }

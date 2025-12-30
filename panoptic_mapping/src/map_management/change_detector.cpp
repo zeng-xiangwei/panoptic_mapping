@@ -127,6 +127,8 @@ void ChangeDetector::Config::setupParamsAndPrinting() {
   setupParam("range_inner_buffer", &range_inner_buffer);
   setupParam("max_translation_velocity", &max_translation_velocity);
   setupParam("max_rotation_velocity", &max_rotation_velocity);
+  setupParam("normal_disappear_frames_threshold",
+             &normal_disappear_frames_threshold);
 }
 
 ChangeDetector::ChangeDetector(const Config& config,
@@ -187,15 +189,22 @@ void ChangeDetector::checkSubmapCollectionVisibleByInputData(
   // Perform change detection in parallel.
   SubmapIndexGetter index_getter(id_list);
   std::vector<std::future<std::string>> threads;
+
+  // 根据位姿判断相机运动程度，如果相机运动较剧烈，则不做判断，因为此时目标检测结果不稳定
+  bool camera_motion_soft =
+      cameraMotionSoft(input->T_M_C(), input->timestamp());
+  LOG(INFO) << "Camera motion is "
+            << (camera_motion_soft ? "soft" : "not soft");
   for (int i = 0; i < config_.detection_threads; ++i) {
-    threads.emplace_back(
-        std::async(std::launch::async, [this, &index_getter, submaps, input]() {
+    threads.emplace_back(std::async(
+        std::launch::async,
+        [this, &index_getter, submaps, input, camera_motion_soft]() {
           int index;
           std::string info;
           while (index_getter.getNextIndex(&index)) {
             info += this->checkSubmapVisibleByInputData(
                 submaps->getSubmapPtr(index), input);
-            if (config_.use_classification_for_tiny) {
+            if (config_.use_classification_for_tiny && camera_motion_soft) {
               info += this->checkSubmapVisibleByInputDataWithClassification(
                   submaps->getSubmapPtr(index), input);
             }
@@ -292,40 +301,66 @@ std::string ChangeDetector::checkSubmapVisibleByInputData(Submap* submap,
       std::max(config_.match_weak_disappear_points,
                static_cast<int>(config_.match_weak_disappear_percentage *
                                 submap->getIsoSurfacePoints().size()));
-  if (strong_absent_num > strong_disappear_num_threshold) {
-    submap->setChangeState(ChangeState::kAbsent);
+
+  bool is_strong_absent = strong_absent_num > strong_disappear_num_threshold;
+  bool is_weak_absent = weak_absent_num > weak_disappear_num_threshold;
+
+  if (is_strong_absent) {
+    submap->addDisappearCountForNormal();
     std::stringstream info;
     info << "\nSubmap " << submap->getID() << " (" << submap->getName()
-         << ") conflicts with input data judged by strong. Marked as absent."
-         << " Absent points: (" << strong_absent_num << "," << weak_absent_num
-         << ")/" << submap->getIsoSurfacePoints().size()
+         << ") strong absent detected in current frame. Current disappear "
+            "count: "
+         << submap->getNormalDisappearCount() << ". Absent points: ("
+         << strong_absent_num << "," << weak_absent_num << ")/"
+         << submap->getIsoSurfacePoints().size()
          << ", valid_measurement_nums / projected_nums: "
          << valid_depth_measurement_num << " / " << projected_num;
-    // saveMiddleResult(submap, input);
+
+    // 检查是否达到连续消失阈值
+    if (submap->getNormalDisappearCount() >
+        config_.normal_disappear_frames_threshold) {
+      submap->setChangeState(ChangeState::kAbsent);
+      info << " Marked as absent due to continuous absence.";
+      return info.str();
+    }
     return info.str();
   }
 
-  if (weak_absent_num > weak_disappear_num_threshold) {
+  if (is_weak_absent) {
     float weak_avg_dis = weak_absent_dis_sum / weak_absent_num;
     float weak_avg_dis_threshold =
         config_.match_weak_average_distance > 0
             ? config_.match_weak_average_distance
             : -config_.match_weak_average_distance *
                   submap->getTsdfLayer().voxel_size();
+
     if (weak_avg_dis >= weak_avg_dis_threshold) {
-      submap->setChangeState(ChangeState::kAbsent);
+      submap->addDisappearCountForNormal();  // 增加消失计数
       std::stringstream info;
       info << "\nSubmap " << submap->getID() << " (" << submap->getName()
-           << ") conflicts with input data judged by weak. Marked as absent."
-           << " Absent points: (" << strong_absent_num << "," << weak_absent_num
-           << ")"
-           << "/" << submap->getIsoSurfacePoints().size()
+           << ") weak absent detected in current frame. Current disappear "
+              "count: "
+           << submap->getNormalDisappearCount() << ". Absent points: ("
+           << strong_absent_num << "," << weak_absent_num << ")/"
+           << submap->getIsoSurfacePoints().size()
            << ", weak distance sum: " << weak_absent_dis_sum << " m. "
            << "valid_measurement_nums / projected_nums: "
            << valid_depth_measurement_num << " / " << projected_num;
+
+      // 检查是否达到连续消失阈值
+      if (submap->getNormalDisappearCount() >
+          config_.normal_disappear_frames_threshold) {
+        submap->setChangeState(ChangeState::kAbsent);
+        info << " Marked as absent due to continuous absence.";
+        return info.str();
+      }
       return info.str();
     }
   }
+
+  // 如果当前帧没有检测到消失，重置消失计数
+  submap->resetNormalDisappearCount();
 
   std::stringstream info;
   info << "\nSubmap " << submap->getID() << " (" << submap->getName()
@@ -334,7 +369,8 @@ std::string ChangeDetector::checkSubmapVisibleByInputData(Submap* submap,
        << "/" << submap->getIsoSurfacePoints().size()
        << ", weak distance sum: " << weak_absent_dis_sum << " m. "
        << "valid_measurement_nums / projected_nums: "
-       << valid_depth_measurement_num << " / " << projected_num;
+       << valid_depth_measurement_num << " / " << projected_num
+       << ", disappear count reset to 0.";
   return info.str();
 }
 
@@ -350,15 +386,6 @@ std::string ChangeDetector::checkSubmapVisibleByInputDataWithClassification(
     info << "\nSubmap " << submap->getID() << " (" << submap->getName()
          << ") points size: " << submap->getIsoSurfacePoints().size() << " > "
          << min_isolated_points_size;
-    submap->resetDisappearCount();
-    return info.str();
-  }
-
-  // 根据位姿判断相机运动程度，如果相机运动较剧烈，则不做判断，因为此时目标检测结果不稳定
-  if (!cameraMotionSoft(input->T_M_C(), input->timestamp())) {
-    std::stringstream info;
-    info << "\nSubmap " << submap->getID() << " (" << submap->getName()
-         << ") camera motion is not soft.";
     submap->resetDisappearCount();
     return info.str();
   }
@@ -514,17 +541,19 @@ bool ChangeDetector::cameraMotionSoft(const Transformation& T_M_C,
 
   // 计算相机位姿变化
   Transformation T_C1_C2 = last_camera_pose_->inverse() * T_M_C;
-  
+
   // 计算平移距离和旋转角度
   Point translation = T_C1_C2.getPosition();
   double translation_norm = translation.norm();
-  
+
   // 获取旋转矩阵并计算旋转角度
   Eigen::Matrix3f rotation_matrix = T_C1_C2.getRotationMatrix();
-  double trace = rotation_matrix(0,0) + rotation_matrix(1,1) + rotation_matrix(2,2);
-  double angle_radians = std::acos(std::min(std::max((trace - 1.0) / 2.0, -1.0), 1.0));
+  double trace =
+      rotation_matrix(0, 0) + rotation_matrix(1, 1) + rotation_matrix(2, 2);
+  double angle_radians =
+      std::acos(std::min(std::max((trace - 1.0) / 2.0, -1.0), 1.0));
   double angle_degrees = angle_radians * 180.0 / M_PI;
-  
+
   bool is_soft = false;
   double translation_v = translation_norm / time_diff;
   double rotation_v = std::abs(angle_degrees) / time_diff;
@@ -532,11 +561,11 @@ bool ChangeDetector::cameraMotionSoft(const Transformation& T_M_C,
       rotation_v <= config_.max_rotation_velocity) {
     is_soft = true;
   }
-  
+
   // 更新上一帧位姿
   *last_camera_pose_ = T_M_C;
   last_camera_timestamp_ = timestamp;
-  
+
   return is_soft;
 }
 
