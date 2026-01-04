@@ -26,6 +26,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <std_srvs/srv/empty.hpp>
 
+#include "panoptic_mapping/integration/single_tsdf_for_undetected.h"
 #include "panoptic_mapping/tools/image_data_manager.h"
 #include "panoptic_mapping_msgs/msg/get_object_info_mode.hpp"
 #include "panoptic_mapping_msgs/srv/get_object_info.hpp"
@@ -108,6 +109,9 @@ class PanopticMapper {
     float vllm_service_timeout = 60.0;
     // 调用 VL 大模型服务失败的重试次数
     int vllm_max_retries = 0;
+
+    // 是否启用未检测区域的TSDF重建
+    bool use_undetected_tsdf = false;
 
     Config() { setConfigName("PanopticMapper"); }
 
@@ -269,6 +273,10 @@ class PanopticMapper {
   std::unique_ptr<TsdfIntegratorBase> tsdf_integrator_;
   std::unique_ptr<MapManagerBase> map_manager_;
 
+  // Optional undetected region TSDF reconstruction.
+  std::shared_ptr<SubmapCollection> undetected_submaps_;
+  std::unique_ptr<TsdfIntegratorBase> undetected_tsdf_integrator_;
+
   // Tools.
   std::shared_ptr<Globals> globals_;
   std::unique_ptr<InputSynchronizer> input_synchronizer_;
@@ -280,6 +288,7 @@ class PanopticMapper {
   std::unique_ptr<PlanningVisualizer> planning_visualizer_;
   std::unique_ptr<TrackingVisualizer> tracking_visualizer_;
   std::unique_ptr<ChangedSubmapVisualizer> changed_submap_visualizer_;
+  std::unique_ptr<SubmapVisualizer> single_tsdf_submap_visualizer_;
 
   // Which processing to perform.
   bool compute_vertex_map_ = false;

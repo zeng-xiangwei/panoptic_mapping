@@ -35,7 +35,12 @@ const std::map<std::string, std::pair<std::string, std::string>>
         {"vis_planning", {"visualization/planning", ""}},
         {"vis_changed_submaps", {"visualization/changed_submaps", ""}},
         {"data_writer", {"data_writer", "null"}},
-        {"image_data_manager", {"image_data_manager", ""}}};
+        {"image_data_manager", {"image_data_manager", ""}},
+        {"single_tsdf_for_undetected",
+         {"single_tsdf_for_undetected", "single_tsdf_for_undetected"}},
+        {"vis_single_tsdf_submap",
+         {"single_tsdf_for_undetected/visualize", "single_tsdf"}},
+};
 
 void PanopticMapper::Config::checkParams() const {
   checkParamCond(!global_frame_name.empty(),
@@ -64,6 +69,7 @@ void PanopticMapper::Config::setupParamsAndPrinting() {
   setupParam("vllm_service_timeout", &vllm_service_timeout);
   setupParam("use_image_data_manager", &use_image_data_manager);
   setupParam("vllm_max_retries", &vllm_max_retries);
+  setupParam("use_undetected_tsdf", &use_undetected_tsdf);
 }
 
 PanopticMapper::PanopticMapper(rclcpp::Node::SharedPtr node)
@@ -174,6 +180,22 @@ void PanopticMapper::setupMembersFromYaml() {
     image_data_manager_ = std::make_unique<ImageDataManager>(
         config_utilities::getConfigFromYaml<ImageDataManager::Config>(
             root_yaml_, defaultYamlKeyPath("image_data_manager")));
+  }
+
+  // 对未检测区域进行TSDF重建
+  if (config_.use_undetected_tsdf) {
+    undetected_submaps_ = std::make_shared<SubmapCollection>();
+    undetected_tsdf_integrator_ =
+        config_utilities::FactoryYaml::create<TsdfIntegratorBase>(
+            root_yaml_, defaultYamlKeyPath("single_tsdf_for_undetected"),
+            globals_);
+
+    single_tsdf_submap_visualizer_ =
+        config_utilities::FactoryYaml::create<SubmapVisualizer>(
+            root_yaml_, defaultYamlKeyPath("vis_single_tsdf_submap"), globals_,
+            node_);
+    single_tsdf_submap_visualizer_->setGlobalFrameName(
+        config_.global_frame_name);
   }
 
   // Setup all requested inputs from all modules.
@@ -410,6 +432,12 @@ void PanopticMapper::processInput(InputData* input) {
   map_manager_->tick(submaps_.get(), input);
   std::chrono::system_clock::time_point t3 = std::chrono::system_clock::now();
   management_timer.Stop();
+
+  if (config_.use_undetected_tsdf) {
+    Timer undetected_timer("input/undetected_tsdf_integration");
+    undetected_tsdf_integrator_->processInput(undetected_submaps_.get(), input);
+    undetected_timer.Stop();
+  }
 
   // If requested perform visualization and logging.
   if (config_.visualization_interval < 0.f) {
@@ -715,6 +743,10 @@ void PanopticMapper::publishVisualization() {
   submap_visualizer_->visualizeAll(submaps_.get());
   planning_visualizer_->visualizeAll();
   changed_submap_visualizer_->visualizeChangedSubmaps(submaps_.get());
+
+  if (config_.use_undetected_tsdf) {
+    single_tsdf_submap_visualizer_->visualizeAll(undetected_submaps_.get());
+  }
 }
 
 void PanopticMapper::publishSegmentedPointCloud(InputData* input) {
@@ -838,6 +870,17 @@ bool PanopticMapper::saveMap(const std::string& file_path) {
   LOG_IF(INFO, success) << "Successfully saved " << submaps_->size()
                         << " submaps to '" << file_path << "'.";
 
+  // 如果启用了未检测区域TSDF重建，也保存undetected_submaps_
+  if (config_.use_undetected_tsdf && undetected_submaps_) {
+    std::string undetected_file_path = file_path + "_undetected";
+    bool undetected_success =
+        undetected_submaps_->saveToFile(undetected_file_path);
+    LOG_IF(INFO, undetected_success)
+        << "Successfully saved " << undetected_submaps_->size()
+        << " undetected submaps to '" << undetected_file_path << "'.";
+    success = success && undetected_success;
+  }
+
   saveIsoSurfacePoints(file_path + "_point_label_cloud.csv");
 
   if (image_data_manager_) {
@@ -925,6 +968,33 @@ bool PanopticMapper::loadMap(const std::string& file_path) {
   // Set the map.
   submaps_ = loaded_map;
 
+  // 如果启用了未检测区域TSDF重建，也加载undetected_submaps_
+  if (config_.use_undetected_tsdf) {
+    std::string undetected_file_path = file_path + "_undetected";
+    auto loaded_undetected_map = std::make_shared<SubmapCollection>();
+
+    if (loaded_undetected_map->loadFromFile(undetected_file_path, true,
+                                            false)) {
+      // 对加载的undetected submaps也进行类似的处理
+      for (Submap& submap : *loaded_undetected_map) {
+        submap.finishActivePeriod();
+        submap.setMatchRedetection(true);
+        if (config_.load_submaps_conservative) {
+          submap.setChangeState(ChangeState::kUnobserved);
+        } else {
+          submap.setChangeState(ChangeState::kPersistent);
+        }
+      }
+      undetected_submaps_ = loaded_undetected_map;
+      LOG_IF(INFO, config_.verbosity >= 1)
+          << "Successfully loaded " << undetected_submaps_->size()
+          << " undetected submaps.";
+    } else {
+      LOG(WARNING) << "Could not load undetected submaps from '"
+                   << undetected_file_path << "', continuing without them.";
+    }
+  }
+
   // Setup the interfaces that use the new collection.
   setupCollectionDependentMembers();
 
@@ -932,6 +1002,12 @@ bool PanopticMapper::loadMap(const std::string& file_path) {
   submap_visualizer_->clearMesh();
   submap_visualizer_->reset();
   submap_visualizer_->visualizeAll(submaps_.get());
+
+  if (config_.use_undetected_tsdf && single_tsdf_submap_visualizer_) {
+    single_tsdf_submap_visualizer_->clearMesh();
+    single_tsdf_submap_visualizer_->reset();
+    single_tsdf_submap_visualizer_->visualizeAll(undetected_submaps_.get());
+  }
 
   LOG_IF(INFO, config_.verbosity >= 1)
       << "Successfully loaded " << submaps_->size() << " submaps.";

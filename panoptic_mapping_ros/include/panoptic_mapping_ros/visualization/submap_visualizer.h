@@ -34,6 +34,7 @@ class SubmapVisualizer {
     bool visualize_tsdf_blocks = true;
     bool visualize_free_space = true;
     bool visualize_bounding_volumes = true;
+    bool visualize_occupancy = false;
     bool include_free_space = false;
 
     // true: other visualization_mode alpha = 0.4; false: alpha = 0
@@ -42,6 +43,8 @@ class SubmapVisualizer {
 
     // Object type to pub, for occupancy map
     std::string class_type_to_pub_for_occ;
+
+    std::string topic_prefix = "";
 
     Config() { setConfigName("SubmapVisualizer"); }
 

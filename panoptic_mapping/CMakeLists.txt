@@ -71,6 +71,7 @@ add_library(${PROJECT_NAME} SHARED
         src/integration/single_tsdf_integrator.cpp
         src/integration/projection_interpolators.cpp
         src/integration/mesh_integrator.cpp
+        src/integration/single_tsdf_for_undetected.cpp
         src/map_management/map_manager.cpp
         src/map_management/null_map_manager.cpp
         src/map_management/activity_manager.cpp

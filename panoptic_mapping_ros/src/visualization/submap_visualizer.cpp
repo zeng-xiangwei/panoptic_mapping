@@ -36,6 +36,8 @@ void SubmapVisualizer::Config::setupParamsAndPrinting() {
   setupParam("include_free_space", &include_free_space);
   setupParam("visualize_other_mode", &visualize_other_mode);
   setupParam("class_type_to_pub_for_occ", &class_type_to_pub_for_occ);
+  setupParam("visualize_occupancy", &visualize_occupancy);
+  setupParam("topic_prefix", &topic_prefix);
 }
 
 void SubmapVisualizer::Config::printFields() const {
@@ -73,26 +75,27 @@ SubmapVisualizer::SubmapVisualizer(const Config& config,
   // Setup publishers.
   if (config_.visualize_free_space) {
     freespace_pub_ = node_->create_publisher<sensor_msgs::msg::PointCloud2>(
-        "visualization/submaps/free_space_tsdf", 10);
+        config_.topic_prefix + "/visualization/submaps/free_space_tsdf", 10);
   }
   if (config_.visualize_mesh) {
     mesh_pub_ = node_->create_publisher<voxblox_msgs::msg::MultiMeshList>(
-        "visualization/submaps/mesh", 10);
+        config_.topic_prefix + "/visualization/submaps/mesh", 10);
   }
   if (config_.visualize_tsdf_blocks) {
     tsdf_blocks_pub_ =
         node_->create_publisher<visualization_msgs::msg::MarkerArray>(
-            "visualization/submaps/tsdf_blocks", 10);
+            config_.topic_prefix + "/visualization/submaps/tsdf_blocks", 10);
   }
   if (config_.visualize_bounding_volumes) {
     bounding_volume_pub_ =
         node_->create_publisher<visualization_msgs::msg::MarkerArray>(
-            "visualization/submaps/bounding_volumes", 10);
+            config_.topic_prefix + "/visualization/submaps/bounding_volumes",
+            10);
   }
 
   occupancy_submap_pub_ =
       node_->create_publisher<sensor_msgs::msg::PointCloud2>(
-          "visualization/submaps/occupancy_cloud", 1);
+          config_.topic_prefix + "/visualization/submaps/occupancy_cloud", 1);
 }
 
 void SubmapVisualizer::reset() {
@@ -859,6 +862,11 @@ void SubmapVisualizer::parseClasses(const std::string& class_string,
 
 void SubmapVisualizer::publishOccupancyCloud(const SubmapCollection& submaps) {
   pcl::PointCloud<pcl::PointXYZ> selected_cloud;
+  if (!config_.visualize_occupancy ||
+      occupancy_submap_pub_->get_subscription_count() == 0) {
+    return;
+  }
+
   for (const auto& submap : submaps) {
     if (submap.getChangeState() != ChangeState::kPersistent ||
         submap.getLabel() == PanopticLabel::kFreeSpace) {

@@ -136,7 +136,7 @@ bool SubmapCollection::saveToFile(const std::string& file_path) const {
 }
 
 bool SubmapCollection::loadFromFile(const std::string& file_path,
-                                    bool recompute_data) {
+                                    bool recompute_data, bool reset_max_id) {
   CHECK(!file_path.empty());
   const std::string file_name = checkMapFileExtension(file_path);
 
@@ -188,7 +188,9 @@ bool SubmapCollection::loadFromFile(const std::string& file_path,
   }
 
   // 保留读取的 submap id,因此后续新生成的 submap id 会从 max_submap_id + 1 开始
-  submap_id_manager_.setCurrentID(max_submap_id + 1);
+  if (reset_max_id) {
+    submap_id_manager_.setCurrentID(max_submap_id + 1);
+  }
 
   active_freespace_submap_id_ =
       submap_collection_proto.active_freespace_submap_id();

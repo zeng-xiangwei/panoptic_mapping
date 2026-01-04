@@ -42,7 +42,8 @@ class SubmapCollection {
    * meshes, bounding volumes, ...) for loaded map.
    * @return True if the map was loaded successfully.
    */
-  bool loadFromFile(const std::string& file_path, bool recompute_data = true);
+  bool loadFromFile(const std::string& file_path, bool recompute_data = true,
+                    bool reset_max_id = true);
 
   // Modifying the collection.
   /**
