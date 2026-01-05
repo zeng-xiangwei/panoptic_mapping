@@ -216,11 +216,14 @@ image_data_manager:
 single_tsdf_for_undetected:
   verbosity: 3
 
+  # true: 全部区域的几何重建; false: 仅对未检测的区域进行重建
+  reconstruct_detected_objects: true
+
   min_range: *min_range  # m
-  max_range: 5.0  # m
+  max_range: 4.0  # m
   
   # Submap配置
-  voxel_size: 0.05
+  voxel_size: 0.1
   truncation_distance: -2
   voxels_per_side: 16
   use_class_layer: false 

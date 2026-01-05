@@ -26,6 +26,8 @@ void SingleTsdfForUndetected::Config::setupParamsAndPrinting() {
   setupParam("use_color", &use_color);
   setupParam("min_range", &min_range);
   setupParam("max_range", &max_range);
+  setupParam("single_tsdf_submap_id", &single_tsdf_submap_id);
+  setupParam("reconstruct_detected_objects", &reconstruct_detected_objects);
 }
 
 SingleTsdfForUndetected::SingleTsdfForUndetected(
@@ -67,10 +69,11 @@ void SingleTsdfForUndetected::processInput(SubmapCollection* submaps,
     if (submap_config.truncation_distance < 0.f) {
       submap_config.truncation_distance *= -submap_config.voxel_size;
     }
-    single_tsdf_submap = submaps->createSubmap(submap_config);
+    single_tsdf_submap =
+        submaps->createSubmap(submap_config, config_.single_tsdf_submap_id);
     submaps->setActiveFreeSpaceSubmapID(single_tsdf_submap->getID());
     LOG(INFO) << "Created new submap " << single_tsdf_submap->getID()
-               << " for single tsdf integration.";
+              << " for single tsdf integration.";
   }
   single_tsdf_submap =
       submaps->getSubmapPtr(submaps->getActiveFreeSpaceSubmapID());
@@ -88,7 +91,6 @@ void SingleTsdfForUndetected::processInput(SubmapCollection* submaps,
   for (size_t i = 0; i < indices.size(); ++i) {
     indices[i] = block_lists[i];
   }
-  LOG(INFO) << "Found " << indices.size() << " active blocks in the field of Single Tsdf.";
   IndexGetter<voxblox::BlockIndex> index_getter(indices);
   const Transformation T_C_S =
       input->T_M_C().inverse() * single_tsdf_submap->getT_M_S();
@@ -170,22 +172,6 @@ bool SingleTsdfForUndetected::updateVoxel(
     return false;
   }
 
-  // Check if the corresponding pixel is undetected (idImage == 0).
-  // The interpolator should already be set up by computeSignedDistance,
-  // but we need to get the pixel coordinates to check the ID.
-  // Since computeSignedDistance already projected the point, we can use
-  // the interpolator's internal state, but we need to project again to get u,
-  // v.
-  float u, v;
-  if (!camera_->projectPointToImagePlane(p_C, &u, &v)) {
-    return false;
-  }
-
-  // Set up the interpolator for ID interpolation (using the same u, v).
-  // Note: computeSignedDistance already set up weights for range_image_,
-  // but we need to ensure the interpolator is set up for the current pixel.
-  interpolator->computeWeights(u, v, range_image_);
-
   // Get the interpolated ID value at this pixel location.
   const int pixel_id = interpolator->interpolateID(input.idImageCopy());
 
@@ -199,64 +185,44 @@ bool SingleTsdfForUndetected::updateVoxel(
   if (std::abs(sdf) < truncation_distance) {
     const Color color = interpolator->interpolateColor(input.colorImage());
     updateVoxelValues(voxel, sdf, weight, &color);
+    // Only integrate pixels that are undetected (id == 0).
+    if (!config_.reconstruct_detected_objects && pixel_id != 0) {
+      // Reset weight to avoid integrating detected areas.
+      voxel->weight = 0.f;
+    }
   } else {
     updateVoxelValues(voxel, sdf, weight);
-  }
-
-  // Only integrate pixels that are undetected (id == 0).
-  if (pixel_id != 0) {
-    // Reset weight to avoid integrating detected areas.
-    voxel->weight = 0.f;
   }
 
   return true;
 }
 
 void SingleTsdfForUndetected::allocateNewBlocks(Submap* map, InputData* input) {
-  // This method also resets the depth image.
   range_image_.setZero();
   max_range_in_image_ = 0.f;
 
   const Transformation T_S_C = map->getT_S_M() * input->T_M_C();
-  // Parse through each point to reset the depth image, but only for undetected
-  // pixels.
   const cv::Mat& id_image = input->idImageCopy();
   for (int v = 0; v < input->depthImage().rows; v++) {
     for (int u = 0; u < input->depthImage().cols; u++) {
-      // Only process undetected pixels (id == 0).
       const int pixel_id = id_image.at<int32_t>(v, u);
-      if (pixel_id != 0) {
-        continue;
-      }
-
       const cv::Vec3f& vertex = input->vertexMap().at<cv::Vec3f>(v, u);
       const Point p_C(vertex[0], vertex[1], vertex[2]);
       const float ray_distance = p_C.norm();
       range_image_(v, u) = ray_distance;
+      if (ray_distance > cam_config_->max_range ||
+          ray_distance < cam_config_->min_range) {
+        continue;
+      }
       max_range_in_image_ = std::max(max_range_in_image_, ray_distance);
+      const Point p_S = map->getT_S_M() * input->T_M_C() * p_C;
+      const voxblox::BlockIndex block_index =
+          map->getTsdfLayer().computeBlockIndexFromCoordinates(p_S);
+      const auto block =
+          map->getTsdfLayerPtr()->allocateBlockPtrByIndex(block_index);
     }
   }
   max_range_in_image_ = std::min(max_range_in_image_, cam_config_->max_range);
-
-  // Allocate all potential blocks.
-  const float block_size = map->getTsdfLayer().block_size();
-  const float block_diag_half = std::sqrt(3.f) * block_size / 2.f;
-  const Transformation T_C_S = T_S_C.inverse();
-  const Point camera_S = T_S_C.getPosition();  // T_S_C
-  const int max_steps = std::floor((max_range_in_image_ + block_diag_half) /
-                                   map->getTsdfLayer().block_size());
-  for (int x = -max_steps; x <= max_steps; ++x) {
-    for (int y = -max_steps; y <= max_steps; ++y) {
-      for (int z = -max_steps; z <= max_steps; ++z) {
-        const Point offset(x, y, z);
-        const Point candidate_S = camera_S + offset * block_size;
-        if (camera_->pointIsInViewFrustum(T_C_S * candidate_S,
-                                          block_diag_half)) {
-          map->getTsdfLayerPtr()->allocateBlockPtrByCoordinates(candidate_S);
-        }
-      }
-    }
-  }
 
   // Update the bounding volume.
   map->updateBoundingVolume();

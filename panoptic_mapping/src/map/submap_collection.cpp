@@ -21,6 +21,14 @@ Submap* SubmapCollection::createSubmap(const Submap::Config& config) {
   return new_submap;
 }
 
+Submap* SubmapCollection::createSubmap(const Submap::Config& config, int submap_id) {
+  submaps_.emplace_back(std::make_unique<Submap>(config, &submap_id_manager_,
+                                                 &instance_id_manager_, submap_id));
+  Submap* new_submap = submaps_.back().get();
+  id_to_index_[new_submap->getID()] = submaps_.size() - 1;
+  return new_submap;
+}
+
 bool SubmapCollection::removeSubmap(int id) {
   auto it = id_to_index_.find(id);
   if (it == id_to_index_.end()) {

@@ -35,6 +35,11 @@ class SingleTsdfForUndetected : public ProjectiveIntegrator {
     float min_range = 0.3f;
     float max_range = 5.0f;
 
+    // 唯一的 id，与常规的语义 submap id 做区分
+    int single_tsdf_submap_id = -2;
+    // true: 全部区域的几何重建; false: 仅对未检测的区域进行重建
+    bool reconstruct_detected_objects = false;
+
     Config() { setConfigName("SingleTsdfForUndetected"); }
 
    protected:

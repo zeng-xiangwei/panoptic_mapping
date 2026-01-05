@@ -54,6 +54,8 @@ class SubmapCollection {
    * @return Pointer to the newly created submap.
    */
   Submap* createSubmap(const Submap::Config& config);
+  // 仅用于非语义区域的重建，只生成 1 个 submap
+  Submap* createSubmap(const Submap::Config& config, int submap_id);
 
   /**
    * @brief Remove a submap from the collection.

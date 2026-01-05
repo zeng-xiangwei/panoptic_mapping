@@ -216,6 +216,7 @@ class PanopticMapper {
   void setupCollectionDependentMembers();
   void setupRos();
   bool saveIsoSurfacePoints(const std::string& file_path);
+  bool saveIsoSurfacePointsForSingleTsdf(const std::string& file_path);
 
   // 图像管理线程函数
   void imageManagementThread();

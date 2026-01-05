@@ -875,6 +875,9 @@ bool PanopticMapper::saveMap(const std::string& file_path) {
     std::string undetected_file_path = file_path + "_undetected";
     bool undetected_success =
         undetected_submaps_->saveToFile(undetected_file_path);
+
+    saveIsoSurfacePointsForSingleTsdf(undetected_file_path +
+                                      "_point_label_cloud.csv");
     LOG_IF(INFO, undetected_success)
         << "Successfully saved " << undetected_submaps_->size()
         << " undetected submaps to '" << undetected_file_path << "'.";
@@ -909,6 +912,37 @@ bool PanopticMapper::saveIsoSurfacePoints(const std::string& file_path) {
       continue;
     }
 
+    std::vector<ColoredIsoSurfacePoint> surface_points =
+        submap.computeColoredIsoSurfacePoints();
+    for (const ColoredIsoSurfacePoint& point : surface_points) {
+      point_label_cloud_file
+          << point.position.x() << "," << point.position.y() << ","
+          << point.position.z() << "," << static_cast<int>(point.color.r) << ","
+          << static_cast<int>(point.color.g) << ","
+          << static_cast<int>(point.color.b) << "," << submap.getID() << ","
+          << submap.getName() << ","
+          << changeStateToString(submap.getChangeState()) << ","
+          << static_cast<int>(submap.getChangeState()) << std::endl;
+    }
+  }
+  point_label_cloud_file.close();
+  return true;
+}
+
+bool PanopticMapper::saveIsoSurfacePointsForSingleTsdf(
+    const std::string& file_path) {
+  // 保存物体表面点云
+  std::fstream point_label_cloud_file;
+  LOG(INFO) << "save to: " << file_path;
+  point_label_cloud_file.open(file_path, std::fstream::out);
+  if (!point_label_cloud_file.is_open()) {
+    LOG(ERROR) << "Could not open file '" << file_path
+               << "' to save point label cloud.";
+    return false;
+  }
+  point_label_cloud_file << "x,y,z,r,g,b,id,label,changeStatus,changeStatusId"
+                         << std::endl;
+  for (const auto& submap : *undetected_submaps_) {
     std::vector<ColoredIsoSurfacePoint> surface_points =
         submap.computeColoredIsoSurfacePoints();
     for (const ColoredIsoSurfacePoint& point : surface_points) {
