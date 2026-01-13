@@ -68,6 +68,7 @@ add_library(${PROJECT_NAME} SHARED
         src/visualization/planning_visualizer.cpp
         src/visualization/tracking_visualizer.cpp
         src/visualization/changed_submap_visualizer.cpp
+        src/visualization/visulizer_bridge.cpp
         src/conversions/conversions.cpp
         )
 
@@ -101,6 +102,18 @@ target_link_libraries(panoptic_mapper_node
 )
 ament_target_dependencies(panoptic_mapper_node ${DEPENDENCIES_COMBINE})
 
+# Visulizer bridge node
+add_executable(visulizer_bridge_node
+  app/visulizer_bridge_node.cpp
+)
+target_link_libraries(visulizer_bridge_node
+    ${PROJECT_NAME} 
+    glog::glog
+)
+ament_target_dependencies(visulizer_bridge_node
+  ${DEPENDENCIES_COMBINE}
+)
+
 ###########
 # Export #
 ###########
@@ -113,7 +126,7 @@ install(TARGETS ${${PROJECT_NAME}_TARGETS}
     RUNTIME DESTINATION lib
 )
 
-install(TARGETS panoptic_mapper_node
+install(TARGETS panoptic_mapper_node visulizer_bridge_node
     RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 

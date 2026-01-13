@@ -14,6 +14,7 @@ def generate_launch_description():
     use_detectron_arg = DeclareLaunchArgument('use_detectron',
                                               default_value='true')
     visualize_arg = DeclareLaunchArgument('visualize', default_value='true')
+    use_visulizer_bridge_arg = DeclareLaunchArgument('use_visulizer_bridge', default_value='false')
 
     config_arg = DeclareLaunchArgument(
         'config', default_value='realsense_owlvit_sam_online.yaml')
@@ -37,7 +38,7 @@ def generate_launch_description():
         executable='panoptic_mapper_node',
         name='panoptic_mapper',
         output='screen',
-        # prefix=['xterm -e gdb -ex run --args'],
+        # prefix=['gnome-terminal -- gdb -ex run --args'],
         parameters=[{
             'config_path':
             PathJoinSubstitution([
@@ -59,6 +60,23 @@ def generate_launch_description():
         on_exit=Shutdown()
         if LaunchConfiguration('shutdown_when_finished') == 'true' else [])
 
+
+    # 与软件交互的节点
+    visulizer_bridge_node = Node(
+        package='panoptic_mapping_ros',
+        executable='visulizer_bridge_node',
+        name='visulizer_bridge_node',
+        output='screen',
+        # prefix=['gnome-terminal -- gdb -ex run --args'],
+        parameters=[{
+            'log_dir': os.path.expanduser('/home/xiangweizeng/3D_slam/sematic-mapping/panoptic_mapping_ws/logs')
+        }],
+        remappings=[
+            ('visualization/submaps/mesh', '/visualization/submaps/mesh'),
+            ('visualization/converted_mesh', '/visualization/converted_mesh'),
+        ],
+        condition=IfCondition(LaunchConfiguration('use_visulizer_bridge')))
+
     # RVIZ 可视化节点
     rviz_node = Node(package='rviz2',
                      executable='rviz2',
@@ -77,6 +95,7 @@ def generate_launch_description():
         use_rio_arg,
         use_detectron_arg,
         visualize_arg,
+        use_visulizer_bridge_arg,
         config_arg,
         shutdown_when_finished_arg,
         load_map_arg,
@@ -84,5 +103,6 @@ def generate_launch_description():
 
         # 主要节点
         mapper_node,
+        visulizer_bridge_node,
         rviz_node
     ])
