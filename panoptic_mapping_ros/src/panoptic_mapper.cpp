@@ -865,6 +865,7 @@ void PanopticMapper::publishColoredPointCloud(InputData* input) {
 bool PanopticMapper::saveMap(const std::string& file_path) {
   // 保存地图时先 finish，否则保存的地图可能有问题
   map_manager_->finishMapping(submaps_.get());
+  submap_visualizer_->visualizeAll(submaps_.get());
 
   bool success = submaps_->saveToFile(file_path);
   LOG_IF(INFO, success) << "Successfully saved " << submaps_->size()

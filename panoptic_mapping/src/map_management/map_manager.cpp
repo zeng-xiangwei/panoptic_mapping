@@ -201,11 +201,13 @@ void MapManager::finishMapping(SubmapCollection* submaps) {
   LOG_IF(INFO, config_.verbosity >= 3) << info.str();
 
   // Deactivate last submaps.
+  std::vector<int> deactivated_ids;
   for (Submap& submap : *submaps) {
     if (submap.isActive()) {
       LOG_IF(INFO, config_.verbosity >= 3)
           << "Deactivating submap " << submap.getID();
       submap.finishActivePeriod();
+      deactivated_ids.push_back(submap.getID());
     }
   }
   LOG_IF(INFO, config_.verbosity >= 3) << "Merging Submaps:";
@@ -213,7 +215,12 @@ void MapManager::finishMapping(SubmapCollection* submaps) {
   // Merge what is possible.
   bool merged_something = true;
   while (merged_something) {
-    for (Submap& submap : *submaps) {
+    // 仅对 deactivated 的 submap 进行合并，保证新的合并到老的中
+    for (int id : deactivated_ids) {
+      if (submaps->submapIdExists(id) == false) {
+        continue;
+      }
+      Submap& submap = *submaps->getSubmapPtr(id);
       int merged_id = submap.getID();
       int current_id = submap.getID();
       merged_something = mergeSubmapIfPossible(submaps, current_id, &merged_id);
