@@ -40,6 +40,7 @@ void InputSynchronizer::Config::setupParamsAndPrinting() {
   setupParam("depth_type", &depth_type);
   setupParam("color_msg_type", &color_msg_type);
   setupParam("tf_pose_delay", &tf_pose_delay);
+  setupParam("qos_type", &qos_type);
 }
 
 InputSynchronizer::InputSynchronizer(const Config& config,

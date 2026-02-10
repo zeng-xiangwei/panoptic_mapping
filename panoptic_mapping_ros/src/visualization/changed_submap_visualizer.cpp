@@ -419,10 +419,11 @@ void ChangedSubmapVisualizer::publishChangesForVln(
     // TODO: 目前依靠是否有类别名这个字段来判断是否有 vllm 描述信息
     if (!info.vllm_descripts.class_name.empty()) {
       vln_msgs::msg::ObjectGenerate obj_vllm_info;
-      obj_vllm_info.id = info.id;
+      obj_vllm_info.bbox.id = info.id;
       obj_vllm_info.object_name = info.vllm_descripts.class_name;
       obj_vllm_info.shape = info.vllm_descripts.shape;
       obj_vllm_info.color = info.vllm_descripts.color;
+      obj_vllm_info.description = info.vllm_descripts.other_descs;
       result.update_obj_descriptions.push_back(obj_vllm_info);
     }
 

@@ -18,6 +18,7 @@ set(msg_files
   "msg/ObjectGenerate.msg"
   "msg/ObjectRelationship.msg"
   "msg/ObjectSearch.msg"
+  "msg/BBox.msg"
 )
 
 set(srv_files

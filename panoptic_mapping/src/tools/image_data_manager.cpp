@@ -315,78 +315,49 @@ ImageDataManager::getFirstNotProcessedImageDataForVLLM() {
   return image_data;
 }
 
-void ImageDataManager::processVLLMOutput(const VLLMOutputData& vllm_output,
-                                         SubmapCollection& submaps) {
-  std::lock_guard<std::mutex> lock(mutex_);
+std::unordered_map<int, std::unordered_map<int, float>>
+ImageDataManager::associateSubmapAndVLLMBBox(
+    const VLLMOutputData& vllm_output, std::shared_ptr<ImageData> image_data) {
+  std::unordered_map<int, std::unordered_map<int, float>>
+      box_submap_associations;
 
-  // 获取对应的图像数据
-  auto image_data = getImageData(vllm_output.image_id);
-  if (!image_data) {
-    LOG(WARNING) << "VLLM output references non-existent image ID: "
-                 << vllm_output.image_id;
-    return;
-  }
-
-  // 标记图像为已处理
-  markImageAsProcessed(vllm_output.image_id);
-
-  // 根据 mask 图像，计算每个 submap 的 box，vector 中存储的是 xmin ymin xmax
-  // ymax
-  std::unordered_map<int, Eigen::Vector4i> submap_with_boxes;
-  for (int x = 0; x < image_data->id_image_data.cols; ++x) {
-    for (int y = 0; y < image_data->id_image_data.rows; ++y) {
-      int submap_id = image_data->id_image_data.at<int32_t>(y, x);
-      if (submap_id < 0) {
-        continue;
-      }
-
-      if (submap_with_boxes.count(submap_id) == 0) {
-        int int_max = std::numeric_limits<int>::max();
-        submap_with_boxes[submap_id] = Eigen::Vector4i(int_max, int_max, 0, 0);
-      }
-      Eigen::Vector4i& bbox = submap_with_boxes[submap_id];
-      bbox[0] = std::min(bbox[0], x);
-      bbox[1] = std::min(bbox[1], y);
-      bbox[2] = std::max(bbox[2], x);
-      bbox[3] = std::max(bbox[3], y);
+  bool use_box_id_as_submap_id = false;
+  for (const auto& bbox_info : vllm_output.bounding_boxes_info) {
+    if (bbox_info.box_id_is_submap_id) {
+      use_box_id_as_submap_id = true;
+      break;
     }
   }
 
-  if (config_.verbosity >= 3) {
-    for (const auto& [submap_id, bbox] : submap_with_boxes) {
-      LOG(INFO) << "Submap " << submap_id
-                << " has box(xymin xymax): " << bbox.transpose();
+  // 直接使用box ID作为submap ID进行关联（如果启用该选项）
+  if (use_box_id_as_submap_id) {
+    LOG(INFO) << "Using box ID as submap ID for association.";
+    for (const auto& bbox_info : vllm_output.bounding_boxes_info) {
+      if (bbox_info.box_id_is_submap_id) {
+        int submap_id = bbox_info.id;
+        box_submap_associations[bbox_info.id][submap_id] =
+            1.0f;  // 假设完全匹配
+      }
     }
+    return box_submap_associations;
   }
 
   // 统计 box 与 submap 的匹配关系，用来构造 box 和 submap 的一对一关系 <box_id,
   // <submap_id, IoU>>
-  std::unordered_map<int, std::unordered_map<int, float>>
-      box_submap_associations;
-  const auto& submap_with_class_name = image_data->associated_submaps;
+  const auto& submaps_in_image = image_data->associated_submaps;
   for (const auto& bbox_info : vllm_output.bounding_boxes_info) {
     const cv::Rect& vllm_bbox = bbox_info.bounding_box;
     std::string bbox_class_name = bbox_info.description.class_name;
 
     // 计算每个关联submap与边界框的IoU
     std::unordered_map<int, float> submap_ious;
-    for (const auto& [submap_id, submap_bbox] : submap_with_boxes) {
-      if (submap_with_class_name.count(submap_id) == 0) {
-        LOG(INFO) << "Submap: " << submap_id
-                  << ",does not have a class name associated with Image ID: "
-                  << image_data->image_id;
-        continue;
-      }
-
-      std::string submap_class_name = submap_with_class_name.at(submap_id);
+    for (const auto& [submap_id, submap_data] : submaps_in_image) {
+      std::string submap_class_name = submap_data.class_name;
       if (submap_class_name != bbox_class_name) {
         continue;
       }
 
-      // submap_bbox: [xmin, ymin, xmax, ymax]
-      cv::Rect submap_rect(submap_bbox[0], submap_bbox[1],
-                           submap_bbox[2] - submap_bbox[0] + 1,
-                           submap_bbox[3] - submap_bbox[1] + 1);
+      cv::Rect submap_rect = submap_data.bounding_box;
 
       // 计算两个边界框的交集区域
       cv::Rect intersection = submap_rect & vllm_bbox;
@@ -436,6 +407,30 @@ void ImageDataManager::processVLLMOutput(const VLLMOutputData& vllm_output,
     }
   }
 
+  return box_submap_associations;
+}
+
+void ImageDataManager::processVLLMOutput(const VLLMOutputData& vllm_output,
+                                         SubmapCollection& submaps) {
+  std::lock_guard<std::mutex> lock(mutex_);
+
+  // 获取对应的图像数据
+  auto image_data = getImageData(vllm_output.image_id);
+  if (!image_data) {
+    LOG(WARNING) << "VLLM output references non-existent image ID: "
+                 << vllm_output.image_id;
+    return;
+  }
+
+  // 标记图像为已处理
+  markImageAsProcessed(vllm_output.image_id);
+
+  // 统计 box 与 submap 的匹配关系，用来构造 box 和 submap 的一对一关系 <box_id,
+  // <submap_id, IoU>>
+  std::unordered_map<int, std::unordered_map<int, float>>
+      box_submap_associations =
+          associateSubmapAndVLLMBBox(vllm_output, image_data);
+
   // 取 box 和 submap 一一对应的结果，构造 submap 之间的关系
   // TODO: 可能出现 1 个 submap 对应多个 box
   // 的情况，暂时不做处理，对于物体的描述，直接做替换更新；对于物体与物体的关系，每个box都贡献一个关系
@@ -478,6 +473,7 @@ void ImageDataManager::updateSubmap(
     Submap* submap = submaps.getSubmapPtr(submap_id);
     submap->setDescriptsByVllm(box_info.description);
     submap->setHasNewVllmDescripts(true);
+    generated_vllm_desc_submap_ids_.insert(submap_id);
     LOG(INFO) << "Updating submap " << submap->getID()
               << " with bounding box (id:" << box_info.id
               << ") (Rect: " << box_info.bounding_box << ")"
@@ -545,8 +541,9 @@ void ImageDataManager::markImageAsProcessed(int image_id) {
   }
 }
 
-void ImageDataManager::associateSubmapWithImage(int submap_id, int image_id,
-                                                const Submap& submap) {
+void ImageDataManager::associateSubmapWithImage(
+    int submap_id, int image_id, const Submap& submap,
+    const Eigen::Vector4i& bounding_box) {
   if (!config_.enable_image_management) {
     return;
   }
@@ -558,7 +555,13 @@ void ImageDataManager::associateSubmapWithImage(int submap_id, int image_id,
   // 在图像数据中也记录关联
   auto it = image_data_.find(image_id);
   if (it != image_data_.end()) {
-    it->second->associated_submaps[submap_id] = submap.getClassName();
+    SubmapData submap_data;
+    submap_data.submap_id = submap_id;
+    submap_data.bounding_box = cv::Rect(bounding_box[0], bounding_box[1],
+                                        bounding_box[2] - bounding_box[0] + 1,
+                                        bounding_box[3] - bounding_box[1] + 1);
+    submap_data.class_name = submap.getClassName();
+    it->second->associated_submaps[submap_id] = submap_data;
     LOG_IF(INFO, config_.verbosity >= 3)
         << "Associated submap " << submap_id << " with image " << image_id;
   }
@@ -796,6 +799,28 @@ void ImageDataManager::autoAssociateSubmaps(int image_id,
     }
   }
 
+  // 根据 mask 图像，计算每个 submap 的 box，vector 中存储的是 xmin ymin xmax
+  // ymax
+  std::unordered_map<int, Eigen::Vector4i> submap_with_boxes;
+  for (int x = 0; x < id_image.cols; ++x) {
+    for (int y = 0; y < id_image.rows; ++y) {
+      int submap_id = id_image.at<int32_t>(y, x);
+      if (submap_id < 0) {
+        continue;
+      }
+
+      if (submap_with_boxes.count(submap_id) == 0) {
+        int int_max = std::numeric_limits<int>::max();
+        submap_with_boxes[submap_id] = Eigen::Vector4i(int_max, int_max, 0, 0);
+      }
+      Eigen::Vector4i& bbox = submap_with_boxes[submap_id];
+      bbox[0] = std::min(bbox[0], x);
+      bbox[1] = std::min(bbox[1], y);
+      bbox[2] = std::max(bbox[2], x);
+      bbox[3] = std::max(bbox[3], y);
+    }
+  }
+
   // 关联所有在当前submap集合中存在的ID
   for (int submap_id : unique_ids) {
     if (submaps.submapIdExists(submap_id)) {
@@ -803,7 +828,11 @@ void ImageDataManager::autoAssociateSubmaps(int image_id,
       if (submap.getLabel() != PanopticLabel::kInstance) {
         continue;
       }
-      associateSubmapWithImage(submap_id, image_id, submap);
+      if (submap_with_boxes.count(submap_id) == 0) {
+        continue;
+      }
+      associateSubmapWithImage(submap_id, image_id, submap,
+                               submap_with_boxes[submap_id]);
     }
   }
 }
@@ -925,18 +954,29 @@ void ImageDataManager::saveMappingsToFile(const std::string& filepath) const {
     file.write(reinterpret_cast<const char*>(&associated_submaps_count),
                sizeof(associated_submaps_count));
 
-    // 写入每个关联的submap ID及其类名
+    // 写入每个关联的submap ID及其SubmapData
     for (const auto& submap_pair : image_data->associated_submaps) {
       int submap_id = submap_pair.first;
-      const std::string& class_name = submap_pair.second;
+      const SubmapData& submap_data = submap_pair.second;
 
       file.write(reinterpret_cast<const char*>(&submap_id), sizeof(submap_id));
 
       // 写入类名字符串长度和内容
-      uint32_t class_name_length = class_name.length();
+      uint32_t class_name_length = submap_data.class_name.length();
       file.write(reinterpret_cast<const char*>(&class_name_length),
                  sizeof(class_name_length));
-      file.write(class_name.c_str(), class_name_length);
+      file.write(submap_data.class_name.c_str(), class_name_length);
+
+      // 写入bounding box信息 (x, y, width, height)
+      file.write(reinterpret_cast<const char*>(&submap_data.bounding_box.x),
+                 sizeof(submap_data.bounding_box.x));
+      file.write(reinterpret_cast<const char*>(&submap_data.bounding_box.y),
+                 sizeof(submap_data.bounding_box.y));
+      file.write(reinterpret_cast<const char*>(&submap_data.bounding_box.width),
+                 sizeof(submap_data.bounding_box.width));
+      file.write(
+          reinterpret_cast<const char*>(&submap_data.bounding_box.height),
+          sizeof(submap_data.bounding_box.height));
     }
 
     // 写入处理状态
@@ -1044,7 +1084,7 @@ void ImageDataManager::loadMappingsFromFile(const std::string& filepath) {
     image_data->id_image_file_name.resize(id_image_file_path_length);
     file.read(&image_data->id_image_file_name[0], id_image_file_path_length);
 
-    // 读取关联的submap ID及类名
+    // 读取关联的submap ID及SubmapData
     uint32_t associated_submaps_count;
     file.read(reinterpret_cast<char*>(&associated_submaps_count),
               sizeof(associated_submaps_count));
@@ -1060,7 +1100,24 @@ void ImageDataManager::loadMappingsFromFile(const std::string& filepath) {
       std::string class_name(class_name_length, '\0');
       file.read(&class_name[0], class_name_length);
 
-      image_data->associated_submaps[submap_id] = class_name;
+      // 读取bounding box信息
+      cv::Rect bounding_box;
+      file.read(reinterpret_cast<char*>(&bounding_box.x),
+                sizeof(bounding_box.x));
+      file.read(reinterpret_cast<char*>(&bounding_box.y),
+                sizeof(bounding_box.y));
+      file.read(reinterpret_cast<char*>(&bounding_box.width),
+                sizeof(bounding_box.width));
+      file.read(reinterpret_cast<char*>(&bounding_box.height),
+                sizeof(bounding_box.height));
+
+      // 构造SubmapData并插入到associated_submaps中
+      SubmapData submap_data;
+      submap_data.submap_id = submap_id;
+      submap_data.class_name = class_name;
+      submap_data.bounding_box = bounding_box;
+
+      image_data->associated_submaps[submap_id] = submap_data;
     }
 
     // 读取处理状态
@@ -1224,7 +1281,7 @@ void ImageDataManager::visualVllmOutput(
     std::string class_name = "Background";
     if (image_data->associated_submaps.find(submap_id) !=
         image_data->associated_submaps.end()) {
-      class_name = image_data->associated_submaps.at(submap_id);
+      class_name = image_data->associated_submaps.at(submap_id).class_name;
     }
 
     // 构造显示文本
@@ -1295,8 +1352,12 @@ void ImageDataManager::visualVllmOutput(
 
     for (size_t i = 0; i < vllm_output.bounding_boxes_info.size(); ++i) {
       const auto& bbox_info = vllm_output.bounding_boxes_info[i];
+      const cv::Rect& bbox = bbox_info.bounding_box;
       description_file << "Box\n";
       description_file << "  ID: " << bbox_info.id << "\n";
+      description_file << "  bbox: [" << bbox.x << ", " << bbox.y << ", "
+                       << (bbox.x + bbox.width) << ", "
+                       << (bbox.y + bbox.height) << "]\n";
       description_file << "  Description: " << bbox_info.description.toString()
                        << "\n";
       description_file << "\n";

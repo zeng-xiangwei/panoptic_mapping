@@ -30,6 +30,9 @@ class InputSynchronizer : public InputSynchronizerBase {
  public:
   struct Config : public config_utilities::Config<Config> {
     int verbosity = 2;
+    // qos type for subscribing to input topics. Options: "best_effort",
+    // "reliable".
+    std::string qos_type = "best_effort";
     int max_input_queue_length = 10;  // Number of data points per type stored
     // before old data starts being discarded.
     std::string global_frame_name = "mission";
@@ -114,9 +117,20 @@ class InputSynchronizer : public InputSynchronizerBase {
                 std::function<void(const typename MsgT::SharedPtr,
                                    InputSynchronizerData*)>
                     extraction_function) {
+    rclcpp::QoS qos_profile(config_.max_input_queue_length);
+    if (config_.qos_type == "reliable") {
+      LOG(INFO) << "Using reliable qos profile, for msg type: "
+                << InputData::inputTypeToString(type);
+      qos_profile.reliable();
+    } else {
+      // 默认用 best_effort
+      LOG(INFO) << "Using best_effort qos profile, for msg type: "
+                << InputData::inputTypeToString(type);
+      qos_profile.best_effort();
+    }
     subscribers_.emplace_back(std::make_unique<InputSubscriber<MsgT>>(
-        node_, kDefaultTopicNames_.at(type), config_.max_input_queue_length,
-        extraction_function, this));
+        node_, kDefaultTopicNames_.at(type), qos_profile, extraction_function,
+        this));
   }
 
   /**

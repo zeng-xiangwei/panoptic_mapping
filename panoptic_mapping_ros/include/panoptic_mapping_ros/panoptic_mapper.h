@@ -28,6 +28,7 @@
 
 #include "panoptic_mapping/integration/single_tsdf_for_undetected.h"
 #include "panoptic_mapping/tools/image_data_manager.h"
+#include "panoptic_mapping_msgs/msg/b_box.hpp"
 #include "panoptic_mapping_msgs/msg/get_object_info_mode.hpp"
 #include "panoptic_mapping_msgs/srv/get_object_info.hpp"
 #include "panoptic_mapping_msgs/srv/get_submap_image_data.hpp"
@@ -38,6 +39,7 @@
 #include "panoptic_mapping_ros/visualization/tracking_visualizer.h"
 
 #ifdef VLN_MSGS_FOUND
+#include "vln_msgs/msg/b_box.hpp"
 #include "vln_msgs/msg/get_object_info_mode.hpp"
 #include "vln_msgs/srv/get_object_info.hpp"
 #include "vln_msgs/srv/get_submap_image_data.hpp"
@@ -50,10 +52,12 @@ class PanopticMapper {
   using GetSubmapImageData = vln_msgs::srv::GetSubmapImageData;
   using VLLMProcessing = vln_msgs::srv::GetObjectInfo;
   using VLLMProcessingMode = vln_msgs::msg::GetObjectInfoMode;
+  using VLLMProcessingBBox = vln_msgs::msg::BBox;
 #else
   using GetSubmapImageData = panoptic_mapping_msgs::srv::GetSubmapImageData;
   using VLLMProcessing = panoptic_mapping_msgs::srv::GetObjectInfo;
   using VLLMProcessingMode = panoptic_mapping_msgs::msg::GetObjectInfoMode;
+  using VLLMProcessingBBox = panoptic_mapping_msgs::msg::BBox;
 #endif
 
  public:
@@ -220,12 +224,14 @@ class PanopticMapper {
 
   // 图像管理线程函数
   void imageManagementThread();
-  void vllmProcessingResponse(VLLMProcessing::Response::SharedPtr response);
+  void vllmProcessingResponse(VLLMProcessing::Response::SharedPtr response,
+                              VLLMProcessing::Request::SharedPtr request);
   // 获取图像管理模块未处理的图像数据，并调用VL大模型服务进行处理
   void processNotProcessedImageDataForVLLM();
   // 组织VLLM的请求内容
   VLLMProcessing::Request::SharedPtr prepareVllmRequest(
-      std::shared_ptr<ImageData> image_data);
+      std::shared_ptr<ImageData> image_data,
+      const std::unordered_set<int>& generated_vllm_submap_ids);
   bool callVLLMServiceWithRetry(VLLMProcessing::Request::SharedPtr request,
                                 VLLMProcessing::Response::SharedPtr& response,
                                 int max_retries = 0);

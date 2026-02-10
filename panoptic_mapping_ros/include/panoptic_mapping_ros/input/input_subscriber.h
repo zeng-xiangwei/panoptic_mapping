@@ -72,7 +72,7 @@ template <typename MsgT>
 class InputSubscriber : public InputSubscriberBase {
  public:
   InputSubscriber(rclcpp::Node::SharedPtr node, const std::string& topic_name,
-                  int queue_size,
+                  rclcpp::QoS qos_profile,
                   std::function<void(const typename MsgT::SharedPtr,
                                      InputSynchronizerData*)>
                       extraction_function,
@@ -82,7 +82,7 @@ class InputSubscriber : public InputSubscriberBase {
         parent_(parent) {
     // Subscribe to the topic.
     subscriber_ = node_->create_subscription<MsgT>(
-        topic_name, queue_size,
+        topic_name, qos_profile,
         [this](const typename MsgT::SharedPtr msg) { this->msgCallback(msg); });
   }
 

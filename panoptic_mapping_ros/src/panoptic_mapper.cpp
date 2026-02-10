@@ -375,7 +375,8 @@ void PanopticMapper::inputCallback() {
         LOG(INFO) << "Adding one image data took "
                   << std::chrono::duration_cast<std::chrono::milliseconds>(t1 -
                                                                            t0)
-                         .count();
+                         .count()
+                  << " ms";
       }
       image_management_cv_.notify_one();
     }
@@ -554,13 +555,25 @@ void PanopticMapper::processNotProcessedImageDataForVLLM() {
 
       std::chrono::system_clock::time_point t_service_0 =
           std::chrono::system_clock::now();
-      // // 异步调用VL大模型服务，并等待结果，达到与同步一样的效果
-      auto request = prepareVllmRequest(image_data);
+      // 异步调用VL大模型服务，并等待结果，达到与同步一样的效果
+      const std::unordered_set<int>& generated_vllm_submap_ids =
+          image_data_manager_->getGeneratedVLLMSubmapIDs();
+      LOG(INFO) << "generated vllm submaps size: "
+                << generated_vllm_submap_ids.size();
+      auto request = prepareVllmRequest(image_data, generated_vllm_submap_ids);
+
+      // 如果请求中没有物体，则跳过
+      if (request->image.object_names.empty()) {
+        LOG(INFO) << "No new associated submaps for image, skipping image"
+                  << image_data->image_id;
+        continue;
+      }
+
       VLLMProcessing::Response::SharedPtr response;
       bool success =
           callVLLMServiceWithRetry(request, response, config_.vllm_max_retries);
       if (success) {
-        vllmProcessingResponse(response);
+        vllmProcessingResponse(response, request);
       }
       // TODO: 服务调用失败是是否需要记录
 
@@ -623,7 +636,9 @@ bool PanopticMapper::callVLLMServiceWithRetry(
 }
 
 PanopticMapper::VLLMProcessing::Request::SharedPtr
-PanopticMapper::prepareVllmRequest(std::shared_ptr<ImageData> image_data) {
+PanopticMapper::prepareVllmRequest(
+    std::shared_ptr<ImageData> image_data,
+    const std::unordered_set<int>& generated_vllm_submap_ids) {
   auto request = std::make_shared<VLLMProcessing::Request>();
   request->image.image_id = image_data->image_id;
 
@@ -636,17 +651,47 @@ PanopticMapper::prepareVllmRequest(std::shared_ptr<ImageData> image_data) {
   request->image.image = *cv_image.toImageMsg();
 
   request->image.mode = VLLMProcessingMode::GENERATE_MODE;
-  for (const auto& [submap_id, submap_name] : image_data->associated_submaps) {
-    request->image.object_names.push_back(submap_name);
+  for (const auto& [submap_id, submap_data] : image_data->associated_submaps) {
+    if (generated_vllm_submap_ids.count(submap_id) > 0) {
+      continue;
+    }
+    request->image.object_names.push_back(submap_data.class_name);
+    VLLMProcessingBBox bbox;
+    bbox.bbox.push_back(submap_data.bounding_box.x);
+    bbox.bbox.push_back(submap_data.bounding_box.y);
+    bbox.bbox.push_back(submap_data.bounding_box.x +
+                        submap_data.bounding_box.width - 1);
+    bbox.bbox.push_back(submap_data.bounding_box.y +
+                        submap_data.bounding_box.height - 1);
+    bbox.id = submap_id;
+    request->image.bboxes.push_back(bbox);
   }
+  LOG(INFO) << "submap nums in image: " << image_data->associated_submaps.size()
+            << ", after filtering: " << request->image.object_names.size();
   return request;
 }
 
 // VL大模型服务响应的回调函数
 void PanopticMapper::vllmProcessingResponse(
-    VLLMProcessing::Response::SharedPtr response) {
+    VLLMProcessing::Response::SharedPtr response,
+    VLLMProcessing::Request::SharedPtr request) {
   // 获取响应结果
   std::chrono::system_clock::time_point t0 = std::chrono::system_clock::now();
+
+  // 根据请求的信息为输出结果增加信息，因为VL大模型的输出可能没有请求中所有的信息（比如object_name），后续可以根据需要调整
+  std::unordered_map<int, SubmapData> submap_id_to_name_map;
+  for (size_t i = 0; i < request->image.bboxes.size(); ++i) {
+    int submap_id = request->image.bboxes[i].id;
+    std::string object_name = request->image.object_names[i];
+    SubmapData& submap_data = submap_id_to_name_map[submap_id];
+    submap_data.class_name = object_name;
+    submap_data.submap_id = submap_id;
+    submap_data.bounding_box = cv::Rect(
+        request->image.bboxes[i].bbox[0], request->image.bboxes[i].bbox[1],
+        request->image.bboxes[i].bbox[2] - request->image.bboxes[i].bbox[0] + 1,
+        request->image.bboxes[i].bbox[3] - request->image.bboxes[i].bbox[1] +
+            1);
+  }
 
   // 检查服务调用是否成功
   if (!response->success) {
@@ -660,17 +705,38 @@ void PanopticMapper::vllmProcessingResponse(
 
   // 转换边界框信息
   for (const auto& bbox_msg : response->objects) {
+    if (submap_id_to_name_map.count(bbox_msg.bbox.id) == 0) {
+      LOG(ERROR) << "bbox id: " << bbox_msg.bbox.id << " not found in request";
+      continue;
+    }
     BoundingBoxInfoByVLLM bbox_info;
-    bbox_info.id = bbox_msg.id;
+    bbox_info.id = bbox_msg.bbox.id;
+    const SubmapData& submap_data = submap_id_to_name_map[bbox_info.id];
+
+    // 默认使用submap_id作为box_id，后续如果有变更再进行调整
+    bbox_info.box_id_is_submap_id = true;
+
     // 因为 VL 大模型返回的字符串可能在首尾包含多余的空格，进行过滤
-    bbox_info.description.class_name = trimString(bbox_msg.object_name);
-    int xmin = bbox_msg.bbox[0], ymin = bbox_msg.bbox[1];
-    int xmax = bbox_msg.bbox[2], ymax = bbox_msg.bbox[3];
-    int width = xmax - xmin;
-    int height = ymax - ymin;
-    bbox_info.bounding_box = cv::Rect(xmin, ymin, width, height);
+    if (trimString(bbox_msg.object_name) != "") {
+      bbox_info.description.class_name = trimString(bbox_msg.object_name);
+    } else {
+      // VL 大模型没有返回类别信息，使用submap_id对应的类别信息
+      bbox_info.description.class_name = submap_data.class_name;
+    }
+
+    LOG(INFO) << "bbox_msg.bbox.bbox size:" << bbox_msg.bbox.bbox.size();
+    if (bbox_msg.bbox.bbox.size() == 4) {
+      int xmin = bbox_msg.bbox.bbox[0], ymin = bbox_msg.bbox.bbox[1];
+      int xmax = bbox_msg.bbox.bbox[2], ymax = bbox_msg.bbox.bbox[3];
+      int width = xmax - xmin;
+      int height = ymax - ymin;
+      bbox_info.bounding_box = cv::Rect(xmin, ymin, width, height);
+    } else {
+      bbox_info.bounding_box = submap_data.bounding_box;
+    }
     bbox_info.description.color = trimString(bbox_msg.color);
     bbox_info.description.shape = trimString(bbox_msg.shape);
+    bbox_info.description.other_descs = trimString(bbox_msg.description);
     vllm_output.bounding_boxes_info.push_back(bbox_info);
   }
 

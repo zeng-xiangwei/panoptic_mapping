@@ -16,6 +16,13 @@
 
 namespace panoptic_mapping {
 
+struct SubmapData {
+  int submap_id;
+  std::string class_name;
+  // box 框
+  cv::Rect bounding_box;
+};
+
 // 存储单个图像的信息
 struct ImageData {
   int image_id;                     // 图像唯一ID
@@ -24,7 +31,7 @@ struct ImageData {
   std::string id_image_file_name;   // ID图像文件名
   // 关联的submap IDs
   // 及其类别名，后续类别名可能替换为一个结构体，用来存储类别名+2d boundingbox
-  std::unordered_map<int, std::string> associated_submaps;
+  std::unordered_map<int, SubmapData> associated_submaps;
   bool is_processed = false;  // 是否已被VL大模型处理
 
   // 内存中的实际图像数据（仅在缓存中存在）
@@ -52,6 +59,8 @@ struct BoundingBoxInfoByVLLM {
   int id;
   // box 框
   cv::Rect bounding_box;
+  // 如果 id 是 submap id, 则直接用 id 去获取对应的 submap
+  bool box_id_is_submap_id = false;
   // 自身描述，类别名、颜色、形状、其他描述
   VllmDescription description;
 
@@ -135,6 +144,10 @@ class ImageDataManager {
   // 加载图片信息、更新图片的最大 id
   void loadMap();
 
+  const std::unordered_set<int>& getGeneratedVLLMSubmapIDs() const {
+    return generated_vllm_desc_submap_ids_;
+  }
+
  private:
   // 获取删除的 submap，并执行删除路基
   void getAndRemoveSubmap(const SubmapCollection& submaps);
@@ -152,7 +165,8 @@ class ImageDataManager {
 
   // 建立submap和图像之间的关联
   void associateSubmapWithImage(int submap_id, int image_id,
-                                const Submap& submap);
+                                const Submap& submap,
+                                const Eigen::Vector4i& bounding_box);
 
   // 解除submap和图像之间的关联
   void dissociateSubmapFromImage(int submap_id, int image_id);
@@ -213,6 +227,11 @@ class ImageDataManager {
                         std::shared_ptr<ImageData> image_data,
                         std::unordered_map<int, int> box_submap_pair);
 
+  // 将VLLM输出的bbox与submap关联
+  std::unordered_map<int, std::unordered_map<int, float>>
+  associateSubmapAndVLLMBBox(const VLLMOutputData& vllm_output,
+                             std::shared_ptr<ImageData> image_data);
+
  private:
   const Config config_;
 
@@ -246,6 +265,9 @@ class ImageDataManager {
 
   // 存储上一轮的 submap id，用于检测变化
   std::set<int> last_submap_ids_;
+
+  // 记录已经为其生成过VLLM描述信息的submap ID，避免重复生成
+  std::unordered_set<int> generated_vllm_desc_submap_ids_;
 };
 
 }  // namespace panoptic_mapping
