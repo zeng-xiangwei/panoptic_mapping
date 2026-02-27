@@ -560,22 +560,32 @@ void PanopticMapper::processNotProcessedImageDataForVLLM() {
           image_data_manager_->getGeneratedVLLMSubmapIDs();
       LOG(INFO) << "generated vllm submaps size: "
                 << generated_vllm_submap_ids.size();
-      auto request = prepareVllmRequest(image_data, generated_vllm_submap_ids);
+      std::vector<VLLMProcessing::Request::SharedPtr> requests =
+          prepareVllmRequest(image_data, generated_vllm_submap_ids);
 
       // 如果请求中没有物体，则跳过
-      if (request->image.object_names.empty()) {
+      if (requests.empty()) {
         LOG(INFO) << "No new associated submaps for image, skipping image"
                   << image_data->image_id;
         continue;
       }
 
-      VLLMProcessing::Response::SharedPtr response;
-      bool success =
-          callVLLMServiceWithRetry(request, response, config_.vllm_max_retries);
-      if (success) {
-        vllmProcessingResponse(response, request);
+      VLLMOutputData vllm_output;
+      vllm_output.image_id = image_data->image_id;
+      for (const auto& request : requests) {
+        VLLMProcessing::Response::SharedPtr response;
+        bool success = callVLLMServiceWithRetry(request, response,
+                                                config_.vllm_max_retries);
+        if (success) {
+          vllmProcessingResponse(response, request, vllm_output);
+        }
       }
-      // TODO: 服务调用失败是是否需要记录
+
+      // 调用图像管理模块处理函数
+      {
+        std::lock_guard<std::mutex> lock(node_mutex_);
+        image_data_manager_->processVLLMOutput(vllm_output, *submaps_);
+      }
 
       std::chrono::system_clock::time_point t_service_1 =
           std::chrono::system_clock::now();
@@ -635,27 +645,30 @@ bool PanopticMapper::callVLLMServiceWithRetry(
   return false;
 }
 
-PanopticMapper::VLLMProcessing::Request::SharedPtr
+std::vector<PanopticMapper::VLLMProcessing::Request::SharedPtr>
 PanopticMapper::prepareVllmRequest(
     std::shared_ptr<ImageData> image_data,
     const std::unordered_set<int>& generated_vllm_submap_ids) {
-  auto request = std::make_shared<VLLMProcessing::Request>();
-  request->image.image_id = image_data->image_id;
-
-  cv_bridge::CvImage cv_image;
-  cv_image.header.stamp =
-      rclcpp::Time(static_cast<int64_t>(image_data->timestamp * 1e9));
-  cv_image.header.frame_id = "image";
-  cv_image.encoding = "rgb8";
-  cv::cvtColor(image_data->rgb_data, cv_image.image, cv::COLOR_BGR2RGB);
-  request->image.image = *cv_image.toImageMsg();
-
-  request->image.mode = VLLMProcessingMode::GENERATE_MODE;
+  std::vector<VLLMProcessing::Request::SharedPtr> requests;
   for (const auto& [submap_id, submap_data] : image_data->associated_submaps) {
     if (generated_vllm_submap_ids.count(submap_id) > 0) {
       continue;
     }
-    request->image.object_names.push_back(submap_data.class_name);
+
+    auto request = std::make_shared<VLLMProcessing::Request>();
+    request->image.image_id = image_data->image_id;
+
+    cv_bridge::CvImage cv_image;
+    cv_image.header.stamp =
+        rclcpp::Time(static_cast<int64_t>(image_data->timestamp * 1e9));
+    cv_image.header.frame_id = "image";
+    cv_image.encoding = "rgb8";
+    cv::cvtColor(image_data->rgb_data, cv_image.image, cv::COLOR_BGR2RGB);
+    request->image.image = *cv_image.toImageMsg();
+
+    request->image.mode = VLLMProcessingMode::GENERATE_MODE;
+    // 新格式：object_name 是字符串，bbox 是单个BBox
+    request->image.object_name = submap_data.class_name;
     VLLMProcessingBBox bbox;
     bbox.bbox.push_back(submap_data.bounding_box.x);
     bbox.bbox.push_back(submap_data.bounding_box.y);
@@ -664,105 +677,72 @@ PanopticMapper::prepareVllmRequest(
     bbox.bbox.push_back(submap_data.bounding_box.y +
                         submap_data.bounding_box.height - 1);
     bbox.id = submap_id;
-    request->image.bboxes.push_back(bbox);
+    request->image.bbox = bbox;
+
+    LOG(INFO) << "submap nums in image: "
+              << image_data->associated_submaps.size()
+              << ", first object: " << submap_data.class_name
+              << " (submap_id: " << submap_id << ")";
+    requests.push_back(request);
   }
-  LOG(INFO) << "submap nums in image: " << image_data->associated_submaps.size()
-            << ", after filtering: " << request->image.object_names.size();
-  return request;
+  return requests;
 }
 
-// VL大模型服务响应的回调函数
+// 将服务结果转换为VLLMOutputData
 void PanopticMapper::vllmProcessingResponse(
     VLLMProcessing::Response::SharedPtr response,
-    VLLMProcessing::Request::SharedPtr request) {
-  // 获取响应结果
-  std::chrono::system_clock::time_point t0 = std::chrono::system_clock::now();
-
-  // 根据请求的信息为输出结果增加信息，因为VL大模型的输出可能没有请求中所有的信息（比如object_name），后续可以根据需要调整
-  std::unordered_map<int, SubmapData> submap_id_to_name_map;
-  for (size_t i = 0; i < request->image.bboxes.size(); ++i) {
-    int submap_id = request->image.bboxes[i].id;
-    std::string object_name = request->image.object_names[i];
-    SubmapData& submap_data = submap_id_to_name_map[submap_id];
-    submap_data.class_name = object_name;
-    submap_data.submap_id = submap_id;
-    submap_data.bounding_box = cv::Rect(
-        request->image.bboxes[i].bbox[0], request->image.bboxes[i].bbox[1],
-        request->image.bboxes[i].bbox[2] - request->image.bboxes[i].bbox[0] + 1,
-        request->image.bboxes[i].bbox[3] - request->image.bboxes[i].bbox[1] +
-            1);
-  }
-
+    VLLMProcessing::Request::SharedPtr request, VLLMOutputData& vllm_output) {
   // 检查服务调用是否成功
   if (!response->success) {
     LOG(WARNING) << "VL processing service call failed: ";
     return;
   }
 
-  // 将ROS服务响应数据转换为内部数据格式
-  VLLMOutputData vllm_output;
-  vllm_output.image_id = response->image_id;
+  // 根据请求的信息为输出结果增加信息，因为VL大模型的输出可能没有请求中所有的信息（比如object_name），后续可以根据需要调整
+  int submap_id = request->image.bbox.id;
+  std::string object_name = request->image.object_name;
+  SubmapData submap_data;
+  submap_data.class_name = object_name;
+  submap_data.submap_id = submap_id;
+  submap_data.bounding_box = cv::Rect(
+      request->image.bbox.bbox[0], request->image.bbox.bbox[1],
+      request->image.bbox.bbox[2] - request->image.bbox.bbox[0] + 1,
+      request->image.bbox.bbox[3] - request->image.bbox.bbox[1] + 1);
 
   // 转换边界框信息
-  for (const auto& bbox_msg : response->objects) {
-    if (submap_id_to_name_map.count(bbox_msg.bbox.id) == 0) {
-      LOG(ERROR) << "bbox id: " << bbox_msg.bbox.id << " not found in request";
-      continue;
-    }
-    BoundingBoxInfoByVLLM bbox_info;
-    bbox_info.id = bbox_msg.bbox.id;
-    const SubmapData& submap_data = submap_id_to_name_map[bbox_info.id];
+  const auto& bbox_msg = response->object;
+  if (submap_data.submap_id != bbox_msg.bbox.id) {
+    LOG(ERROR) << "bbox id: " << bbox_msg.bbox.id << " not found in request";
+    return;
+  }
+  BoundingBoxInfoByVLLM bbox_info;
+  bbox_info.id = bbox_msg.bbox.id;
 
-    // 默认使用submap_id作为box_id，后续如果有变更再进行调整
-    bbox_info.box_id_is_submap_id = true;
+  // 默认使用submap_id作为box_id，后续如果有变更再进行调整
+  bbox_info.box_id_is_submap_id = true;
 
-    // 因为 VL 大模型返回的字符串可能在首尾包含多余的空格，进行过滤
-    if (trimString(bbox_msg.object_name) != "") {
-      bbox_info.description.class_name = trimString(bbox_msg.object_name);
-    } else {
-      // VL 大模型没有返回类别信息，使用submap_id对应的类别信息
-      bbox_info.description.class_name = submap_data.class_name;
-    }
-
-    LOG(INFO) << "bbox_msg.bbox.bbox size:" << bbox_msg.bbox.bbox.size();
-    if (bbox_msg.bbox.bbox.size() == 4) {
-      int xmin = bbox_msg.bbox.bbox[0], ymin = bbox_msg.bbox.bbox[1];
-      int xmax = bbox_msg.bbox.bbox[2], ymax = bbox_msg.bbox.bbox[3];
-      int width = xmax - xmin;
-      int height = ymax - ymin;
-      bbox_info.bounding_box = cv::Rect(xmin, ymin, width, height);
-    } else {
-      bbox_info.bounding_box = submap_data.bounding_box;
-    }
-    bbox_info.description.color = trimString(bbox_msg.color);
-    bbox_info.description.shape = trimString(bbox_msg.shape);
-    bbox_info.description.other_descs = trimString(bbox_msg.description);
-    vllm_output.bounding_boxes_info.push_back(bbox_info);
+  // 因为 VL 大模型返回的字符串可能在首尾包含多余的空格，进行过滤
+  if (trimString(bbox_msg.object_name) != "") {
+    bbox_info.description.class_name = trimString(bbox_msg.object_name);
+  } else {
+    // VL 大模型没有返回类别信息，使用submap_id对应的类别信息
+    bbox_info.description.class_name = submap_data.class_name;
   }
 
-  for (const auto& bbox_relation_msg : response->relationships) {
-    VllmRelationship bbox_relation;
-    bbox_relation.from_id = bbox_relation_msg.from_id;
-    bbox_relation.to_id = bbox_relation_msg.to_id;
-    bbox_relation.relationship =
-        stringToRelationshipType(bbox_relation_msg.type);
-    if (bbox_relation.relationship == RelationshipType::UNKNOWN) {
-      continue;
-    }
-    vllm_output.bounding_boxes_relationships.push_back(bbox_relation);
+  LOG(INFO) << "bbox_msg.bbox.bbox size:" << bbox_msg.bbox.bbox.size();
+  if (bbox_msg.bbox.bbox.size() == 4) {
+    int xmin = bbox_msg.bbox.bbox[0], ymin = bbox_msg.bbox.bbox[1];
+    int xmax = bbox_msg.bbox.bbox[2], ymax = bbox_msg.bbox.bbox[3];
+    int width = xmax - xmin;
+    int height = ymax - ymin;
+    bbox_info.bounding_box = cv::Rect(xmin, ymin, width, height);
+  } else {
+    bbox_info.bounding_box = submap_data.bounding_box;
   }
-
-  // 调用图像管理模块处理函数
-  {
-    std::lock_guard<std::mutex> lock(node_mutex_);
-    image_data_manager_->processVLLMOutput(vllm_output, *submaps_);
-  }
-
-  std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
-  LOG(INFO)
-      << "Processing VLLM output took "
-      << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count()
-      << " ms.";
+  bbox_info.description.color = trimString(bbox_msg.color);
+  bbox_info.description.shape = trimString(bbox_msg.shape);
+  bbox_info.description.other_descs = trimString(bbox_msg.description);
+  vllm_output.bounding_boxes_info.push_back(bbox_info);
 }
 
 // 获取submap对应的图像数据服务回调（作为服务端）

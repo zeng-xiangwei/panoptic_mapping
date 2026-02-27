@@ -225,11 +225,12 @@ class PanopticMapper {
   // 图像管理线程函数
   void imageManagementThread();
   void vllmProcessingResponse(VLLMProcessing::Response::SharedPtr response,
-                              VLLMProcessing::Request::SharedPtr request);
+                              VLLMProcessing::Request::SharedPtr request,
+                              VLLMOutputData& vllm_output);
   // 获取图像管理模块未处理的图像数据，并调用VL大模型服务进行处理
   void processNotProcessedImageDataForVLLM();
   // 组织VLLM的请求内容
-  VLLMProcessing::Request::SharedPtr prepareVllmRequest(
+  std::vector<VLLMProcessing::Request::SharedPtr> prepareVllmRequest(
       std::shared_ptr<ImageData> image_data,
       const std::unordered_set<int>& generated_vllm_submap_ids);
   bool callVLLMServiceWithRetry(VLLMProcessing::Request::SharedPtr request,
