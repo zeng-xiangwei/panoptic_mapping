@@ -39,6 +39,7 @@
 
   <depend>panoptic_mapping</depend>
   <depend>panoptic_mapping_msgs</depend>
+  <depend>semantic_mapping_interfaces</depend>
 
   <depend>yaml-cpp</depend>
 

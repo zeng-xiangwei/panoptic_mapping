@@ -22,6 +22,7 @@ find_package(voxblox REQUIRED)
 find_package(voxblox_msgs REQUIRED)
 find_package(panoptic_mapping REQUIRED)
 find_package(panoptic_mapping_msgs REQUIRED)
+find_package(semantic_mapping_interfaces REQUIRED)
 
 find_package(OpenCV REQUIRED)
 find_package(PCL REQUIRED)
@@ -45,6 +46,7 @@ set(DEPENDENCIES_COMBINE
     voxblox_msgs
     panoptic_mapping
     panoptic_mapping_msgs
+    semantic_mapping_interfaces
 )
 
 if (vln_msgs_FOUND)

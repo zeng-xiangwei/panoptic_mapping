@@ -1,3 +1,5 @@
+20260302: voxblox_msgs 拿到一个公共的仓库中维护（https://gitee.com/zeng_xiangwei/vln_msgs）
+
 ![Ubuntu 18 + ROS Melodic](https://github.com/ethz-asl/panoptic_mapping/actions/workflows/build_test_18.yml/badge.svg) ![Ubuntu 20 + ROS Noetic](https://github.com/ethz-asl/panoptic_mapping/actions/workflows/build_test_20.yml/badge.svg) ![Docker](https://github.com/ethz-asl/panoptic_mapping/actions/workflows/docker-publish.yml/badge.svg)
 
 # ros2

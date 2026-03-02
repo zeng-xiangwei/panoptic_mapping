@@ -22,7 +22,6 @@ set(msg_files
 )
 
 set(srv_files
-  "srv/SaveLoadMap.srv"
   "srv/SetVisualizationMode.srv"
   "srv/RemoveSubmap.srv"
   "srv/SubmapClassNameChange.srv"

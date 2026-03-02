@@ -260,7 +260,7 @@ void PanopticMapper::setupRos() {
 
   // Services.
   save_map_srv_ =
-      node_->create_service<panoptic_mapping_msgs::srv::SaveLoadMap>(
+      node_->create_service<semantic_mapping_interfaces::srv::SaveLoadMap>(
           "save_map",
           std::bind(&PanopticMapper::saveMapCallback, this,
                     std::placeholders::_1, std::placeholders::_2),
@@ -1147,16 +1147,16 @@ bool PanopticMapper::setVisualizationModeCallback(
 }
 
 bool PanopticMapper::saveMapCallback(
-    const panoptic_mapping_msgs::srv::SaveLoadMap::Request::SharedPtr request,
-    panoptic_mapping_msgs::srv::SaveLoadMap::Response::SharedPtr response) {
+    const semantic_mapping_interfaces::srv::SaveLoadMap::Request::SharedPtr request,
+    semantic_mapping_interfaces::srv::SaveLoadMap::Response::SharedPtr response) {
   std::lock_guard<std::mutex> lock(node_mutex_);
   response->success = saveMap(request->file_path);
   return response->success;
 }
 
 bool PanopticMapper::loadMapCallback(
-    const panoptic_mapping_msgs::srv::SaveLoadMap::Request::SharedPtr request,
-    panoptic_mapping_msgs::srv::SaveLoadMap::Response::SharedPtr response) {
+    const semantic_mapping_interfaces::srv::SaveLoadMap::Request::SharedPtr request,
+    semantic_mapping_interfaces::srv::SaveLoadMap::Response::SharedPtr response) {
   response->success = loadMap(request->file_path);
   return response->success;
 }

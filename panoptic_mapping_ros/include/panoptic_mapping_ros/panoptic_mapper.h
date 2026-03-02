@@ -20,7 +20,6 @@
 #include <panoptic_mapping/tools/thread_safe_submap_collection.h>
 #include <panoptic_mapping/tracking/id_tracker_base.h>
 #include <panoptic_mapping_msgs/srv/remove_submap.hpp>
-#include <panoptic_mapping_msgs/srv/save_load_map.hpp>
 #include <panoptic_mapping_msgs/srv/set_visualization_mode.hpp>
 #include <panoptic_mapping_msgs/srv/submap_class_name_change.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -37,6 +36,8 @@
 #include "panoptic_mapping_ros/visualization/planning_visualizer.h"
 #include "panoptic_mapping_ros/visualization/submap_visualizer.h"
 #include "panoptic_mapping_ros/visualization/tracking_visualizer.h"
+
+#include "semantic_mapping_interfaces/srv/save_load_map.hpp"
 
 #ifdef VLN_MSGS_FOUND
 #include "vln_msgs/msg/b_box.hpp"
@@ -137,14 +138,14 @@ class PanopticMapper {
 
   // Services.
   bool saveMapCallback(
-      const panoptic_mapping_msgs::srv::SaveLoadMap::Request::SharedPtr
+      const semantic_mapping_interfaces::srv::SaveLoadMap::Request::SharedPtr
           request,  // NOLINT
-      panoptic_mapping_msgs::srv::SaveLoadMap::Response::SharedPtr
+      semantic_mapping_interfaces::srv::SaveLoadMap::Response::SharedPtr
           response);  // NOLINT
   bool loadMapCallback(
-      const panoptic_mapping_msgs::srv::SaveLoadMap::Request::SharedPtr
+      const semantic_mapping_interfaces::srv::SaveLoadMap::Request::SharedPtr
           request,  // NOLINT
-      panoptic_mapping_msgs::srv::SaveLoadMap::Response::SharedPtr
+      semantic_mapping_interfaces::srv::SaveLoadMap::Response::SharedPtr
           response);  // NOLINT
   bool setVisualizationModeCallback(
       const panoptic_mapping_msgs::srv::SetVisualizationMode::Request::SharedPtr
@@ -242,9 +243,9 @@ class PanopticMapper {
   rclcpp::Node::SharedPtr node_;
 
   // Subscribers, Publishers, Services, Timers.
-  rclcpp::Service<panoptic_mapping_msgs::srv::SaveLoadMap>::SharedPtr
+  rclcpp::Service<semantic_mapping_interfaces::srv::SaveLoadMap>::SharedPtr
       load_map_srv_;
-  rclcpp::Service<panoptic_mapping_msgs::srv::SaveLoadMap>::SharedPtr
+  rclcpp::Service<semantic_mapping_interfaces::srv::SaveLoadMap>::SharedPtr
       save_map_srv_;
   rclcpp::Service<panoptic_mapping_msgs::srv::SetVisualizationMode>::SharedPtr
       set_visualization_mode_srv_;
