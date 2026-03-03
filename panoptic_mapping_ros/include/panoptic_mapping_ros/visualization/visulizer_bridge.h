@@ -8,20 +8,21 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <queue>
 #include <string>
 #include <thread>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include <rclcpp/rclcpp.hpp>
-#include <voxblox_msgs/msg/multi_mesh_list.hpp>
-#include <voxblox_msgs/msg/multi_mesh.hpp>
-#include <voxblox_msgs/msg/mesh.hpp>
-
 #include <voxblox/core/block_hash.h>
+#include <voxblox_msgs/msg/mesh.hpp>
+#include <voxblox_msgs/msg/multi_mesh.hpp>
+#include <voxblox_msgs/msg/multi_mesh_list.hpp>
 
 #include "panoptic_mapping/3rd_party/config_utilities.hpp"
 
@@ -40,14 +41,20 @@ class VisulizerBridge {
     void setupParamsAndPrinting() override;
   };
 
+  struct MeshMsgInfo {
+    std_msgs::msg::Header header;
+    std::string name_space;
+    uint8_t alpha;
+    float block_edge_length;
+  };
+
   /**
    * @brief 构造函数
    * @param config 配置参数
    * @param node ROS节点指针
    * @param print_config 是否打印配置信息
    */
-  explicit VisulizerBridge(const Config& config,
-                           rclcpp::Node::SharedPtr node,
+  explicit VisulizerBridge(const Config& config, rclcpp::Node::SharedPtr node,
                            bool print_config = true);
 
   virtual ~VisulizerBridge();
@@ -69,7 +76,8 @@ class VisulizerBridge {
   rclcpp::Node::SharedPtr node_;
 
   // 订阅者 - 接收mesh消息
-  rclcpp::Subscription<voxblox_msgs::msg::MultiMeshList>::SharedPtr detect_input_sub_;
+  rclcpp::Subscription<voxblox_msgs::msg::MultiMeshList>::SharedPtr
+      detect_input_sub_;
 
   // 发布者 - 发布转换后的mesh消息
   rclcpp::Publisher<voxblox_msgs::msg::MultiMeshList>::SharedPtr output_pub_;
@@ -78,7 +86,7 @@ class VisulizerBridge {
   std::queue<voxblox_msgs::msg::MultiMeshList::SharedPtr> message_queue_;
   std::mutex queue_mutex_;
   std::condition_variable queue_cv_;
-  
+
   // 消费者线程
   std::thread consumer_thread_;
   std::atomic<bool> stop_flag_{false};
@@ -92,9 +100,20 @@ class VisulizerBridge {
   void consumeMessages();
 
   /**
+   * @brief 合并队列中的所有消息，按 block index 去重保留最新
+   * @return 合并后的消息
+   */
+  voxblox_msgs::msg::MultiMeshList::SharedPtr mergeMessages();
+
+  /**
    * @brief 处理单个消息
    */
   void processMessage(const voxblox_msgs::msg::MultiMeshList::SharedPtr msg);
+
+  void copyMetaInfoToMsg(const MeshMsgInfo& meta_info,
+                         voxblox_msgs::msg::MultiMesh& mesh);
+  void copyMsgToMetaInfo(const voxblox_msgs::msg::MultiMesh& mesh,
+                         MeshMsgInfo& meta_info);
 };
 
 }  // namespace panoptic_mapping

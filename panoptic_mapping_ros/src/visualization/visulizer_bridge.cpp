@@ -25,13 +25,14 @@ VisulizerBridge::VisulizerBridge(const Config& config,
                                                        << config_.toString();
 
   // 初始化订阅者
-  detect_input_sub_ = node_->create_subscription<voxblox_msgs::msg::MultiMeshList>(
-      "visualization/submaps/mesh", 10,
-      [this](const voxblox_msgs::msg::MultiMeshList::SharedPtr msg) {
-        std::lock_guard<std::mutex> lock(queue_mutex_);
-        message_queue_.push(msg);
-        queue_cv_.notify_one();
-      });
+  detect_input_sub_ =
+      node_->create_subscription<voxblox_msgs::msg::MultiMeshList>(
+          "visualization/submaps/mesh", 10,
+          [this](const voxblox_msgs::msg::MultiMeshList::SharedPtr msg) {
+            std::lock_guard<std::mutex> lock(queue_mutex_);
+            message_queue_.push(msg);
+            queue_cv_.notify_one();
+          });
 
   // 初始化发布者
   output_pub_ = node_->create_publisher<voxblox_msgs::msg::MultiMeshList>(
@@ -43,8 +44,6 @@ VisulizerBridge::VisulizerBridge(const Config& config,
 
 void VisulizerBridge::consumeMessages() {
   while (rclcpp::ok() && !stop_flag_) {
-    voxblox_msgs::msg::MultiMeshList::SharedPtr msg;
-
     // 等待消息
     {
       std::unique_lock<std::mutex> lock(queue_mutex_);
@@ -55,16 +54,98 @@ void VisulizerBridge::consumeMessages() {
         break;
       }
 
-      if (!message_queue_.empty()) {
-        msg = message_queue_.front();
-        message_queue_.pop();
+      // 没有订阅者时，不处理消息，等待有订阅者时再批量处理
+      if (output_pub_->get_subscription_count() == 0) {
+        continue;
+      }
+
+      // 批量处理：将队列中的所有消息合并为一个
+      if (message_queue_.empty()) {
+        continue;
+      }
+
+      // 合并队列中的所有消息
+      auto merged_msg = mergeMessages();
+
+      // 通过 processMessage 处理合并后的消息
+      if (merged_msg && !merged_msg->meshlist.empty()) {
+        processMessage(merged_msg);
       }
     }
+  }
+}
 
-    if (msg) {
-      processMessage(msg);
+voxblox_msgs::msg::MultiMeshList::SharedPtr VisulizerBridge::mergeMessages() {
+  // 用于跟踪每个 namespace 的 block 数据，按 block index 去重保留最新
+  // key: namespace, value: unordered_map<block_index, MeshBlock, BlockHash>
+  using BlockIndexHashMap =
+      voxblox::AnyIndexHashMapType<voxblox_msgs::msg::MeshBlock>::type;
+  std::unordered_map<std::string, BlockIndexHashMap> namespace_blocks;
+  std::unordered_map<std::string, MeshMsgInfo> submap_meta_infos;
+
+  // 取出所有消息并合并
+  auto header = message_queue_.front()->header;
+  while (!message_queue_.empty()) {
+    auto msg = message_queue_.front();
+    message_queue_.pop();
+
+    // 合并每个 namespace 的增量，按 block index 去重保留最新
+    for (const auto& mesh_msg : msg->meshlist) {
+      const std::string& ns = mesh_msg.name_space;
+
+      MeshMsgInfo meta_info = MeshMsgInfo();
+      copyMsgToMetaInfo(mesh_msg, meta_info);
+      submap_meta_infos[ns] = meta_info;
+
+      if (mesh_msg.mesh.mesh_blocks.empty()) {
+        namespace_blocks[ns] = BlockIndexHashMap();
+        continue;
+      }
+
+      for (const auto& block : mesh_msg.mesh.mesh_blocks) {
+        voxblox::BlockIndex block_idx(block.index[0], block.index[1],
+                                      block.index[2]);
+        // 按 block index 去重，保留最新的 block 数据
+        namespace_blocks[ns][block_idx] = block;
+      }
     }
   }
+
+  // 构建合并后的消息
+  voxblox_msgs::msg::MultiMeshList::SharedPtr merged_msg =
+      std::make_shared<voxblox_msgs::msg::MultiMeshList>();
+
+  for (auto& pair : namespace_blocks) {
+    voxblox_msgs::msg::MultiMesh mesh;
+    MeshMsgInfo& meta_info = submap_meta_infos[pair.first];
+    copyMetaInfoToMsg(meta_info, mesh);
+
+    for (auto& block_pair : pair.second) {
+      mesh.mesh.mesh_blocks.push_back(block_pair.second);
+    }
+
+    merged_msg->meshlist.push_back(mesh);
+  }
+
+  merged_msg->header = header;
+
+  return merged_msg;
+}
+
+void VisulizerBridge::copyMetaInfoToMsg(const MeshMsgInfo& meta_info,
+                                        voxblox_msgs::msg::MultiMesh& mesh) {
+  mesh.alpha = meta_info.alpha;
+  mesh.name_space = meta_info.name_space;
+  mesh.header = meta_info.header;
+  mesh.mesh.header = meta_info.header;
+  mesh.mesh.block_edge_length = meta_info.block_edge_length;
+}
+void VisulizerBridge::copyMsgToMetaInfo(
+    const voxblox_msgs::msg::MultiMesh& mesh, MeshMsgInfo& meta_info) {
+  meta_info.alpha = mesh.alpha;
+  meta_info.name_space = mesh.name_space;
+  meta_info.header = mesh.header;
+  meta_info.block_edge_length = mesh.mesh.block_edge_length;
 }
 
 void VisulizerBridge::processMessage(
@@ -95,7 +176,8 @@ void VisulizerBridge::processMessage(
     } else {
       // 提取并存储block indices
       for (const auto& block : mesh_msg.mesh.mesh_blocks) {
-        voxblox::BlockIndex block_idx(block.index[0], block.index[1], block.index[2]);
+        voxblox::BlockIndex block_idx(block.index[0], block.index[1],
+                                      block.index[2]);
         stored_block_indices_[mesh_msg.name_space].insert(block_idx);
       }
     }
