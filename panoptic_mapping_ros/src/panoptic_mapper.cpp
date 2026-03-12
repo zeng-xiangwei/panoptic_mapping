@@ -650,8 +650,29 @@ PanopticMapper::prepareVllmRequest(
     std::shared_ptr<ImageData> image_data,
     const std::unordered_set<int>& generated_vllm_submap_ids) {
   std::vector<VLLMProcessing::Request::SharedPtr> requests;
+
+  // 筛选出还存在的 submap，避免生成已经被删除的 submap
+  std::unordered_set<int> existing_submap_ids_in_image_data;
+  {
+    std::lock_guard<std::mutex> lock(node_mutex_);
+    for (const auto& [submap_id, submap_data] :
+         image_data->associated_submaps) {
+      if (submaps_->submapIdExists(submap_id)) {
+        existing_submap_ids_in_image_data.insert(submap_id);
+      }
+    }
+  }
+
   for (const auto& [submap_id, submap_data] : image_data->associated_submaps) {
     if (generated_vllm_submap_ids.count(submap_id) > 0) {
+      continue;
+    }
+
+    // 过滤掉已经被删除的 submap
+    if (existing_submap_ids_in_image_data.count(submap_id) == 0) {
+      LOG(INFO)
+          << "Skipping deleted submap when prepare vlm request, submap id: "
+          << submap_id;
       continue;
     }
 
@@ -704,10 +725,10 @@ void PanopticMapper::vllmProcessingResponse(
   SubmapData submap_data;
   submap_data.class_name = object_name;
   submap_data.submap_id = submap_id;
-  submap_data.bounding_box = cv::Rect(
-      request->image.bbox.bbox[0], request->image.bbox.bbox[1],
-      request->image.bbox.bbox[2] - request->image.bbox.bbox[0] + 1,
-      request->image.bbox.bbox[3] - request->image.bbox.bbox[1] + 1);
+  submap_data.bounding_box =
+      cv::Rect(request->image.bbox.bbox[0], request->image.bbox.bbox[1],
+               request->image.bbox.bbox[2] - request->image.bbox.bbox[0] + 1,
+               request->image.bbox.bbox[3] - request->image.bbox.bbox[1] + 1);
 
   // 转换边界框信息
   const auto& bbox_msg = response->object;
@@ -1147,16 +1168,20 @@ bool PanopticMapper::setVisualizationModeCallback(
 }
 
 bool PanopticMapper::saveMapCallback(
-    const semantic_mapping_interfaces::srv::SaveLoadMap::Request::SharedPtr request,
-    semantic_mapping_interfaces::srv::SaveLoadMap::Response::SharedPtr response) {
+    const semantic_mapping_interfaces::srv::SaveLoadMap::Request::SharedPtr
+        request,
+    semantic_mapping_interfaces::srv::SaveLoadMap::Response::SharedPtr
+        response) {
   std::lock_guard<std::mutex> lock(node_mutex_);
   response->success = saveMap(request->file_path);
   return response->success;
 }
 
 bool PanopticMapper::loadMapCallback(
-    const semantic_mapping_interfaces::srv::SaveLoadMap::Request::SharedPtr request,
-    semantic_mapping_interfaces::srv::SaveLoadMap::Response::SharedPtr response) {
+    const semantic_mapping_interfaces::srv::SaveLoadMap::Request::SharedPtr
+        request,
+    semantic_mapping_interfaces::srv::SaveLoadMap::Response::SharedPtr
+        response) {
   response->success = loadMap(request->file_path);
   return response->success;
 }
