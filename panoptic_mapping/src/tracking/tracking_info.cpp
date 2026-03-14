@@ -156,6 +156,11 @@ bool TrackingInfoAggregator::getHighestMetric(int input_id, int* submap_id,
     return false;
   }
 
+  if (input_id == 0) {
+    // input_id == 0 represents not detected regions
+    return false;
+  }
+
   auto value_function = getComputeValueFunction(metric);
   int id = 0;
   float best_value = -1.f;

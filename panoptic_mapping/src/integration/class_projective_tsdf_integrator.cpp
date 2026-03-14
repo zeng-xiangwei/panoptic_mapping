@@ -140,6 +140,12 @@ bool ClassProjectiveIntegrator::updateVoxel(
   // Only merge color and classification data near the surface.
   if (std::abs(sdf) >= truncation_distance || is_free_space_submap) {
     updateVoxelValues(voxel, sdf, weight);
+
+    if (sdf >= truncation_distance && !is_free_space_submap) {
+      if (class_voxel) {
+        updateClassVoxel(interpolator, class_voxel, input, submap_id);
+      }
+    }
   } else {
     const Color color = interpolator->interpolateColor(input.colorImage());
     updateVoxelValues(voxel, sdf, weight, &color);

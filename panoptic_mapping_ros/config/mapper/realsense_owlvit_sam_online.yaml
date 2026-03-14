@@ -55,7 +55,7 @@ submap_allocator:
     clear_foreign_voxels: true
     required_belonging_corners: &required_belonging_corners 1
   classification:
-    type: moving_binary_count
+    type: exponential_moving_binary_count
   
   # Semantic
   small_instance_voxel_size: 0.02
@@ -78,7 +78,7 @@ id_tracker:
   # Projective ID tracker
   depth_tolerance: -2  # m, negative = #vs
   tracking_metric: IoU  # IoU, overlap
-  match_acceptance_threshold: 0.2 
+  match_acceptance_threshold: 0.1 
   min_allocation_size: 300 # px, for submap allocation.
   use_class_data_for_matching: true
   rendering_persistent_submap: true

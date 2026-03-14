@@ -50,6 +50,7 @@ add_library(${PROJECT_NAME} SHARED
         src/map/classification/fixed_count.cpp
         src/map/classification/variable_count.cpp
         src/map/classification/uncertainty.cpp
+        src/map/classification/exponential_moving_binary_count.cpp
         src/map/scores/average.cpp
         src/map/scores/latest.cpp
         src/map/class_name_manager.cpp
