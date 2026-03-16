@@ -78,6 +78,8 @@ class VisulizerBridge {
   // 订阅者 - 接收mesh消息
   rclcpp::Subscription<voxblox_msgs::msg::MultiMeshList>::SharedPtr
       detect_input_sub_;
+  rclcpp::Subscription<voxblox_msgs::msg::MultiMeshList>::SharedPtr
+      undetect_input_sub_;
 
   // 发布者 - 发布转换后的mesh消息
   rclcpp::Publisher<voxblox_msgs::msg::MultiMeshList>::SharedPtr output_pub_;

@@ -34,6 +34,15 @@ VisulizerBridge::VisulizerBridge(const Config& config,
             queue_cv_.notify_one();
           });
 
+  undetect_input_sub_ =
+      node_->create_subscription<voxblox_msgs::msg::MultiMeshList>(
+          "/single_tsdf_for_undetected/visualization/submaps/mesh", 10,
+          [this](const voxblox_msgs::msg::MultiMeshList::SharedPtr msg) {
+            std::lock_guard<std::mutex> lock(queue_mutex_);
+            message_queue_.push(msg);
+            queue_cv_.notify_one();
+          });
+
   // 初始化发布者
   output_pub_ = node_->create_publisher<voxblox_msgs::msg::MultiMeshList>(
       "visualization/converted_mesh", 10);
