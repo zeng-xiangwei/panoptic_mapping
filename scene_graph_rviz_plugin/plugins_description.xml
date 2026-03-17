@@ -1,0 +1,10 @@
+<library path="scene_graph_rviz_plugin">
+  <class name="scene_graph_rviz_plugin/ObjectDescriptionDisplay"
+         type="scene_graph_rviz_plugin::ObjectDescriptionDisplay"
+         base_class_type="rviz_common::Display">
+    <description>
+      RViz display plugin for showing scene graph object descriptions in property panel.
+      Displays object ID, name, and description with optional highlight functionality.
+    </description>
+  </class>
+</library>
