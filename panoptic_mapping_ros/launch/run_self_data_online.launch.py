@@ -1,11 +1,18 @@
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, Shutdown
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, Shutdown, OpaqueFunction
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.substitutions import FindPackageShare
 from launch.conditions import IfCondition, UnlessCondition
 import os
+
+
+def create_log_dir(context, *args, **kwargs):
+    """确保日志目录存在"""
+    log_dir = LaunchConfiguration('log_dir').perform(context)
+    os.makedirs(log_dir, exist_ok=True)
+    return []
 
 
 def generate_launch_description():
@@ -14,7 +21,7 @@ def generate_launch_description():
     use_detectron_arg = DeclareLaunchArgument('use_detectron',
                                               default_value='true')
     visualize_arg = DeclareLaunchArgument('visualize', default_value='true')
-    use_visulizer_bridge_arg = DeclareLaunchArgument('use_visulizer_bridge', default_value='false')
+    use_visulizer_bridge_arg = DeclareLaunchArgument('use_visulizer_bridge', default_value='true')
 
     config_arg = DeclareLaunchArgument(
         'config', default_value='realsense_owlvit_sam_online.yaml')
@@ -25,12 +32,14 @@ def generate_launch_description():
     load_file_arg = DeclareLaunchArgument(
         'load_file',
         default_value=
-        '/home/diana/Code/panoptic_mapping_ws/data/map.panmap')
+        '/home/xiangweizeng/dataBag/panoptic_mapping/h11_02#/1217/map_floor2_qwen.panmap')
+    
+    log_dir_arg = DeclareLaunchArgument(
+        'log_dir',
+        default_value='')
 
     # 包路径查找
     panoptic_mapping_ros_pkg = FindPackageShare('panoptic_mapping_ros')
-    print("panoptic_mapping_ros_pkg: ",
-          panoptic_mapping_ros_pkg.find("panoptic_mapping_ros"))
 
     # Mapper 节点
     mapper_node = Node(
@@ -47,7 +56,7 @@ def generate_launch_description():
             ]),
             'load_map': LaunchConfiguration('load_map'),
             'load_file': LaunchConfiguration('load_file'),
-            # 'log_dir': os.path.expanduser('~/.ros/log')
+            'log_dir': LaunchConfiguration('log_dir')
         }],
         remappings=[
             ('color_image_in', '/camera/camera/color/image_raw'),
@@ -69,7 +78,7 @@ def generate_launch_description():
         output='screen',
         # prefix=['gnome-terminal -- gdb -ex run --args'],
         parameters=[{
-            'log_dir': os.path.expanduser('/home/xiangweizeng/3D_slam/sematic-mapping/panoptic_mapping_ws/logs')
+            'log_dir': LaunchConfiguration('log_dir')
         }],
         remappings=[
             ('visualization/submaps/mesh', '/visualization/submaps/mesh'),
@@ -100,6 +109,10 @@ def generate_launch_description():
         shutdown_when_finished_arg,
         load_map_arg,
         load_file_arg,
+        log_dir_arg,
+
+        # 确保日志目录存在
+        OpaqueFunction(function=create_log_dir),
 
         # 主要节点
         mapper_node,

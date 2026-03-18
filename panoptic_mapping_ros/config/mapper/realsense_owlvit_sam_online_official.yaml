@@ -1,0 +1,254 @@
+# General Params
+verbosity: 3
+use_threadsafe_submap_collection: true
+use_transform_caching: true
+transform_lookup_time: 0.1
+global_frame_name: &global_frame_name map
+visualization_interval: -1.0
+data_logging_interval: -1.0
+print_timing_interval: 0.0
+# Options: "best_effort", "reliable".
+qos_type: best_effort
+max_input_queue_length: 20
+ros_spinning_threads: 8
+depth_type: 16U
+color_msg_type: rgb8
+tf_pose_delay: 0.0
+use_saved_embeddings: true
+use_image_data_manager: true
+vllm_service_timeout: 30.0
+vllm_max_retries: 0
+# 如果use_undetected_tsdf为true，则启用对没有目标检测结果的像素区域进行纯几何TSDF重建
+use_undetected_tsdf: true
+
+labels:
+  type: mini_csv
+  file_name: /home/diana/Code/panoptic_mapping_ws/install/panoptic_mapping_ros/share/panoptic_mapping_ros/config/classes/realsense_labels_mini.csv
+  use_whitelist: false
+  whitelist_file_name: /home/diana/Code/panoptic_mapping_ws/install/panoptic_mapping_ros/share/panoptic_mapping_ros/config/classes/realsense_whitelist.csv
+  use_blacklist: true
+  blacklist_file_name: /home/diana/Code/panoptic_mapping_ws/install/panoptic_mapping_ros/share/panoptic_mapping_ros/config/classes/realsense_blacklist.csv
+
+camera:
+  verbosity: 1
+  width: 640  # Px
+  height: 480
+  vx: 321.428
+  vy: 245.055
+  fx: 609.379
+  fy: 609.931
+  max_range: 3.0  # m
+  min_range: &min_range 0.5
+  
+submap_allocator:
+  type: semantic  # semantic
+  verbosity: 1   
+  
+  # submaps
+  voxels_per_side: &voxels_per_side 16
+  truncation_distance: -2 # negative = #vs
+  use_class_layer: true
+  frame_id: *global_frame_name
+  max_embedding_weight: 1000.0
+  min_embedding_weight: 0.00001
+  mesh:
+    clear_foreign_voxels: true
+    required_belonging_corners: &required_belonging_corners 1
+  classification:
+    type: exponential_moving_binary_count
+  
+  # Semantic
+  small_instance_voxel_size: 0.02
+  medium_instance_voxel_size: 0.03
+  large_instance_voxel_size: 0.04
+  background_voxel_size: 0.1
+  unknown_voxel_size: 0.05
+  
+freespace_allocator:
+  type: monolithic  # monolithic
+  verbosity: 1  
+  voxels_per_side: *voxels_per_side 
+  truncation_distance: -2   
+  voxel_size: 0.3
+
+id_tracker:
+  type: detectron # ground_truth, projective, detectron, single_tsdf
+  verbosity: 3  
+  
+  # Projective ID tracker
+  depth_tolerance: -2  # m, negative = #vs
+  tracking_metric: IoU  # IoU, overlap
+  match_acceptance_threshold: 0.1 
+  min_allocation_size: 300 # px, for submap allocation.
+  use_class_data_for_matching: true
+  rendering_persistent_submap: true
+
+tsdf_integrator:  
+  type: class_projective # projective, class_projective, single_tsdf
+  verbosity: 1     
+
+  # Projective
+  use_weight_dropoff: true
+  max_weight: &max_weight 10000
+  interpolation_method: adaptive  # nearest, bilinear, adaptive
+  foreign_rays_clear: true
+  integration_threads: 8
+  allocate_neighboring_blocks: false
+  
+  # Class Projective
+  use_binary_classification: true
+  use_instance_classification: &use_instance_classification true
+  add_foreign_count_when_has_instances: false
+  update_only_tracked_submaps: false
+  
+map_management:
+  type: submaps
+  verbosity: 4
+  
+  # Frequencies
+  prune_active_blocks_frequency: 1 
+  activity_management_frequency: 1
+  change_detection_frequency: 1
+  
+  # Behavior
+  merge_deactivated_submaps_if_possible: true
+  apply_class_layer_when_deactivating_submaps: true
+  detect_disappear_by_sensor_data: true
+  remove_absent_submaps: true
+  prune_isolated_blocks_by_clustering: true
+  
+  activity_manager:
+    required_reobservations: 5 # Consecutive observations to keep new submaps.
+    deactivate_after_missed_detections: 5  # Deactivate submaps when not observed for x frames.
+  
+  tsdf_registrator:
+    verbosity: 3
+    min_voxel_weight: 0.000001
+    # Must less than submap_allocator.truncation_distance
+    error_threshold: -1.9 # m, negative = #vs
+    match_rejection_points: 20  
+    match_rejection_percentage: 0.02
+    match_acceptance_points: 20
+    match_acceptance_percentage: 0.02
+    normalize_by_voxel_weight: true
+  
+  change_detector:
+    verbosity: 3
+    # N frames disappear to confirm a submap is disappeared. In normal case. Disapper count > threshold  means submap is disappeared.
+    normal_disappear_frames_threshold: 3
+    strong_disappear_threshold: -10 # m, negative = #vs
+    weak_disappear_threshold: -2 # m, negative = #vs
+    match_strong_disappear_points: 0
+    match_strong_disappear_percentage: 0.3
+    match_weak_disappear_points: 0
+    match_weak_disappear_percentage: 0.6
+    match_weak_average_distance: -4 # m, negative = #vs
+    detection_threads: 1
+    # 选择候选 submap 进行变化检测时，在相机有效距离范围内，再限制一次距离，最终仅取 (camera.max_range - range_inner_buffer) 范围内的 submap
+    range_inner_buffer: 0.5 # m
+    use_classification_for_tiny: true
+    # 0.02 体素大小下的小物体点数, 代码内会根据体素大小进行缩放
+    min_isolated_points_size: 3000
+    classification_only_background: false
+    classification_use_no_class: true
+    limit_range: false
+    classification_disappear_frames_threshold: 3
+    # 正负值代表submap的投影点是在当前深度像素的正面还是反面（更靠近相机 or 更远离相机），dis = d_depthImage - d_submap
+    # 该值为负时，可能更好得处理小物体
+    classification_disappear_threshold: -0.02
+    classification_disappear_percentage: 0.5
+    # 正负值含义与classification_disappear_threshold相同
+    classification_disappear_average_distance: -0.02
+    classification_projected_percentage: 0.9
+    # 用于判断相机运动是否剧烈的阈值，与上一帧位姿对比，单位：米/s，相机运动剧烈时就不进行小物体变化检测，因为此时目标检测结果不稳定
+    max_translation_velocity: 0.5
+    # 单位: 度/s
+    max_rotation_velocity: 3.0
+
+  layer_manipulator:
+      verbosity: 3
+      use_instance_classification: *use_instance_classification
+      required_belonging_corners: *required_belonging_corners
+      max_weight: *max_weight
+  
+visualization:  
+  submaps:
+    type: submaps  # submaps, single_tsdf
+    verbosity: 1
+    color_mode: instances # submaps, instances, color, normals, classes, change, classification
+    visualization_mode: all  # all, active, active_only, inactive, persistent
+    visualize_other_mode: false
+    submap_color_discretization: 20
+    visualize_mesh: true
+    visualize_tsdf_blocks: true
+    visualize_free_space: true
+    visualize_bounding_volumes: true
+    include_free_space: false
+    mesh_min_weight: 0.000001
+  
+  planning:
+    verbosity: 1
+    visualize_slice: true
+    slice_resolution: 0.1
+    slice_height: -0.5
+  
+  tracking:
+    verbosity: 1
+    visualize_tracking: true
+
+  changed_submaps:
+    verbosity: 5
+    change_point_threshold: 10
+    only_use_aabb: false
+    box_only_align_z: true
+    min_obb_length: 0.02
+    obb_frame_id: map
+    use_redetection_for_add: true
+    use_space_unique_boxes: true
+    box_overlap_threshold: 0.5
+
+image_data_manager:
+  verbosity: 4
+  image_save_directory: "/home/diana/Code/panoptic_mapping_ws/data/image_data"
+  meta_infos_file_name: "map.panmap_images_meta_infos.bin"
+  max_images_in_memory: 10
+  min_IoU_for_box_matching: 0.1
+
+# 未检测区域的TSDF重建配置
+single_tsdf_for_undetected:
+  verbosity: 3
+
+  # true: 全部区域的几何重建; false: 仅对未检测的区域进行重建
+  reconstruct_detected_objects: true
+
+  min_range: *min_range  # m
+  max_range: 4.0  # m
+  
+  # Submap配置
+  voxel_size: 0.1
+  truncation_distance: -2
+  voxels_per_side: 16
+  use_class_layer: false 
+  frame_id: *global_frame_name
+
+  # Projective
+  use_weight_dropoff: true
+  max_weight: 10000
+  interpolation_method: adaptive  # nearest, bilinear, adaptive
+  integration_threads: 8
+  
+  # 是否使用颜色
+  use_color: true
+
+  visualize:
+    type: single_tsdf  # submaps, single_tsdf
+    topic_prefix: single_tsdf_for_undetected
+    verbosity: 1
+    color_mode: color # submaps, instances, color, normals, classes, change, classification
+    visualization_mode: all  # all, active, active_only, inactive, persistent
+    visualize_mesh: true
+    visualize_tsdf_blocks: false
+    visualize_free_space: false
+    visualize_bounding_volumes: false
+    include_free_space: false
+    mesh_min_weight: 0.000001
