@@ -213,23 +213,19 @@ void MapManager::finishMapping(SubmapCollection* submaps) {
   LOG_IF(INFO, config_.verbosity >= 3) << "Merging Submaps:";
 
   // Merge what is possible.
-  bool merged_something = true;
-  while (merged_something) {
-    // 仅对 deactivated 的 submap 进行合并，保证新的合并到老的中
-    for (int id : deactivated_ids) {
-      if (submaps->submapIdExists(id) == false) {
-        continue;
-      }
-      Submap& submap = *submaps->getSubmapPtr(id);
-      int merged_id = submap.getID();
-      int current_id = submap.getID();
-      merged_something = mergeSubmapIfPossible(submaps, current_id, &merged_id);
-      if (merged_something) {
-        if (merged_id != current_id) {
-          submaps->getSubmapPtr(merged_id)->updateEverything();
-        }
-        break;
-      }
+  // 使用与 manageSubmapActivity 相同的逻辑：对每个 deactivated submap
+  // 持续尝试合并
+  for (int id : deactivated_ids) {
+    int merged_id;
+    int current_id = id;
+    if (!submaps->submapIdExists(id)) {
+      continue;
+    }
+    while (mergeSubmapIfPossible(submaps, current_id, &merged_id)) {
+      current_id = merged_id;
+    }
+    if (merged_id != current_id) {
+      submaps->getSubmapPtr(merged_id)->updateEverything();
     }
   }
 
@@ -307,10 +303,12 @@ bool MapManager::mergeSubmapIfPossible(SubmapCollection* submaps, int submap_id,
         other.setNormalDisappearCount(0);
         if (other.getDescriptsByVllm().class_name.empty()) {
           other.setDescriptsByVllm(submap->getDescriptsByVllm());
+          other.setHasNewVllmDescripts(true);
         }
         for (auto relationship : *submap->getVllmRelationshipsPtr()) {
           relationship.from_id = other.getID();
           other.getVllmRelationshipsPtr()->push_back(relationship);
+          other.setHasNewVllmDescripts(true);
         }
         submaps->removeSubmap(submap_id);
         if (merged_id) {
