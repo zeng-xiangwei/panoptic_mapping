@@ -1,5 +1,6 @@
 #include "panoptic_mapping_ros/panoptic_mapper.h"
 
+#include <filesystem>
 #include <map>
 #include <memory>
 #include <sstream>
@@ -930,6 +931,12 @@ void PanopticMapper::publishColoredPointCloud(InputData* input) {
 }
 
 bool PanopticMapper::saveMap(const std::string& file_path) {
+  // 创建目录（如果不存在）
+  std::filesystem::path path(file_path);
+  if (path.has_parent_path()) {
+    std::filesystem::create_directories(path.parent_path());
+  }
+
   // 保存地图时先 finish，否则保存的地图可能有问题
   map_manager_->finishMapping(submaps_.get());
   submap_visualizer_->visualizeAll(submaps_.get());
