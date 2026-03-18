@@ -11,7 +11,8 @@ import os
 def create_log_dir(context, *args, **kwargs):
     """确保日志目录存在"""
     log_dir = LaunchConfiguration('log_dir').perform(context)
-    os.makedirs(log_dir, exist_ok=True)
+    if log_dir:  # 仅当 log_dir 不为空时创建目录
+        os.makedirs(log_dir, exist_ok=True)
     return []
 
 
