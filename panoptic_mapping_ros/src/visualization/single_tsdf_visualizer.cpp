@@ -27,6 +27,7 @@ void SingleTsdfVisualizer::Config::setupParamsAndPrinting() {
   setupParam("entropy_factor", &entropy_factor);
   setupParam("min_score", &min_score);
   setupParam("max_score", &max_score);
+  setupParam("single_submap_id", &single_submap_id);
 }
 
 SingleTsdfVisualizer::SingleTsdfVisualizer(const Config& config,
@@ -57,7 +58,8 @@ void SingleTsdfVisualizer::clearMesh() {
       mesh_pub_->get_subscription_count() > 0) {
     voxblox_msgs::msg::MultiMesh msg;
     msg.header.stamp = node_->get_clock()->now();
-    msg.name_space = map_name_space_;
+    std::string name_space = std::to_string(config_.single_submap_id) + "_" + map_name_space_;
+    msg.name_space = name_space;
 
     voxblox_msgs::msg::MultiMeshList msg_list;
     msg_list.header.stamp = node_->get_clock()->now();
@@ -88,7 +90,8 @@ SingleTsdfVisualizer::generateMeshMsgs(SubmapCollection* submaps) {
   voxblox_msgs::msg::MultiMesh msg;
   msg.header.stamp = node_->get_clock()->now();
   msg.header.frame_id = submap.getFrameName();
-  msg.name_space = map_name_space_;
+  std::string name_space = std::to_string(config_.single_submap_id) + "_" + map_name_space_;
+  msg.name_space = name_space;
 
   // Update the mesh.
   submap.updateMesh(true, false);

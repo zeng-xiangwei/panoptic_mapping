@@ -218,6 +218,9 @@ image_data_manager:
 single_tsdf_for_undetected:
   verbosity: 3
 
+  # submap id
+  single_tsdf_submap_id: &single_tsdf_submap_id -2
+
   # true: 全部区域的几何重建; false: 仅对未检测的区域进行重建
   reconstruct_detected_objects: true
 
@@ -252,3 +255,4 @@ single_tsdf_for_undetected:
     visualize_bounding_volumes: false
     include_free_space: false
     mesh_min_weight: 0.000001
+    single_submap_id: *single_tsdf_submap_id

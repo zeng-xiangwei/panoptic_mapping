@@ -83,6 +83,7 @@ def generate_launch_description():
         }],
         remappings=[
             ('visualization/submaps/mesh', '/visualization/submaps/mesh'),
+            ('/single_tsdf_for_undetected/visualization/submaps/mesh', '/single_tsdf_for_undetected/visualization/submaps/mesh'),
             ('visualization/converted_mesh', '/visualization/converted_mesh'),
         ],
         condition=IfCondition(LaunchConfiguration('use_visulizer_bridge')))

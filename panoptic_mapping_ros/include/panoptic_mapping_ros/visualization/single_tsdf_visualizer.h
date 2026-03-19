@@ -30,6 +30,8 @@ class SingleTsdfVisualizer : public SubmapVisualizer {
     // Normalisation to bing Score into [0, 1] range
     float min_score = 0.0f;
     float max_score = 1.0f;
+    
+    int single_submap_id = -2;
 
     // Standard visualizer config.
     SubmapVisualizer::Config submap_visualizer;
@@ -73,7 +75,7 @@ class SingleTsdfVisualizer : public SubmapVisualizer {
 
   // NOTE(schmluk): This namespace could also be unique per visualizer to allow
   // multiple meshes to be shown on the same topic.
-  const std::string map_name_space_ = "single_tsdf";
+  const std::string map_name_space_ = "singleTsdf";
 
   // Cached / tracked data.
   SubmapVisInfo info_;
