@@ -224,8 +224,8 @@ void MapManager::finishMapping(SubmapCollection* submaps) {
     while (mergeSubmapIfPossible(submaps, current_id, &merged_id)) {
       current_id = merged_id;
     }
-    if (merged_id != current_id) {
-      submaps->getSubmapPtr(merged_id)->updateEverything();
+    if (current_id != id) {
+      submaps->getSubmapPtr(current_id)->updateEverything();
     }
   }
 
