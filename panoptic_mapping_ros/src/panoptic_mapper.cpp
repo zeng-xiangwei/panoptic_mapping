@@ -742,25 +742,11 @@ void PanopticMapper::vllmProcessingResponse(
 
   // 默认使用submap_id作为box_id，后续如果有变更再进行调整
   bbox_info.box_id_is_submap_id = true;
-
-  // 因为 VL 大模型返回的字符串可能在首尾包含多余的空格，进行过滤
-  if (trimString(bbox_msg.object_name) != "") {
-    bbox_info.description.class_name = trimString(bbox_msg.object_name);
-  } else {
-    // VL 大模型没有返回类别信息，使用submap_id对应的类别信息
-    bbox_info.description.class_name = submap_data.class_name;
-  }
+  bbox_info.description.class_name = submap_data.class_name;
 
   LOG(INFO) << "bbox_msg.bbox.bbox size:" << bbox_msg.bbox.bbox.size();
-  if (bbox_msg.bbox.bbox.size() == 4) {
-    int xmin = bbox_msg.bbox.bbox[0], ymin = bbox_msg.bbox.bbox[1];
-    int xmax = bbox_msg.bbox.bbox[2], ymax = bbox_msg.bbox.bbox[3];
-    int width = xmax - xmin;
-    int height = ymax - ymin;
-    bbox_info.bounding_box = cv::Rect(xmin, ymin, width, height);
-  } else {
-    bbox_info.bounding_box = submap_data.bounding_box;
-  }
+  bbox_info.bounding_box = submap_data.bounding_box;
+  
   bbox_info.description.color = trimString(bbox_msg.color);
   bbox_info.description.shape = trimString(bbox_msg.shape);
   bbox_info.description.other_descs = trimString(bbox_msg.description);

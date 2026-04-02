@@ -148,7 +148,8 @@ void SubmapVisualizer::visualizeAll(SubmapCollection* submaps) {
                 << changeStateToString(submap.getChangeState())
                 << ", matchRedetection: " << submap.matchRedetection()
                 << ", surface points size: "
-                << submap.getIsoSurfacePoints().size();
+                << submap.getIsoSurfacePoints().size()
+                << ", description: " << submap.getDescriptsByVllm().toString();
     }
   }
 
