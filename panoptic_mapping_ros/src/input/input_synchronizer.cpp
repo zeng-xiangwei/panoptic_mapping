@@ -7,7 +7,11 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#ifdef USE_CV_BRIDGE_HPP
+#include <cv_bridge/cv_bridge.hpp>
+#else
 #include <cv_bridge/cv_bridge.h>
+#endif
 #include <panoptic_mapping_msgs/msg/detectron_labels.hpp>
 #include <sensor_msgs/msg/image.hpp>
 

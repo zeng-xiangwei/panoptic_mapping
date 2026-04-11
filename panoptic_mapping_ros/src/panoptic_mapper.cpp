@@ -16,7 +16,11 @@
 
 #include "panoptic_mapping_ros/conversions/conversions.h"
 
-#include "cv_bridge/cv_bridge.h"
+#ifdef USE_CV_BRIDGE_HPP
+#include <cv_bridge/cv_bridge.hpp>
+#else
+#include <cv_bridge/cv_bridge.h>
+#endif
 
 namespace panoptic_mapping {
 

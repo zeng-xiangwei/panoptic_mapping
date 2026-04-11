@@ -19,6 +19,24 @@ find_package(tf2_ros REQUIRED)
 find_package(pcl_conversions REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(voxblox REQUIRED)
+
+# Detect ROS distribution and set cv_bridge header macro
+if(NOT DEFINED ROS_DISTRO)
+    execute_process(
+        COMMAND bash -c "echo $ROS_DISTRO"
+        OUTPUT_VARIABLE DETECTED_ROS_DISTRO
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+else()
+    set(DETECTED_ROS_DISTRO ${ROS_DISTRO})
+endif()
+
+if(DETECTED_ROS_DISTRO STREQUAL "jazzy")
+    message(STATUS "Detected ROS Jazzy, using cv_bridge.hpp")
+    add_definitions(-DUSE_CV_BRIDGE_HPP)
+else()
+    message(STATUS "Detected ROS ${DETECTED_ROS_DISTRO}, using cv_bridge.h")
+endif()
 find_package(voxblox_msgs REQUIRED)
 find_package(panoptic_mapping REQUIRED)
 find_package(panoptic_mapping_msgs REQUIRED)

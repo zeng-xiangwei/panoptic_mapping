@@ -2,7 +2,11 @@
 
 #include <string>
 
+#ifdef USE_CV_BRIDGE_HPP
+#include <cv_bridge/cv_bridge.hpp>
+#else
 #include <cv_bridge/cv_bridge.h>
+#endif
 #include <sensor_msgs/msg/image.hpp>
 
 namespace panoptic_mapping {
